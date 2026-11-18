@@ -15,6 +15,17 @@ export interface UIActions {
   onHour(hour: number): void;
   onReset(): void;
   onPause?(): void;
+  onVolume?(volume: number, muted: boolean): void;
+}
+
+interface HudState extends PlayerMapPosition {
+  hour: number;
+  health?: number;
+  driving?: boolean;
+  canInteract?: boolean;
+  speed?: number;
+  wanted?: number;
+  policeStatus?: string;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {
@@ -49,6 +60,23 @@ export function createUI(actions: UIActions) {
   const quality = requiredElement<HTMLSelectElement>("quality-select");
   const timeSlider = requiredElement<HTMLInputElement>("time-slider");
   const timeOutput = requiredElement<HTMLOutputElement>("time-output");
+  const volumeSlider = requiredElement<HTMLInputElement>("volume-slider");
+  const volumeOutput = requiredElement<HTMLOutputElement>("volume-output");
+  const muteToggle = requiredElement<HTMLInputElement>("mute-toggle");
+  const wantedLevel = requiredElement("wanted-level");
+  const stars = [...wantedLevel.children];
+  const wantedStatus = requiredElement("wanted-status");
+  const healthMeter = requiredElement<HTMLProgressElement>("health-meter");
+  const speedDisplay = requiredElement("speed-display");
+  const speedOutput = requiredElement<HTMLOutputElement>("speed-output");
+  const prompt = requiredElement("interaction-prompt");
+  const promptLabel = requiredElement("interaction-label");
+  const touchInteract = requiredElement("touch-interact");
+  const touchHorn = requiredElement("touch-horn");
+  const touchRun = hud.querySelector<HTMLElement>('[data-move="run"]');
+  const touchJump = hud.querySelector<HTMLElement>('[data-move="jump"]');
+  const spaceHint = requiredElement("space-hint");
+  const hornHint = requiredElement("horn-hint");
   const entryClock = requiredElement<HTMLTimeElement>("entry-time");
   const hudClock = requiredElement<HTMLTimeElement>("hud-time");
   const debug = requiredElement("debug-panel");
@@ -57,6 +85,25 @@ export function createUI(actions: UIActions) {
   let hour = gameConfig.initialHour;
   let displayedTime = "";
   let panel: PanelMode = "settings";
+  let displayedDriving: boolean | undefined;
+  let displayedWanted = -1;
+
+  function showVolume() {
+    const label = `${volumeSlider.value} %`;
+    volumeOutput.value = label;
+    volumeSlider.setAttribute("aria-valuetext", label);
+  }
+
+  function setVolume(volume: number, muted: boolean) {
+    volumeSlider.value = String(Math.round(Math.min(1, Math.max(0, volume)) * 100));
+    muteToggle.checked = muted;
+    showVolume();
+  }
+
+  function changeSound() {
+    showVolume();
+    actions.onVolume?.(volumeSlider.valueAsNumber / 100, muteToggle.checked);
+  }
 
   function updateTimeLabel() {
     const time = formatHour(hour);
@@ -99,6 +146,9 @@ export function createUI(actions: UIActions) {
   });
 
   quality.addEventListener("change", () => actions.onQuality(quality.value as Quality));
+  requiredElement("audio-settings").hidden = !actions.onVolume;
+  volumeSlider.addEventListener("input", changeSound);
+  muteToggle.addEventListener("change", changeSound);
   timeSlider.addEventListener("input", () => {
     hour = timeSlider.valueAsNumber;
     updateTimeLabel();
@@ -128,7 +178,7 @@ export function createUI(actions: UIActions) {
     if (mode === "start" && previousMode === "loading" && !dialog.open) play.focus({ preventScroll: true });
   }
 
-  function update(state: PlayerMapPosition & { hour: number }) {
+  function update(state: HudState) {
     const timeChanged = hour !== state.hour;
     hour = state.hour;
     if (timeChanged && dialog.open && !settings.hidden) syncTimeControl();
@@ -140,7 +190,42 @@ export function createUI(actions: UIActions) {
         clock.textContent = currentTime;
       }
     }
-    if (!hud.hidden) minimap.update(state);
+    if (hud.hidden) return;
+    minimap.update(state);
+
+    const driving = state.driving ?? false;
+    if (displayedDriving !== driving) {
+      displayedDriving = driving;
+      speedDisplay.hidden = !driving;
+      touchHorn.hidden = hornHint.hidden = !driving;
+      if (touchRun) touchRun.hidden = driving;
+      if (touchJump) touchJump.textContent = driving ? "Freno de mano" : "Saltar";
+      promptLabel.textContent = driving ? "Salir del coche" : "Entrar al coche";
+      touchInteract.textContent = driving ? "Salir" : "Entrar";
+      spaceHint.textContent = driving ? "Freno de mano" : "Saltar";
+    }
+    prompt.hidden = touchInteract.hidden = !state.canInteract;
+    if (driving) {
+      const speed = String(Math.max(0, Math.round(state.speed ?? 0)));
+      if (speedOutput.value !== speed) speedOutput.value = speed;
+    }
+
+    const wanted = Math.max(0, Math.min(5, Math.trunc(state.wanted ?? 0)));
+    if (displayedWanted !== wanted) {
+      displayedWanted = wanted;
+      wantedLevel.setAttribute("aria-label", `Búsqueda: ${wanted} de 5 estrellas`);
+      stars.forEach((star, index) => {
+        star.classList.toggle("wanted-star-active", index < wanted);
+        star.textContent = index < wanted ? "★" : "☆";
+      });
+    }
+    const status = state.policeStatus ?? "Patrullaje";
+    if (wantedStatus.textContent !== status) wantedStatus.textContent = status;
+    const health = Math.max(0, Math.min(100, Math.ceil(state.health ?? 100)));
+    if (healthMeter.value !== health) {
+      healthMeter.value = health;
+      healthMeter.textContent = `${health} %`;
+    }
   }
 
   function setDebug(message: string | null) {
@@ -154,6 +239,7 @@ export function createUI(actions: UIActions) {
     setWorld: minimap.setWorld,
     update,
     setDebug,
+    setVolume,
     setQuality(value: Quality) {
       quality.value = value;
     },

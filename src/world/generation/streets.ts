@@ -1,4 +1,5 @@
-import { CylinderGeometry, Euler } from 'three';
+import { CylinderGeometry } from 'three';
+import type { RegisterSectorFeature } from '../streaming';
 import type { DistrictGeometry } from './geometry';
 import { avenues, blockSpans, crossStreets, districtBounds, inlandEdge } from './layout';
 
@@ -6,9 +7,9 @@ const white = '#d9d2bb';
 const gold = '#d2a657';
 const markingY = 0.006;
 const sidewalk = '#c6b8a0';
-const signalPole = new CylinderGeometry(0.5, 0.5, 1, 8);
+const pole = new CylinderGeometry(0.5, 0.5, 1, 8);
 
-export function addStreets(geometry: DistrictGeometry): void {
+export function addStreets(geometry: DistrictGeometry, register: RegisterSectorFeature): void {
   const { minX, minZ, maxZ } = districtBounds;
   const east = inlandEdge + 4;
   const xRuns = blockSpans(avenues, minX, east);
@@ -16,35 +17,37 @@ export function addStreets(geometry: DistrictGeometry): void {
   for (const { center, width } of avenues) {
     geometry.box('asphalt', '#424a53', center, -0.031, 0, width, 0.058, maxZ - minZ);
     for (const [start, end] of zRuns) {
-      addLaneMarkings(true, center, width, start, end, geometry);
+      register(center, (start + end) / 2, (sector) => addLaneMarkings(true, center, width, start, end, sector));
     }
   }
   for (const { center, width } of crossStreets) {
     for (const [start, end] of xRuns) {
       geometry.box('asphalt', '#48505a', (start + end) / 2, -0.032, center, end - start, 0.058, width);
-      addLaneMarkings(false, center, width, start, end, geometry);
+      register((start + end) / 2, center, (sector) => addLaneMarkings(false, center, width, start, end, sector));
     }
   }
   for (const [left, right] of xRuns) {
     for (const [near, far] of zRuns) {
-      addSidewalk(geometry, left, right, near, far);
+      const x = (left + right) / 2;
+      const z = (near + far) / 2;
+      geometry.box('pavement', sidewalk, x, 0.006, z, right - left, 0.086, far - near);
+      register(x, z, (sector, detailed) => {
+        if (detailed) addCurbs(sector, left, right, near, far);
+      });
     }
   }
   for (const avenue of avenues) {
     for (const crossStreet of crossStreets) {
       const x = avenue.center;
       const z = crossStreet.center;
-      // Markings are separate from the junction so the roads stay clear.
-      addZebra(true, geometry, x, avenue.width, z + crossStreet.width / 2 + 1.15);
-      addZebra(true, geometry, x, avenue.width, z - crossStreet.width / 2 - 1.15);
-      if (x < inlandEdge) {
-        addZebra(false, geometry, z, crossStreet.width, x + avenue.width / 2 + 1.15);
-      }
-      addZebra(false, geometry, z, crossStreet.width, x - avenue.width / 2 - 1.15);
-      if (x === 0 || (x === 28 && z !== 77)) {
-        addSignal(geometry, x + avenue.width / 2 + 0.65, z + crossStreet.width / 2 + 0.72, 0);
-        addSignal(geometry, x - avenue.width / 2 - 0.65, z - crossStreet.width / 2 - 0.72, Math.PI);
-      }
+      register(x, z, (sector) => {
+        addZebra(true, sector, x, avenue.width, z + crossStreet.width / 2 + 1.15);
+        addZebra(true, sector, x, avenue.width, z - crossStreet.width / 2 - 1.15);
+        if (x < inlandEdge) {
+          addZebra(false, sector, z, crossStreet.width, x + avenue.width / 2 + 1.15);
+        }
+        addZebra(false, sector, z, crossStreet.width, x - avenue.width / 2 - 1.15);
+      });
     }
   }
 }
@@ -96,7 +99,7 @@ function addZebra(
   }
 }
 
-function addSidewalk(
+function addCurbs(
   geometry: DistrictGeometry,
   left: number,
   right: number,
@@ -107,7 +110,6 @@ function addSidewalk(
   const z = (near + far) / 2;
   const width = right - left;
   const depth = far - near;
-  geometry.box('pavement', sidewalk, x, 0.006, z, width, 0.086, depth);
   // The inset curb frames each city block and breaks up the wide curb cuts.
   for (const xEdge of [left + 0.14, right - 0.14]) {
     geometry.box('pavement', '#ddd0b5', xEdge, 0.040, z, 0.25, 0.065, depth - 0.44);
@@ -123,25 +125,9 @@ function addSidewalk(
   }
 }
 
-function addSignal(geometry: DistrictGeometry, x: number, z: number, angle: number): void {
-  const direction = angle === 0 ? 1 : -1;
-  const color = '#343b45';
-  geometry.add(signalPole, 'trim', true, { x, y: 1.29, z, width: 0.14, height: 2.58, depth: 0.14, color });
-  geometry.box('trim', color, x, 2.84, z, 0.26, 0.60, 0.24);
-  [0, 1, 2].forEach((index) => {
-    const glowing = index === (direction === 1 ? 0 : 2);
-    geometry.add(signalPole, glowing ? (index === 0 ? 'coralLight' : 'aquaLight') : 'trim', false, {
-      x, y: 3.02 - index * 0.17, z: z - 0.14 * direction,
-      width: 0.10, height: 0.076, depth: 0.10,
-      color: glowing ? (index === 0 ? '#ff5159' : '#65d59f') : '#3c443f',
-      rotation: new Euler(Math.PI / 2, 0, 0),
-    });
-  });
-}
-
 export function addLamppost(geometry: DistrictGeometry, x: number, z: number, direction: number): void {
   const metal = '#526775';
-  geometry.add(signalPole, 'trim', true, { x, y: 2.25, z, width: 0.12, height: 4.5, depth: 0.12, color: metal });
+  geometry.add(pole, 'trim', true, { x, y: 2.25, z, width: 0.12, height: 4.5, depth: 0.12, color: metal });
   geometry.box('trim', metal, x, 0.23, z, 0.26, 0.46, 0.26);
   geometry.box('trim', metal, x + direction * 0.45, 4.47, z, 0.98, 0.09, 0.1);
   geometry.box('trim', '#637986', x + direction * 0.96, 4.40, z, 0.45, 0.111, 0.21);

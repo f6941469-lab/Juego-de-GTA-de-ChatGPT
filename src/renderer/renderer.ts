@@ -4,15 +4,17 @@ import {
 } from 'three';
 import { gameConfig, type Quality } from '../config/game';
 import { createSkyReflection } from './lighting/reflection';
+import { createFrameBudget } from './resolution';
 
+export { createContactShadows, type ContactShadowSource } from './postprocessing/contact-shadows';
 export { createAtmosphere } from './lighting/atmosphere';
 
 const presets = {
-  low: { pixelRatio: 0.75, shadowSize: 0, reflections: false },
-  medium: { pixelRatio: 1, shadowSize: 1024, reflections: true },
-  high: { pixelRatio: 1.5, shadowSize: 2048, reflections: true },
-  ultra: { pixelRatio: 2, shadowSize: 3072, reflections: true },
-} satisfies Record<Quality, { pixelRatio: number; shadowSize: number; reflections: boolean }>;
+  low: { pixelRatio: 0.75, maxPixels: 1_200_000, shadowSize: 0, reflections: false },
+  medium: { pixelRatio: 1, maxPixels: 1_800_000, shadowSize: 1024, reflections: true },
+  high: { pixelRatio: 1.5, maxPixels: 2_800_000, shadowSize: 2048, reflections: true },
+  ultra: { pixelRatio: 2, maxPixels: 4_500_000, shadowSize: 3072, reflections: true },
+} satisfies Record<Quality, { pixelRatio: number; maxPixels: number; shadowSize: number; reflections: boolean }>;
 
 export function createRenderer(canvas: HTMLCanvasElement) {
   const renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -26,16 +28,24 @@ export function createRenderer(canvas: HTMLCanvasElement) {
   let configuredScene: Scene | undefined;
   let width = 1;
   let height = 1;
+  const budget = createFrameBudget();
+
+  function applyResolution() {
+    const preset = presets[quality];
+    const baseline = Math.min(window.devicePixelRatio || 1, preset.pixelRatio, Math.sqrt(preset.maxPixels / (width * height)));
+    renderer.setPixelRatio(baseline * budget.scale);
+    renderer.setSize(width, height, false);
+  }
 
   function resize(nextWidth: number, nextHeight: number): void {
     width = Math.max(1, Math.floor(nextWidth));
     height = Math.max(1, Math.floor(nextHeight));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, presets[quality].pixelRatio));
-    renderer.setSize(width, height, false);
+    applyResolution();
   }
 
   function setQuality(nextQuality: Quality): void {
     quality = nextQuality;
+    budget.reset();
     renderer.shadowMap.enabled = presets[quality].shadowSize > 0;
     configuredScene = undefined;
     resize(width, height);
@@ -57,11 +67,15 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     configuredScene = scene;
   }
 
-  function render(scene: Scene, camera: PerspectiveCamera): void {
+  function render(scene: Scene, camera: PerspectiveCamera, now = performance.now(), adaptive = true): void {
+    if (budget.sample(now, adaptive)) applyResolution();
     if (configuredScene !== scene) configureScene(scene);
     renderer.render(scene, camera);
   }
 
   setQuality(quality);
-  return { renderer, setQuality, resize, render };
+  return {
+    renderer, setQuality, resize, render,
+    getFrameTiming() { return { frameMs: budget.average, renderScale: budget.scale, pixelRatio: renderer.getPixelRatio() }; },
+  };
 }

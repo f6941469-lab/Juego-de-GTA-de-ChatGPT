@@ -51,15 +51,34 @@
       <button class="hud-pause quiet-button" id="pause-button" type="button">
         <span class="pause-icon" aria-hidden="true"></span> Pausa <kbd class="desktop-hints" aria-hidden="true">Esc</kbd>
       </button>
+      <aside class="hud-status" aria-label="Estado del jugador">
+        <div class="wanted-display">
+          <div class="wanted-stars" id="wanted-level" role="img" aria-label="Búsqueda: 0 de 5 estrellas">
+            <span aria-hidden="true">☆</span><span aria-hidden="true">☆</span><span aria-hidden="true">☆</span><span aria-hidden="true">☆</span><span aria-hidden="true">☆</span>
+          </div>
+          <p id="wanted-status">Patrullaje</p>
+        </div>
+        <div class="health-display">
+          <label for="health-meter">Salud</label>
+          <progress id="health-meter" max="100" value="100">100 %</progress>
+        </div>
+        <div class="speed-display" id="speed-display" hidden>
+          <output id="speed-output" aria-label="Velocidad" aria-live="off">0</output><span>km/h</span>
+        </div>
+      </aside>
       <figure class="minimap" aria-label="Minimapa de Costa Palmera">
         <div class="map-caption"><figcaption>Distrito</figcaption><span aria-label="Norte">N ↑</span></div>
         <canvas id="minimap" width="288" height="252" aria-hidden="true"></canvas>
       </figure>
+      <div class="interaction-prompt desktop-hints" id="interaction-prompt" hidden>
+        <kbd>E</kbd> <span id="interaction-label">Entrar al coche</span>
+      </div>
       <div class="hud-hints key-strip desktop-hints" aria-label="Controles principales">
         <span><kbd>WASD</kbd> Moverse</span>
         <span><kbd>Ratón</kbd> Cámara</span>
-        <span><kbd>Mayús</kbd> Correr</span>
-        <span><kbd>Espacio</kbd> Saltar</span>
+        <span><kbd>Espacio</kbd> <span id="space-hint">Saltar</span></span>
+        <span id="horn-hint" hidden><kbd>H</kbd> Bocina</span>
+        <span><kbd>B</kbd> Búsqueda</span>
       </div>
       <div class="touch-controls" aria-label="Controles táctiles">
         <div class="d-pad">
@@ -71,6 +90,9 @@
         <div class="touch-actions">
           <button type="button" data-move="run">Correr</button>
           <button type="button" data-move="jump">Saltar</button>
+          <button type="button" id="touch-interact" data-action="interact" hidden>Entrar</button>
+          <button type="button" id="touch-horn" data-action="horn" hidden>Bocina</button>
+          <button type="button" data-action="challenge">Búsqueda</button>
         </div>
       </div>
     </section>
@@ -94,16 +116,28 @@
           <div class="form-label"><label for="time-slider">Hora del día</label><output id="time-output" for="time-slider">17:15</output></div>
           <input id="time-slider" type="range" min="0" max="23.75" step="0.25" value="17.25" />
         </div>
+        <fieldset class="audio-settings" id="audio-settings" hidden>
+          <legend>Audio</legend>
+          <div class="form-control">
+            <div class="form-label"><label for="volume-slider">Volumen</label><output id="volume-output" for="volume-slider">35 %</output></div>
+            <input id="volume-slider" type="range" min="0" max="100" step="1" value="35" />
+          </div>
+          <label class="mute-option"><input id="mute-toggle" type="checkbox" /> Silenciar</label>
+        </fieldset>
       </div>
       <div id="controls-content" hidden>
         <dl class="control-list desktop-hints">
-          <div><dt>Moverse</dt><dd><kbd>WASD</kbd> <kbd>↑ ← ↓ →</kbd></dd></div>
+          <div><dt>Moverse o conducir</dt><dd><kbd>WASD</kbd> <kbd>↑ ← ↓ →</kbd></dd></div>
           <div><dt>Girar la cámara</dt><dd><kbd>Ratón</kbd></dd></div>
           <div><dt>Correr</dt><dd><kbd>Mayús</kbd></dd></div>
-          <div><dt>Saltar</dt><dd><kbd>Espacio</kbd></dd></div>
+          <div><dt>Saltar o usar el freno de mano</dt><dd><kbd>Espacio</kbd></dd></div>
+          <div><dt>Entrar o salir del coche</dt><dd><kbd>E</kbd></dd></div>
+          <div><dt>Bocina</dt><dd><kbd>H</kbd></dd></div>
+          <div><dt>Desafío de búsqueda</dt><dd><kbd>B</kbd></dd></div>
           <div><dt>Pausar</dt><dd><kbd>Esc</kbd></dd></div>
+          <div><dt>Estadísticas y geometría</dt><dd><kbd>F3</kbd> <kbd>F4</kbd></dd></div>
         </dl>
-        <div class="touch-hints">Usa las flechas para moverte, arrastra sobre la ciudad para mirar y pulsa Correr o Saltar para cambiar de movimiento.</div>
+        <div class="touch-hints">Usa las flechas para moverte o conducir y arrastra sobre la ciudad para mirar. Cerca del coche aparece el botón Entrar. Pulsa Búsqueda para iniciar el desafío.</div>
       </div>
       <div class="dialog-actions" id="pause-actions" hidden>
         <button class="primary-button" id="resume-button" type="button">Continuar<span class="icon-arrow" aria-hidden="true"></span></button>

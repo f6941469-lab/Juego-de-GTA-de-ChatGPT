@@ -9,11 +9,17 @@ import {
 } from 'three';
 import type { DirectionalLight, Scene } from 'three';
 import type { DistrictGeometry } from './geometry';
+import type { RegisterSectorFeature } from '../streaming';
 import { districtBounds, inlandEdge, makeRandom, shoreline } from './layout';
 import { addBench, addLamppost } from './streets';
 import { addPalm, addPlanter } from './vegetation';
 
-export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number): (elapsed: number, daylight: number) => void {
+export function addCoast(
+  scene: Scene,
+  geometry: DistrictGeometry,
+  seed: number,
+  register: RegisterSectorFeature,
+) {
   const random = makeRandom(seed ^ 26372142);
   const length = districtBounds.maxZ - districtBounds.minZ;
   const sandStart = inlandEdge + 8.3;
@@ -23,16 +29,27 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
   geometry.box('trim', '#ece0c5', sandStart - 0.15, 0.072, 0, 0.16, 0.12, length);
 
   for (let z = districtBounds.minZ + 2; z < districtBounds.maxZ; z += 2.35) {
-    geometry.box('paint', '#b39e82', sandStart - 1.6, 0.081, z, 2.93, 0.004, 0.025);
+    const stripe = z;
+    register(sandStart, stripe, (sector, detailed) => {
+      if (detailed) sector.box('paint', '#b39e82', sandStart - 1.6, 0.081, stripe, 2.93, 0.004, 0.025);
+    });
   }
   for (let z = districtBounds.minZ + 4; z < districtBounds.maxZ - 2; z += 8.4) {
-    addPalm(geometry, 56.6 + random() * 1.27, z + random() * 1.7, random, 0.84);
-    if (Math.round(z / 8.4) % 2 === 0) {
-      addBench(geometry, 53.18, z + 2.7);
-      addPlanter(geometry, 54.16, z + 5.38, random, 0.64);
-    } else {
-      addLamppost(geometry, 52.75, z - 2.2, 1);
-    }
+    const baseZ = z;
+    const x = 56.6 + random() * 1.27;
+    const palmZ = z + random() * 1.7;
+    const variation = Math.floor(random() * 0x100000000);
+    register(x, palmZ, (sector, detailed) => {
+      if (!detailed) return;
+      const flora = makeRandom(variation);
+      addPalm(sector, x, palmZ, flora, 0.84);
+      if (Math.round(baseZ / 8.4) % 2 === 0) {
+        addBench(sector, 53.18, baseZ + 2.7);
+        addPlanter(sector, 54.16, baseZ + 5.38, flora, 0.64);
+      } else {
+        addLamppost(sector, 52.75, baseZ - 2.2, 1);
+      }
+    });
   }
 
   const water = new ShaderMaterial({
@@ -105,7 +122,7 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
 
   const sunDirection = new Vector3();
   let sun: DirectionalLight | undefined;
-  return (elapsed, daylight) => {
+  function update(elapsed: number, daylight: number) {
     water.uniforms.uTime.value = elapsed;
     sun ??= scene.children.find((child): child is DirectionalLight => 'isDirectionalLight' in child);
     if (sun) {
@@ -113,5 +130,13 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
       water.uniforms.uSun.value.copy(sunDirection);
     }
     water.uniforms.uDaylight.value = 0.18 + daylight * 0.83;
+  };
+  return {
+    update,
+    dispose() {
+      sea.removeFromParent();
+      sea.geometry.dispose();
+      water.dispose();
+    },
   };
 }

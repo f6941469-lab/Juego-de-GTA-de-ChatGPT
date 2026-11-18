@@ -1,3 +1,7 @@
+type Action = 'interact' | 'horn' | 'challenge'
+
+const actionKeys: Readonly<Record<string, Action>> = { KeyE: 'interact', KeyH: 'horn', KeyB: 'challenge' }
+
 type Control = 'forward' | 'back' | 'left' | 'right' | 'run' | 'jump'
 
 const keys: Readonly<Record<string, Control>> = {
@@ -13,6 +17,8 @@ interface InputActions {
   onLook(dx: number, dy: number): void
   onPause(): void
   onDebug(): void
+  onDebugOverlay(): void
+  onDebugWanted(level: number): void
 }
 
 export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
@@ -20,6 +26,7 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
   const heldPointers = new Map<number, Control>()
   let active = false
   let jumpQueued = false
+  const queuedActions = new Set<Action>()
   let hadLock = false
   let drag: { pointerId: number; x: number; y: number } | null = null
 
@@ -27,6 +34,7 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     heldKeys.clear()
     heldPointers.clear()
     jumpQueued = false
+    queuedActions.clear()
     drag = null
   }
 
@@ -49,9 +57,12 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
   })
 
   window.addEventListener('keydown', (event) => {
-    if (event.code === 'F3' && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if ((event.code === 'F3' || event.code === 'F4') && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault()
-      if (!event.repeat) actions.onDebug()
+      if (!event.repeat) {
+        if (event.code === 'F3') actions.onDebug()
+        else actions.onDebugOverlay()
+      }
       return
     }
     if (!active || event.ctrlKey || event.altKey || event.metaKey) return
@@ -61,6 +72,16 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       return
     }
 
+    if (event.shiftKey && /^Digit[0-5]$/.test(event.code)) {
+      if (!event.repeat) actions.onDebugWanted(Number(event.code.at(-1)))
+      return
+    }
+    const action = actionKeys[event.code]
+    if (action) {
+      event.preventDefault()
+      if (!event.repeat) queuedActions.add(action)
+      return
+    }
     const control = keys[event.code]
     if (!control) return
     event.preventDefault()
@@ -108,6 +129,12 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     button.addEventListener('lostpointercapture', (event) => heldPointers.delete(event.pointerId))
   }
 
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-action]')) {
+    button.addEventListener('click', () => {
+      if (active) queuedActions.add(button.dataset.action as Action)
+    })
+  }
+
   const isHeld = (control: Control) => {
     for (const key of heldKeys) if (keys[key] === control) return true
     for (const pointer of heldPointers.values()) if (pointer === control) return true
@@ -132,8 +159,13 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
         z: Number(isHeld('forward')) - Number(isHeld('back')),
         run: isHeld('run'),
         jump: jumpQueued,
+        handbrake: isHeld('jump'),
+        interact: queuedActions.has('interact'),
+        horn: queuedActions.has('horn'),
+        challenge: queuedActions.has('challenge'),
       }
       jumpQueued = false
+      queuedActions.clear()
       return input
     },
   }

@@ -45,6 +45,46 @@ const CAPSULE_SEGMENT_HALF_HEIGHT = 0.58;
 const CHARACTER_SKIN = 0.025;
 const CENTER_FROM_FEET = CAPSULE_RADIUS + CAPSULE_SEGMENT_HALF_HEIGHT + CHARACTER_SKIN;
 const CAMERA_ORIENTATION = { x: 0, y: 0, z: 0, w: 1 };
+const enabled = (collider: RAPIER.Collider) => collider.isEnabled();
+
+export function createCameraClearance({ world }: Pick<Physics, 'world'>, excluded: RAPIER.Collider) {
+  const cameraProbe = new RAPIER.Ball(0.23);
+  return (origin: Point3, offset: Point3) => {
+    // The offset is the entire displacement, so the time of impact is a fraction in [0, 1].
+    const hit = world.castShape(
+      origin, CAMERA_ORIENTATION, offset, cameraProbe, CHARACTER_SKIN, 1, false,
+      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, excluded, undefined, enabled,
+    );
+    return hit ? Math.max(0, hit.time_of_impact) : 1;
+  };
+}
+
+export function createExitClearance({ world }: Physics, excluded: RAPIER.Collider) {
+  const occupant = new RAPIER.Capsule(CAPSULE_SEGMENT_HALF_HEIGHT, CAPSULE_RADIUS);
+  const filters = RAPIER.QueryFilterFlags.EXCLUDE_SENSORS;
+  return (origin: Point3, destination: Point3): Point3 | null => {
+    const top = { ...destination, y: destination.y + 0.48 };
+    const floor = world.castRayAndGetNormal(
+      new RAPIER.Ray(top, { x: 0, y: -1, z: 0 }), 0.95, true, filters, undefined, excluded, undefined, enabled,
+    );
+    if (!floor || floor.normal.y < 0.65) return null;
+
+    const feet = { ...destination, y: top.y - floor.timeOfImpact };
+    const center = { ...feet, y: feet.y + CENTER_FROM_FEET };
+    const blocked = world.intersectionWithShape(
+      center, CAMERA_ORIENTATION, occupant, filters, undefined, excluded, undefined, enabled,
+    );
+    if (blocked) return null;
+
+    // Check that the door and the confirmed standing space are connected.
+    const door = { ...origin, y: center.y };
+    const offset = { x: center.x - door.x, y: 0, z: center.z - door.z };
+    const barrier = world.castRay(
+      new RAPIER.Ray(door, offset), 1, true, filters, undefined, excluded, undefined, enabled,
+    );
+    return barrier ? null : feet;
+  };
+}
 
 export function createCharacterCollider({ world }: Physics, spawn: Point3) {
   const body = world.createRigidBody(
@@ -57,8 +97,6 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
   const controller = world.createCharacterController(CHARACTER_SKIN);
   controller.enableAutostep(0.23, 0.24, false);
   controller.enableSnapToGround(0.19);
-  const cameraProbe = new RAPIER.Ball(0.23);
-
   return {
     move(dt: number, delta: Point3) {
       world.timestep = dt;
@@ -86,22 +124,21 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
       world.propagateModifiedBodyPositionsToColliders();
     },
 
-    cameraClearFraction(origin: Point3, offset: Point3) {
-      // The offset is the entire displacement, so the time of impact is a fraction in [0, 1].
-      const hit = world.castShape(
-        origin,
-        CAMERA_ORIENTATION,
-        offset,
-        cameraProbe,
-        CHARACTER_SKIN,
-        1,
-        false,
-        RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
-        undefined,
-        collider,
-      );
-      return hit ? Math.max(0, hit.time_of_impact) : 1;
+    setEnabled(enabled: boolean) {
+      collider.setEnabled(enabled);
+      body.setEnabled(enabled);
     },
+
+    canReach(target: Point3, handle: number) {
+      const origin = body.translation();
+      const offset = { x: target.x - origin.x, y: target.y - origin.y, z: target.z - origin.z };
+      const hit = world.castRay(
+        new RAPIER.Ray(origin, offset), 1, true, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, collider, undefined, enabled,
+      );
+      return !hit || hit.collider.handle === handle;
+    },
+
+    cameraClearFraction: createCameraClearance({ world }, collider),
 
     dispose() {
       world.removeCharacterController(controller);

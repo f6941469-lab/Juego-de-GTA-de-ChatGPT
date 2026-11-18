@@ -6,7 +6,7 @@
   --hud-bg: rgb(18 20 29 / 85%);
 }
 
-.hud-location, .hud-pause, .minimap, .hud-hints {
+.hud-location, .hud-pause, .minimap, .hud-hints, .hud-status, .interaction-prompt {
   position: absolute;
   border: 1px solid var(--hairline);
   border-radius: .38rem;
@@ -34,6 +34,38 @@
   pointer-events: auto;
 }
 .pause-icon { width: .62rem; height: .7rem; border-inline: 2px solid currentColor; }
+
+.hud-status {
+  top: max(calc(var(--hud-gap) + 3.4rem), calc(env(safe-area-inset-top) + 3.4rem));
+  right: var(--hud-gap);
+  min-width: 7.75rem;
+  padding: .48rem .68rem;
+  font: 600 .85rem/1.1 var(--label);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.wanted-stars { display: flex; gap: .18rem; color: var(--muted); font: 1.08rem/1 system-ui, sans-serif; }
+.wanted-star-active { color: var(--accent); }
+.wanted-display p { margin: .27rem 0 .5rem; }
+.health-display { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: .5rem; color: var(--muted); font-size: .72rem; }
+.health-display progress { width: 100%; height: .33rem; border: 0; border-radius: .25rem; accent-color: var(--accent); }
+.health-display progress::-webkit-progress-bar { border-radius: .25rem; background: #eee5d92e; }
+.health-display progress::-webkit-progress-value { border-radius: .25rem; background: var(--accent); }
+.speed-display { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem; margin-top: .55rem; color: var(--muted); }
+.speed-display output { color: var(--paper); font: 1.18rem/1 var(--display); font-variant-numeric: tabular-nums; }
+
+.interaction-prompt {
+  left: 50%;
+  bottom: max(calc(var(--hud-gap) + 3.65rem), calc(env(safe-area-inset-bottom) + 3.65rem));
+  transform: translateX(-50%);
+  padding: .45rem .7rem;
+  color: var(--paper);
+  white-space: nowrap;
+  font: 600 1rem/1 var(--label);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.interaction-prompt kbd { margin-right: .3rem; color: var(--accent); }
 
 .minimap {
   left: var(--hud-gap);
@@ -63,8 +95,8 @@
 .debug-panel {
   position: fixed;
   z-index: 1;
-  top: 5.2rem;
-  right: 1rem;
+  top: 11.5rem;
+  right: max(1rem, env(safe-area-inset-right));
   pointer-events: none;
   max-width: min(23rem, 88vw);
   margin: 0;
@@ -93,7 +125,7 @@
     gap: .6rem;
   }
   .d-pad { display: grid; grid-template-columns: repeat(3, 2.8rem); gap: .23rem; }
-  [data-move] {
+  [data-move], .touch-actions [data-action] {
     min-height: 2.75rem;
     padding: .3rem .55rem;
     pointer-events: auto;
@@ -106,11 +138,17 @@
     border-radius: .35rem;
     font: 600 1rem/1 var(--label);
   }
-  [data-move]:active { background: var(--accent); color: var(--ink); }
+  [data-move]:active, .touch-actions [data-action]:active { background: var(--accent); color: var(--ink); }
   .d-pad [data-move] { font: 1.1rem/1 system-ui, sans-serif; }
   [data-move="forward"] { grid-area: 1 / 2; }
   [data-move="left"] { grid-area: 2 / 1; }
   [data-move="back"] { grid-area: 2 / 2; }
   [data-move="right"] { grid-area: 2 / 3; }
-  .touch-actions { display: flex; gap: .3rem; }
+  .touch-actions { display: grid; grid-template-columns: repeat(2, auto); gap: .23rem; }
+  #touch-interact { background: var(--accent); color: var(--ink); }
+}
+
+@media (pointer: coarse) and (max-width: 360px) {
+  .d-pad { grid-template-columns: repeat(3, 2.65rem); }
+  .touch-actions button { padding-inline: .33rem; }
 }

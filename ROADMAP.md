@@ -1,6 +1,6 @@
 # Hoja de ruta
 
-Cada fase entrega una versión verificable. Las metas visuales y de rendimiento se evalúan con escenas y equipos identificados.
+La versión 0.1.0 introdujo las fases 0 y 1. La versión 0.2.0 integra el primer alcance jugable de las fases 2 a 7. Cada fase entrega una versión verificable. Las metas visuales y de rendimiento se evalúan con escenas y equipos identificados.
 
 | Fase | Entrega | Verificación |
 | --- | --- | --- |

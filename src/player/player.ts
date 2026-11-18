@@ -2,13 +2,18 @@ import * as THREE from 'three';
 import { createAvatar } from '../characters/avatar';
 import { createCharacterCollider } from '../physics/physics';
 import type { Physics, Point3 } from '../physics/physics';
-import { createFollowCamera } from './follow-camera';
+import { createFollowCamera, type VehicleCamera } from './follow-camera';
 
 export interface MovementInput {
   x: number;
   z: number;
   run: boolean;
   jump: boolean;
+  handbrake?: boolean;
+}
+
+interface VehicleRide extends VehicleCamera {
+  position: THREE.Vector3;
 }
 
 const WALK_SPEED = 4.4;
@@ -36,26 +41,34 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   let previousJump = false;
   let grounded = false;
   let resolvedSpeed = 0;
+  let ride: VehicleRide | undefined;
 
   // Wrap only differences so interpolation always follows the shortest arc.
   function turnDelta(from: number, to: number) {
     return THREE.MathUtils.euclideanModulo(to - from + Math.PI, Math.PI * 2) - Math.PI;
   }
 
-  function reset() {
-    character.warp(initialFeet);
-    position.set(initialFeet.x, initialFeet.y, initialFeet.z);
+  function standAt(feet: Point3, direction: number) {
+    ride = undefined;
+    character.warp(feet);
+    character.setEnabled(true);
+    position.set(feet.x, feet.y, feet.z);
     previousPosition.copy(position);
     horizontalVelocity.set(0, 0);
-    heading = previousHeading = 0;
+    heading = previousHeading = direction;
     resolvedSpeed = verticalSpeed = groundTime = bufferedJump = 0;
     grounded = previousJump = false;
     avatar.reset();
-    follow.reset(position);
+    follow.reset(position, direction);
     render(1, 0);
   }
 
+  function reset() {
+    standAt(initialFeet, 0);
+  }
+
   function step(dt: number, input: MovementInput) {
+    if (ride) return;
     previousPosition.copy(position);
     previousHeading = heading;
     if (input.jump && !previousJump) bufferedJump = JUMP_BUFFER;
@@ -109,6 +122,11 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   }
 
   function render(alpha: number, dt: number) {
+    if (ride) {
+      avatar.mesh.visible = false;
+      follow.update(ride.position, dt, ride);
+      return;
+    }
     const blend = THREE.MathUtils.clamp(alpha, 0, 1);
     interpolated.lerpVectors(previousPosition, position, blend);
     const cameraDistance = follow.update(interpolated, dt);
@@ -134,6 +152,14 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     look: follow.look,
     render,
     reset,
+    canReach: character.canReach,
+    enterVehicle(vehicle: VehicleRide) {
+      ride = vehicle;
+      character.setEnabled(false);
+      avatar.mesh.visible = false;
+      follow.reset(vehicle.position, vehicle.heading, vehicle);
+    },
+    exitVehicle: standAt,
     dispose() {
       character.dispose();
       avatar.dispose();

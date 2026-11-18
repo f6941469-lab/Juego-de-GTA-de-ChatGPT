@@ -25,22 +25,35 @@ export interface BuildingSpec {
 const storyHeight = 2.65;
 const foundation = 0.07;
 
+export function buildingCollider(spec: BuildingSpec): StaticBox {
+  const { x, z, width, depth, floors } = spec;
+  const halfY = (floors * storyHeight + foundation) / 2;
+  return { x, y: halfY, z, halfX: width / 2, halfY, halfZ: depth / 2 };
+}
+
 export function addBuilding(
   geometry: DistrictGeometry,
-  colliders: StaticBox[],
   spec: BuildingSpec,
   random: () => number,
+  detailed: boolean,
 ): void {
   const { x, z, width, depth, floors, style } = spec;
   const { wall, band, accent } = palettes[spec.palette % palettes.length];
   const height = floors * storyHeight;
   const roof = height + foundation;
 
-  geometry.box('wall', wall, x, height / 2 + foundation, z, width, height, depth, true);
+  geometry.box('wall', wall, x, height / 2 + foundation, z, width, height, depth, detailed);
+  if (!detailed) {
+    geometry.box('trim', band, x, roof - 0.07, z, width + 0.36, 0.28, depth + 0.36);
+    if (style === 'tower' || style === 'deco') {
+      const crown = style === 'tower' ? 2.9 : 0.85;
+      geometry.box('wall', accent, x, roof + crown / 2 + 0.28, z, width * 0.74, crown, depth * 0.74);
+    }
+    return;
+  }
   geometry.box('wall', band, x, 0.22, z, width + 0.11, 0.40, depth + 0.11);
   geometry.box('trim', band, x, roof - 0.07, z, width + 0.36, 0.28, depth + 0.36, true);
   geometry.box('trim', accent, x, roof + 0.19, z, width + 0.08, 0.28, depth + 0.08);
-  colliders.push({ x, y: roof / 2, z, halfX: width / 2, halfY: roof / 2, halfZ: depth / 2 });
 
   for (const side of ['west', 'east', 'north', 'south'] as const) {
     decorateFacade(geometry, spec, side, random);
@@ -151,6 +164,7 @@ const glyphs: Record<string, number[]> = {
   A: [14, 17, 17, 31, 17, 17, 17],
   B: [30, 17, 17, 30, 17, 17, 30],
   C: [14, 17, 16, 16, 16, 17, 14],
+  D: [30, 17, 17, 17, 17, 17, 30],
   E: [31, 16, 16, 30, 16, 16, 31],
   H: [17, 17, 17, 31, 17, 17, 17],
   I: [14, 4, 4, 4, 4, 4, 14],
@@ -158,10 +172,12 @@ const glyphs: Record<string, number[]> = {
   M: [17, 27, 21, 21, 17, 17, 17],
   N: [17, 25, 21, 19, 17, 17, 17],
   O: [14, 17, 17, 17, 17, 17, 14],
+  P: [30, 17, 17, 30, 16, 16, 16],
   R: [30, 17, 17, 30, 20, 18, 17],
   S: [15, 16, 16, 14, 1, 1, 30],
   T: [31, 4, 4, 4, 4, 4, 4],
   U: [17, 17, 17, 17, 17, 17, 14],
+  V: [17, 17, 17, 17, 17, 10, 4],
 };
 
 function drawWordmark(word: string, y: number, pixel: number, mount: SignMount, finish: Finish): void {
