@@ -1,0 +1,48 @@
+.game-dialog {
+  width: min(27rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow: auto;
+  padding: clamp(1.15rem, 4vw, 1.75rem);
+  color: var(--paper);
+  background: #191925;
+  border: 1px solid var(--hairline);
+  border-radius: .55rem;
+  box-shadow: 0 1.25rem 7rem #0808109c;
+}
+.game-dialog::backdrop { background: rgb(12 12 21 / 67%); backdrop-filter: blur(5px); }
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .9rem;
+  margin-bottom: 1.2rem;
+  padding-bottom: .9rem;
+  border-bottom: 1px solid var(--hairline);
+}
+.dialog-header h2 { font: 1.42rem/1.1 var(--display); margin: 0; }
+.dialog-close { min-width: 2.6rem; font: 1.45rem/1 system-ui, sans-serif; letter-spacing: 0; }
+
+.form-control {
+  display: grid;
+  gap: .45rem;
+  margin: 0 0 1.2rem;
+  font: 600 1.04rem/1.25 var(--label);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.form-label { display: flex; justify-content: space-between; gap: .8rem; }
+.form-control output { color: var(--accent); font: .85rem/1.25 var(--mono); }
+.form-control select {
+  min-height: 2.7rem;
+  padding: .4rem .6rem;
+  border: 1px solid var(--hairline);
+  border-radius: .25rem;
+  background: var(--ink);
+  color: var(--paper);
+  letter-spacing: .04em;
+}
+.form-control input { width: 100%; margin: 0; accent-color: var(--accent); }
+.dialog-actions { display: flex; flex-direction: column; align-items: stretch; gap: .55rem; padding-top: .4rem; }
+.control-list { display: grid; gap: .7rem; margin: 0; }
+.control-list div { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.control-list dd { margin: 0; }

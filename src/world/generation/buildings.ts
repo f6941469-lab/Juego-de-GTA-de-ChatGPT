@@ -1,0 +1,179 @@
+import type { StaticBox } from '../../physics/physics';
+import type { DistrictGeometry, Finish } from './geometry';
+
+const palettes = [
+  { wall: '#e7bd99', band: '#f7e6cf', accent: '#268f90', dark: '#4c6475', glow: 'aquaLight' },
+  { wall: '#98c9c4', band: '#edf2d8', accent: '#398883', dark: '#31566f', glow: 'aquaLight' },
+  { wall: '#de897d', band: '#f3bd9d', accent: '#a04c65', dark: '#4a455e', glow: 'coralLight' },
+  { wall: '#b2a8c6', band: '#e9cfda', accent: '#855b88', dark: '#524368', glow: 'coralLight' },
+  { wall: '#ced5ce', band: '#ede5cf', accent: '#647b91', dark: '#354c64', glow: 'goldLight' },
+  { wall: '#d9a66e', band: '#f4d1a1', accent: '#5f8881', dark: '#516175', glow: 'goldLight' },
+] as const;
+
+export interface BuildingSpec {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+  floors: number;
+  palette: number;
+  style: 'ribbon' | 'deco' | 'tower' | 'porch';
+  entrance: 'west' | 'east' | 'north' | 'south';
+  sign?: string;
+}
+
+const storyHeight = 2.65;
+const foundation = 0.07;
+
+export function addBuilding(
+  geometry: DistrictGeometry,
+  colliders: StaticBox[],
+  spec: BuildingSpec,
+  random: () => number,
+): void {
+  const { x, z, width, depth, floors, style } = spec;
+  const { wall, band, accent } = palettes[spec.palette % palettes.length];
+  const height = floors * storyHeight;
+  const roof = height + foundation;
+
+  geometry.box('wall', wall, x, height / 2 + foundation, z, width, height, depth, true);
+  geometry.box('wall', band, x, 0.22, z, width + 0.11, 0.40, depth + 0.11);
+  geometry.box('trim', band, x, roof - 0.07, z, width + 0.36, 0.28, depth + 0.36, true);
+  geometry.box('trim', accent, x, roof + 0.19, z, width + 0.08, 0.28, depth + 0.08);
+  colliders.push({ x, y: roof / 2, z, halfX: width / 2, halfY: roof / 2, halfZ: depth / 2 });
+
+  for (const side of ['west', 'east', 'north', 'south'] as const) {
+    decorateFacade(geometry, spec, side, random);
+  }
+
+  if (style === 'tower' || style === 'deco') {
+    const crown = style === 'tower' ? 2.9 : 0.85;
+    geometry.box('wall', wall, x, roof + crown / 2 + 0.28, z, width * 0.74, crown, depth * 0.74, true);
+    geometry.box('trim', band, x, roof + crown + 0.31, z, width * 0.77, 0.24, depth * 0.77, true);
+    geometry.box('wall', accent, x, roof + crown + 0.54, z, width * 0.59, 0.3, depth * 0.62, true);
+    if (style === 'tower') {
+      geometry.box('trim', '#536477', x, roof + crown + 2.2, z, 0.12, 3.5, 0.12);
+      geometry.box('coralLight', '#fa6c91', x, roof + crown + 4, z, 0.25, 0.23, 0.25);
+    }
+  } else {
+    geometry.box('trim', '#809496', x + width * 0.23, roof + 0.62, z + depth * 0.26, 1.7, 1.04, 0.95, true);
+    geometry.box('trim', '#c6cabc', x + width * 0.23, roof + 1.18, z + depth * 0.26, 1.77, 0.1, 1.02);
+  }
+}
+
+function decorateFacade(
+  geometry: DistrictGeometry,
+  spec: BuildingSpec,
+  side: BuildingSpec['entrance'],
+  random: () => number,
+): void {
+  const sideOnX = side === 'west' || side === 'east';
+  const direction = side === 'west' || side === 'north' ? -1 : 1;
+  const span = sideOnX ? spec.depth : spec.width;
+  const face = sideOnX ? spec.width / 2 : spec.depth / 2;
+  const publicFace = side === spec.entrance;
+  // Reverse the sign coordinate on the north and east façades so it reads
+  // left to right from the street, regardless of the extrusion axis.
+  const right = side === 'east' || side === 'north' ? -1 : 1;
+  const { band, accent, dark, glow } = palettes[spec.palette % palettes.length];
+
+  function mount(finish: Finish, color: string, u: number, y: number, width: number, height: number, relief: number, gap = 0): void {
+    const offset = direction * (face + gap + relief / 2 - 0.01);
+    if (sideOnX) geometry.box(finish, color, spec.x + offset, y, spec.z + u * right, relief, height, width);
+    else geometry.box(finish, color, spec.x + u * right, y, spec.z + offset, width, height, relief);
+  }
+
+  const bays = Math.max(2, Math.floor((span - 1) / (spec.style === 'tower' ? 1.50 : 2)));
+  const pitch = (span - 0.68) / bays;
+  const windowWidth = spec.style === 'ribbon' ? pitch * 0.84 : pitch * 0.67;
+
+  for (let story = 0; story < spec.floors; story += 1) {
+    const lowerEdge = foundation + story * storyHeight;
+    const centerY = lowerEdge + (story === 0 ? 1.29 : 1.48);
+    const windowHeight = story === 0 ? 1.46 : (spec.style === 'tower' ? 1.36 : 1.13);
+    if (story > 0) {
+      const stripe = spec.style === 'tower' || spec.style === 'porch' ? 0.11 : 0.22;
+      mount('trim', band, 0, lowerEdge + 0.31, span + 0.11, stripe, 0.22);
+      if (spec.style === 'ribbon') mount('trim', accent, 0, lowerEdge + 0.45, span + 0.13, 0.077, 0.18);
+    }
+    for (let bay = 0; bay < bays; bay += 1) {
+      const u = (bay + 0.5 - bays / 2) * pitch;
+      const isEntry = publicFace && story === 0 && bay === Math.floor((bays - 1) / 2);
+      const localHeight = isEntry ? 1.87 : windowHeight;
+      const y = isEntry ? 1.05 : centerY;
+      mount('trim', dark, u, y, windowWidth + 0.16, localHeight + 0.17, 0.075);
+      const interior = random() < (publicFace ? 0.32 : 0.20);
+      mount(
+        interior ? 'glassLit' : 'glass',
+        interior ? '#b27860' : (random() > 0.5 ? '#305d6e' : '#477780'),
+        u, y, windowWidth, localHeight, 0.085, 0.045,
+      );
+      mount('trim', accent, u, y, 0.056, localHeight, 0.055, 0.10);
+      mount('trim', band, u, y - localHeight / 2 - 0.03, windowWidth + 0.2, 0.11, 0.24);
+      if (story === 0) {
+        mount('trim', accent, u, y + localHeight * 0.28, windowWidth, 0.05, 0.06, 0.09);
+      }
+    }
+  }
+
+  if (spec.style === 'deco' || spec.style === 'tower') {
+    const fullHeight = spec.floors * storyHeight;
+    for (const u of [-span / 2 + 0.23, span / 2 - 0.23]) {
+      mount('trim', band, u, fullHeight / 2 + 0.16, 0.29, fullHeight + 0.15, 0.24);
+      mount('trim', accent, u, fullHeight / 2 + 0.45, 0.10, fullHeight + 0.16, 0.33);
+    }
+    if (publicFace && spec.style === 'deco') {
+      const top = fullHeight + 0.31;
+      for (let bearing = -2; bearing <= 2; bearing += 1) {
+        const height = 1.7 - Math.abs(bearing) * 0.32;
+        mount('trim', band, bearing * 0.32, top + 0.37 - height / 2, 0.20, height, 0.28);
+      }
+    }
+  }
+
+  if (!publicFace) return;
+
+  const awningWidth = Math.min(span * 0.86, spec.sign ? 8.8 : 5.3);
+  mount('trim', band, 0, 2.66, awningWidth, 0.24, 0.93);
+  mount('trim', accent, 0, 2.70, awningWidth + 0.04, 0.16, 0.1, 0.91);
+  mount(glow, band, 0, 2.63, awningWidth - 0.2, 0.048, 0.079, 0.98);
+  if (spec.sign) {
+    const signY = 3.45;
+    mount('trim', dark, 0, signY, awningWidth * 0.92, 0.82, 0.16);
+    mount(glow, band, 0, signY - 0.36, awningWidth * 0.86, 0.025, 0.055, 0.152);
+    drawWordmark(spec.sign, signY, Math.min(0.069, (awningWidth * 0.81) / (spec.sign.length * 6)), mount, glow);
+  }
+}
+
+type SignMount = (finish: Finish, color: string, u: number, y: number, width: number, height: number, relief: number, gap: number) => void;
+
+const glyphs: Record<string, number[]> = {
+  A: [14, 17, 17, 31, 17, 17, 17],
+  B: [30, 17, 17, 30, 17, 17, 30],
+  C: [14, 17, 16, 16, 16, 17, 14],
+  E: [31, 16, 16, 30, 16, 16, 31],
+  H: [17, 17, 17, 31, 17, 17, 17],
+  I: [14, 4, 4, 4, 4, 4, 14],
+  L: [16, 16, 16, 16, 16, 16, 31],
+  M: [17, 27, 21, 21, 17, 17, 17],
+  N: [17, 25, 21, 19, 17, 17, 17],
+  O: [14, 17, 17, 17, 17, 17, 14],
+  R: [30, 17, 17, 30, 20, 18, 17],
+  S: [15, 16, 16, 14, 1, 1, 30],
+  T: [31, 4, 4, 4, 4, 4, 4],
+  U: [17, 17, 17, 17, 17, 17, 14],
+};
+
+function drawWordmark(word: string, y: number, pixel: number, mount: SignMount, finish: Finish): void {
+  for (const [index, letter] of Array.from(word).entries()) {
+    const glyph = glyphs[letter];
+    if (!glyph) continue;
+    for (const [row, bits] of glyph.entries()) {
+      for (let column = 0; column < 5; column += 1) {
+        if ((bits & (1 << (4 - column))) === 0) continue;
+        const u = (index * 6 + column - (word.length * 6 - 2) / 2) * pixel;
+        mount(finish, '#ffe7bf', u, y + (3 - row) * pixel, pixel * 1.02, pixel * 1.02, 0.045, 0.163);
+      }
+    }
+  }
+}
