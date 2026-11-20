@@ -20,9 +20,13 @@ export interface UIActions {
 
 interface HudState extends PlayerMapPosition {
   hour: number;
+  district?: string;
   health?: number;
   driving?: boolean;
   canInteract?: boolean;
+  interactionLabel?: string;
+  touchInteractionLabel?: string;
+  notice?: string | null;
   speed?: number;
   wanted?: number;
   policeStatus?: string;
@@ -78,12 +82,15 @@ export function createUI(actions: UIActions) {
   const spaceHint = requiredElement("space-hint");
   const hornHint = requiredElement("horn-hint");
   const entryClock = requiredElement<HTMLTimeElement>("entry-time");
+  const hudDistrict = requiredElement("hud-district");
+  const hudNotice = requiredElement("hud-notice");
   const hudClock = requiredElement<HTMLTimeElement>("hud-time");
   const debug = requiredElement("debug-panel");
   const minimap = createMinimap(requiredElement<HTMLCanvasElement>("minimap"));
   let mode: GameMode = "loading";
   let hour = gameConfig.initialHour;
   let displayedTime = "";
+  let displayedDistrict = "";
   let panel: PanelMode = "settings";
   let displayedDriving: boolean | undefined;
   let displayedWanted = -1;
@@ -193,6 +200,16 @@ export function createUI(actions: UIActions) {
     if (hud.hidden) return;
     minimap.update(state);
 
+    const districtName = state.district ?? "Costa Palmera";
+    if (displayedDistrict !== districtName) {
+      displayedDistrict = districtName;
+      hudDistrict.textContent = districtName;
+    }
+
+    const noticeText = state.notice ?? "";
+    hudNotice.hidden = noticeText.length === 0;
+    if (hudNotice.textContent !== noticeText) hudNotice.textContent = noticeText;
+
     const driving = state.driving ?? false;
     if (displayedDriving !== driving) {
       displayedDriving = driving;
@@ -200,10 +217,12 @@ export function createUI(actions: UIActions) {
       touchHorn.hidden = hornHint.hidden = !driving;
       if (touchRun) touchRun.hidden = driving;
       if (touchJump) touchJump.textContent = driving ? "Freno de mano" : "Saltar";
-      promptLabel.textContent = driving ? "Salir del coche" : "Entrar al coche";
-      touchInteract.textContent = driving ? "Salir" : "Entrar";
       spaceHint.textContent = driving ? "Freno de mano" : "Saltar";
     }
+    const nextPromptLabel = state.interactionLabel ?? (driving ? "Salir del coche" : "Entrar al coche");
+    if (promptLabel.textContent !== nextPromptLabel) promptLabel.textContent = nextPromptLabel;
+    const nextTouchLabel = state.touchInteractionLabel ?? (driving ? "Salir" : "Entrar");
+    if (touchInteract.textContent !== nextTouchLabel) touchInteract.textContent = nextTouchLabel;
     prompt.hidden = touchInteract.hidden = !state.canInteract;
     if (driving) {
       const speed = String(Math.max(0, Math.round(state.speed ?? 0)));

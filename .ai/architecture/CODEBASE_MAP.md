@@ -38,13 +38,14 @@ verification_scope: "static-analysis-only"
 | `src/ai/traffic/traffic-visuals.ts` | `createTrafficVisuals` | Render instanciado de hasta 23 vehículos |
 | `src/ai/police/police.ts` | `createPolice`, `clearLine` | Patrullas, FOV + LOS, cerco y detención |
 | `src/ai/police/wanted.ts` | `createWantedSystem`, `responseLevels` | Estados de búsqueda y predicción |
-| `src/world/district.ts` | `buildDistrict` | Ensamblado del distrito, manzanas, parques y skyline |
+| `src/world/district.ts` | `buildDistrict` | Ensamblado multi-distrito, puentes, manzanas, parques y skyline |
+| `src/world/stores.ts` | `createStores`, `StoreMapMarker`, `RobberyResult` | Balizas instanciadas e interacción básica de asalto a tiendas |
 | `src/world/streaming.ts` | `createDistrictStreaming` | Sectores `64×64 m` con histéresis visual y 2 LODs |
-| `src/world/generation/layout.ts` | `districtBounds`, `avenues`, `crossStreets`, `makeRandom`, `roadRectangles` | Trazado maestro y PRNG determinista |
+| `src/world/generation/layout.ts` | `districtBounds`, `districtZones`, `bridges`, `storeSpecs`, `getDistrictAt`, `makeRandom`, `roadRectangles` | Trazado multi-isla, puentes, tiendas y PRNG determinista |
 | `src/world/generation/geometry.ts` | `DistrictGeometry`, `DistrictResources`, `disposeInstances` | Batching `InstancedMesh` y textura grano XZ |
 | `src/world/generation/buildings.ts` | `addBuilding`, `buildingCollider` | Fachadas art déco/torre/porche y rótulos voxel |
-| `src/world/generation/streets.ts` | `addStreets`, `addLamppost`, `addBench` | Vías, aceras, cebras, bordillos y mobiliario |
-| `src/world/generation/coast.ts` | `addCoast` | Playa, paseo marítimo y shader de océano |
+| `src/world/generation/streets.ts` | `addStreets`, `addLamppost`, `addBench` | Vías por isla, puentes, aceras, cebras, bordillos y mobiliario |
+| `src/world/generation/coast.ts` | `addCoast` | Playa, paseo marítimo y shader de bahía/océano |
 | `src/world/generation/vegetation.ts` | `addPalm`, `addPlanter` | Palmeras curvas y jardineras |
 | `src/renderer/renderer.ts` | `createRenderer` | `WebGLRenderer`, perfiles `low`–`ultra` y sombras |
 | `src/renderer/resolution.ts` | `createFrameBudget` | Escala dinámica `1.0 → 0.64` |
@@ -56,9 +57,9 @@ verification_scope: "static-analysis-only"
 | `src/audio/synths/signals.ts` | `gain`, `filter`, `oscillator`, `noiseBuffer`, `sweep`, `burst` | Primitivas de síntesis Web Audio |
 | `src/persistence/preferences.ts` | `loadQuality`, `saveQuality`, `loadAudioPreference`, `saveAudioPreference` | IndexedDB (`viceblock` v1) |
 | `src/ui/ui.ts` | `createUI` | Portada, HUD, modales y gestión de modo |
-| `src/ui/minimap.ts` | `createMinimap` | Canvas 2D del distrito y flecha del jugador |
+| `src/ui/minimap.ts` | `createMinimap` | Canvas 2D multi-distrito, puentes, tiendas y flecha del jugador |
 | `src/ui/*.css` | — | Estilos de menú, HUD/táctil y diálogos |
 | `src/debug/stats.ts` / `overlay.ts` | `FrameStats`, `createDebugOverlay` | Métricas F3 y wireframe colisionadores/rutas F4 |
 
-## `tests/` (9 archivos, 25 pruebas)
-`district.test.ts` (2), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).
+## `tests/` (10 archivos, 27 pruebas)
+`district.test.ts` (3), `stores.test.ts` (1), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).

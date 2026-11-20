@@ -1,7 +1,20 @@
 import { CylinderGeometry } from 'three';
 import type { RegisterSectorFeature } from '../streaming';
 import type { DistrictGeometry } from './geometry';
-import { avenues, blockSpans, crossStreets, districtBounds, inlandEdge } from './layout';
+import {
+  avenues,
+  blockSpans,
+  bridges,
+  centralAvenue,
+  centralCrossStreets,
+  centralIslandBounds,
+  crossStreets,
+  eastLandBounds,
+  inlandEdge,
+  type Street,
+  westAvenues,
+  westLandBounds,
+} from './layout';
 
 const white = '#d9d2bb';
 const gold = '#d2a657';
@@ -9,18 +22,29 @@ const markingY = 0.006;
 const sidewalk = '#c6b8a0';
 const pole = new CylinderGeometry(0.5, 0.5, 1, 8);
 
-export function addStreets(geometry: DistrictGeometry, register: RegisterSectorFeature): void {
-  const { minX, minZ, maxZ } = districtBounds;
-  const east = inlandEdge + 4;
-  const xRuns = blockSpans(avenues, minX, east);
-  const zRuns = blockSpans(crossStreets, minZ, maxZ);
-  for (const { center, width } of avenues) {
-    geometry.box('asphalt', '#424a53', center, -0.031, 0, width, 0.058, maxZ - minZ);
+function addLandmassStreets(
+  geometry: DistrictGeometry,
+  register: RegisterSectorFeature,
+  minX: number,
+  maxX: number,
+  minZ: number,
+  maxZ: number,
+  landAvenues: readonly Street[],
+  landCrossStreets: readonly Street[],
+  easternEdgeLimit?: number,
+): void {
+  const xRuns = blockSpans(landAvenues, minX, maxX);
+  const zRuns = blockSpans(landCrossStreets, minZ, maxZ);
+  const depth = maxZ - minZ;
+  const centerZ = (minZ + maxZ) / 2;
+
+  for (const { center, width } of landAvenues) {
+    geometry.box('asphalt', '#424a53', center, -0.031, centerZ, width, 0.058, depth);
     for (const [start, end] of zRuns) {
       register(center, (start + end) / 2, (sector) => addLaneMarkings(true, center, width, start, end, sector));
     }
   }
-  for (const { center, width } of crossStreets) {
+  for (const { center, width } of landCrossStreets) {
     for (const [start, end] of xRuns) {
       geometry.box('asphalt', '#48505a', (start + end) / 2, -0.032, center, end - start, 0.058, width);
       register((start + end) / 2, center, (sector) => addLaneMarkings(false, center, width, start, end, sector));
@@ -36,17 +60,93 @@ export function addStreets(geometry: DistrictGeometry, register: RegisterSectorF
       });
     }
   }
-  for (const avenue of avenues) {
-    for (const crossStreet of crossStreets) {
+  for (const avenue of landAvenues) {
+    for (const crossStreet of landCrossStreets) {
       const x = avenue.center;
       const z = crossStreet.center;
       register(x, z, (sector) => {
-        addZebra(true, sector, x, avenue.width, z + crossStreet.width / 2 + 1.15);
-        addZebra(true, sector, x, avenue.width, z - crossStreet.width / 2 - 1.15);
-        if (x < inlandEdge) {
-          addZebra(false, sector, z, crossStreet.width, x + avenue.width / 2 + 1.15);
+        if (z + crossStreet.width / 2 + 2 < maxZ) {
+          addZebra(true, sector, x, avenue.width, z + crossStreet.width / 2 + 1.15);
         }
-        addZebra(false, sector, z, crossStreet.width, x - avenue.width / 2 - 1.15);
+        if (z - crossStreet.width / 2 - 2 > minZ) {
+          addZebra(true, sector, x, avenue.width, z - crossStreet.width / 2 - 1.15);
+        }
+        if (easternEdgeLimit === undefined || x < easternEdgeLimit) {
+          if (x + avenue.width / 2 + 2 < maxX) {
+            addZebra(false, sector, z, crossStreet.width, x + avenue.width / 2 + 1.15);
+          }
+        }
+        if (x - avenue.width / 2 - 2 > minX) {
+          addZebra(false, sector, z, crossStreet.width, x - avenue.width / 2 - 1.15);
+        }
+      });
+    }
+  }
+}
+
+export function addStreets(geometry: DistrictGeometry, register: RegisterSectorFeature): void {
+  const eastRoadEdge = inlandEdge + 4;
+  addLandmassStreets(
+    geometry,
+    register,
+    eastLandBounds.minX,
+    eastRoadEdge,
+    eastLandBounds.minZ,
+    eastLandBounds.maxZ,
+    avenues,
+    crossStreets,
+    inlandEdge,
+  );
+  addLandmassStreets(
+    geometry,
+    register,
+    westLandBounds.minX,
+    westLandBounds.maxX,
+    westLandBounds.minZ,
+    westLandBounds.maxZ,
+    westAvenues,
+    crossStreets,
+  );
+  addLandmassStreets(
+    geometry,
+    register,
+    centralIslandBounds.minX + 2,
+    centralIslandBounds.maxX - 2,
+    centralIslandBounds.minZ + 2,
+    centralIslandBounds.maxZ - 2,
+    [centralAvenue],
+    centralCrossStreets,
+  );
+  addBridges(geometry, register);
+}
+
+function addBridges(geometry: DistrictGeometry, register: RegisterSectorFeature): void {
+  for (const bridge of bridges) {
+    for (const [start, end] of bridge.spans) {
+      const length = end - start;
+      const centerX = (start + end) / 2;
+      geometry.box('asphalt', '#444d57', centerX, -0.032, bridge.z, length + 0.4, 0.064, bridge.width);
+      geometry.box('trim', '#c4bcb0', centerX, -0.14, bridge.z, length + 0.5, 0.16, bridge.width + 1.1);
+      for (const side of [-1, 1]) {
+        const railZ = bridge.z + side * (bridge.width / 2 + 0.28);
+        geometry.box('pavement', '#d7ceb9', centerX, 0.36, railZ, length + 0.4, 0.72, 0.42);
+        geometry.box('trim', '#5d7382', centerX, 0.76, railZ, length + 0.4, 0.09, 0.34);
+      }
+      const pierStep = Math.max(16, length / Math.max(2, Math.round(length / 22)));
+      for (let x = start + pierStep * 0.5; x < end - 3; x += pierStep) {
+        const pierX = x;
+        for (const side of [-1, 1]) {
+          geometry.box('trim', '#9da3a8', pierX, -1.25, bridge.z + side * (bridge.width / 2 - 0.6), 1.35, 2.2, 1.35);
+        }
+        register(pierX, bridge.z, (sector, detailed) => {
+          if (detailed) {
+            addLamppost(sector, pierX, bridge.z - bridge.width / 2 - 0.28, 1);
+            addLamppost(sector, pierX, bridge.z + bridge.width / 2 + 0.28, -1);
+          }
+        });
+      }
+      register(centerX, bridge.z, (sector) => {
+        addLaneMarkings(false, bridge.z, bridge.width, start - 2, end + 2, sector);
       });
     }
   }

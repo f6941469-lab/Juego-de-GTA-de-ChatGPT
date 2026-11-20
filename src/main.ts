@@ -15,6 +15,8 @@ import { createAtmosphere, createContactShadows, createRenderer, type ContactSha
 import { createUI } from './ui/ui'
 import { createVehicle } from './vehicles/vehicle'
 import { buildDistrict } from './world/district'
+import { getDistrictAt } from './world/generation/layout'
+import { createStores } from './world/stores'
 
 async function startGame() {
   const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')
@@ -106,6 +108,7 @@ async function startGame() {
     const vehicle = createVehicle(scene, physics, { x: 3.9, y: 0, z: 22 })
     const traffic = createTraffic(scene, district.map, gameConfig.seed)
     const police = createPolice(scene, traffic.graph, district.colliders)
+    const stores = createStores(scene, district.map.stores ?? [])
     const physicalTraffic = createVehicleObstacles(physics)
     const shadows = createContactShadows(scene, 10)
     const overlay = createDebugOverlay(scene)
@@ -117,15 +120,20 @@ async function startGame() {
     let throttle = 0
     let audioTimer = 0
     let overlayTimer = 0
+    let noticeText: string | null = null
+    let noticeTimer = 0
 
     resetRun = () => {
       physicalTraffic.reset()
       vehicle.reset(player)
       player.reset()
       police.reset()
+      stores.reset()
       previousPlayer.copy(player.position)
       health = 100
       impactCooldown = recovery = walkingSpeed = throttle = 0
+      noticeText = null
+      noticeTimer = 0
       forceWanted = undefined
     }
 
@@ -155,11 +163,26 @@ async function startGame() {
     const obstacles = [playerObstacle, carObstacle]
 
     function step(dt: number) {
+      stores.step(dt)
+      if (noticeTimer > 0) {
+        noticeTimer -= dt
+        if (noticeTimer <= 0) noticeText = null
+      }
       const controls = input.read()
-      if (controls.interact && vehicle.interact(player)) {
-        previousPlayer.copy(player.position)
-        walkingSpeed = 0
-        audio.cue(vehicle.active ? 'enter' : 'leave')
+      if (controls.interact) {
+        if (vehicle.interact(player)) {
+          previousPlayer.copy(player.position)
+          walkingSpeed = 0
+          audio.cue(vehicle.active ? 'enter' : 'leave')
+        } else if (!vehicle.active) {
+          const robbery = stores.rob(player.position)
+          if (robbery) {
+            police.wanted.report({ x: robbery.store.doorX, z: robbery.store.doorZ }, 1)
+            audio.cue('ui')
+            noticeText = `Asalto en ${robbery.store.name} · Botín $${robbery.loot.toLocaleString('es')}`
+            noticeTimer = 4.2
+          }
+        }
       }
       if (controls.horn && vehicle.active) audio.cue('horn')
       const position = vehicle.active ? vehicle.position : player.position
@@ -227,6 +250,7 @@ async function startGame() {
       player.render(alpha, visualDt)
       traffic.render(alpha, elapsed)
       police.render(alpha, visualDt, elapsed, hour)
+      stores.render(elapsed)
       const position = vehicle.active ? vehicle.position : player.position
       const heading = vehicle.active ? vehicle.heading : player.heading
       const focus = startView ? intro.position : position
@@ -242,8 +266,20 @@ async function startGame() {
       shadows.update(shadowSources, hour)
 
       const { x, y, z } = position
+      const canVehicleInteract = vehicle.canInteract(player)
+      const nearbyStore = !vehicle.active && !canVehicleInteract ? stores.findNearby(player.position) : null
+      const canInteract = canVehicleInteract || Boolean(nearbyStore)
+      const interactionLabel = canVehicleInteract ? undefined
+        : nearbyStore
+          ? (nearbyStore.available ? `Asaltar ${nearbyStore.store.name}` : `${nearbyStore.store.name} (${Math.ceil(nearbyStore.cooldown)} s)`)
+          : undefined
+      const touchInteractionLabel = canVehicleInteract ? undefined
+        : nearbyStore ? (nearbyStore.available ? 'Asaltar' : 'Cerrada') : undefined
+
       ui.update({
-        x, z, heading, hour, health, driving: vehicle.active, canInteract: vehicle.canInteract(player),
+        x, z, heading, hour, district: getDistrictAt(x, z), health,
+        driving: vehicle.active, canInteract, interactionLabel, touchInteractionLabel, notice: noticeText,
+        stores: stores.getMarkers(),
         speed: vehicle.speed * 3.6, wanted: police.wanted.level, policeStatus: police.wanted.state,
       })
 

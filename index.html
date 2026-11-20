@@ -46,8 +46,9 @@
     <section class="hud" id="hud" aria-label="Información de partida" hidden>
       <div class="hud-location">
         <span class="brand-mark" aria-hidden="true"></span>
-        <div><strong>Costa Palmera</strong><time id="hud-time">17:15</time></div>
+        <div><strong id="hud-district">Costa Palmera</strong><time id="hud-time">17:15</time></div>
       </div>
+      <p class="hud-notice" id="hud-notice" role="status" hidden></p>
       <button class="hud-pause quiet-button" id="pause-button" type="button">
         <span class="pause-icon" aria-hidden="true"></span> Pausa <kbd class="desktop-hints" aria-hidden="true">Esc</kbd>
       </button>
@@ -66,8 +67,8 @@
           <output id="speed-output" aria-label="Velocidad" aria-live="off">0</output><span>km/h</span>
         </div>
       </aside>
-      <figure class="minimap" aria-label="Minimapa de Costa Palmera">
-        <div class="map-caption"><figcaption>Distrito</figcaption><span aria-label="Norte">N ↑</span></div>
+      <figure class="minimap" aria-label="Minimapa de Viceblock">
+        <div class="map-caption"><figcaption>Distritos</figcaption><span aria-label="Norte">N ↑</span></div>
         <canvas id="minimap" width="288" height="252" aria-hidden="true"></canvas>
       </figure>
       <div class="interaction-prompt desktop-hints" id="interaction-prompt" hidden>
@@ -131,7 +132,7 @@
           <div><dt>Girar la cámara</dt><dd><kbd>Ratón</kbd></dd></div>
           <div><dt>Correr</dt><dd><kbd>Mayús</kbd></dd></div>
           <div><dt>Saltar o usar el freno de mano</dt><dd><kbd>Espacio</kbd></dd></div>
-          <div><dt>Entrar o salir del coche</dt><dd><kbd>E</kbd></dd></div>
+          <div><dt>Entrar/salir del coche o asaltar tienda</dt><dd><kbd>E</kbd></dd></div>
           <div><dt>Bocina</dt><dd><kbd>H</kbd></dd></div>
           <div><dt>Desafío de búsqueda</dt><dd><kbd>B</kbd></dd></div>
           <div><dt>Pausar</dt><dd><kbd>Esc</kbd></dd></div>

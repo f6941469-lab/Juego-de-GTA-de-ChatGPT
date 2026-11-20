@@ -6,11 +6,24 @@
   --hud-bg: rgb(18 20 29 / 85%);
 }
 
-.hud-location, .hud-pause, .minimap, .hud-hints, .hud-status, .interaction-prompt {
+.hud-location, .hud-pause, .minimap, .hud-hints, .hud-status, .interaction-prompt, .hud-notice {
   position: absolute;
   border: 1px solid var(--hairline);
   border-radius: .38rem;
   background: var(--hud-bg);
+}
+.hud-notice {
+  top: max(var(--hud-gap), env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: .5rem .85rem;
+  max-width: min(28rem, 80vw);
+  text-align: center;
+  color: var(--accent);
+  font: 600 .95rem/1.2 var(--label);
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 .hud-location {
   top: max(var(--hud-gap), env(safe-area-inset-top));
