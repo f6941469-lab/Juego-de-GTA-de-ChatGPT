@@ -1,4 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-compat';
+import { SpatialBoxGrid } from './spatial-index';
 
 export interface StaticBox {
   x: number;
@@ -27,11 +28,17 @@ export async function createPhysics(boxes: readonly StaticBox[]) {
       RAPIER.ColliderDesc.cuboid(halfX, halfY, halfZ).setTranslation(x, y, z),
     );
   }
+  const spatial = new SpatialBoxGrid(boxes);
   // Populate the broad phase so character and camera queries work on the first frame.
   world.step();
 
   return {
     world,
+    spatial,
+    step(dt: number) {
+      world.timestep = dt;
+      world.step();
+    },
     dispose() {
       world.free();
     },
@@ -97,19 +104,25 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
   const controller = world.createCharacterController(CHARACTER_SKIN);
   controller.enableAutostep(0.23, 0.24, false);
   controller.enableSnapToGround(0.19);
+  function prepareMove(dt: number, delta: Point3) {
+    world.timestep = dt;
+    controller.computeColliderMovement(collider, delta, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
+    const movement = controller.computedMovement();
+    const center = body.translation();
+    body.setNextKinematicTranslation({
+      x: center.x + movement.x,
+      y: center.y + movement.y,
+      z: center.z + movement.z,
+    });
+    return { movement, grounded: controller.computedGrounded() };
+  }
+
   return {
+    prepareMove,
     move(dt: number, delta: Point3) {
-      world.timestep = dt;
-      controller.computeColliderMovement(collider, delta, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
-      const movement = controller.computedMovement();
-      const center = body.translation();
-      body.setNextKinematicTranslation({
-        x: center.x + movement.x,
-        y: center.y + movement.y,
-        z: center.z + movement.z,
-      });
+      const result = prepareMove(dt, delta);
       world.step();
-      return { movement, grounded: controller.computedGrounded() };
+      return result;
     },
 
     readFeet() {

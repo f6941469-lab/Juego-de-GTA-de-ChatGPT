@@ -62,24 +62,49 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 
 ### `ADR-0005` — Centralización de `world.step(dt)` en `PhysicsService`
 - **Fecha:** 2026-11-20
-- **Estado:** Propuesta
-- **Contexto:** Actualmente `character.move()` y `vehicle.step()` invocan `world.step()` internamente (`VB-001`), impidiendo simular más de un cuerpo físico controlado a la vez.
-- **Decisión:** Mover `world.step()` a una función única `physics.step(dt)` ejecutada una vez por tick fijo en `SimulationEngine`/`main.ts`, leyendo contactos/poses después del paso.
+- **Estado:** Implementada
+- **Contexto:** Anteriormente `character.move()` y `vehicle.step()` invocaban `world.step()` internamente (`VB-001`), impidiendo simular más de un cuerpo físico controlado a la vez.
+- **Decisión:** Mover `world.step(dt)` a una función única `physics.step(dt)` ejecutada una vez por tick fijo en `main.ts`, usando `prepareStep`/`finishStep` en jugador y vehículo tras el paso. Se mantienen envoltorios de compatibilidad en `move()` y `step()` para pruebas aisladas.
 - **Motivación:** Desbloquear múltiples vehículos dinámicos, física de objetos y NPCs simultáneos.
 - **Alternativas consideradas:** Mantener ramas `if/else` en `main.ts` (insostenible al añadir 2+ entidades dinámicas).
-- **Consecuencias positivas:** Autoridad física única y coherente.
-- **Consecuencias negativas:** Requiere refactor menor en `player.ts`, `vehicle.ts` y tests asociados.
+- **Consecuencias positivas:** Autoridad física única y coherente por tick fijo.
+- **Consecuencias negativas:** Exige respetar el orden `prepareStep` → `physics.step(dt)` → `finishStep` en el bucle principal.
 - **Sistemas afectados:** `physics/physics.ts`, `player/player.ts`, `vehicles/vehicle.ts`, `main.ts`.
 - **Referencias:** [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (`VB-001`), [AUDIT-0001-v0.2.0.md](audits/AUDIT-0001-v0.2.0.md).
 
 ### `ADR-0006` — Índice espacial para colisionadores estáticos y streaming físico futuro
 - **Fecha:** 2026-11-20
-- **Estado:** Propuesta
-- **Contexto:** `clearLine()` recorre linealmente todos los `StaticBox` (`VB-002`) y Rapier retiene todo el mapa en memoria.
-- **Decisión:** Indexar `StaticBox` por celdas `64×64 m` (alineadas a sectores) para consultas LOS/proximidad `O(celdas)` y preparar activación/desactivación física por ventana activa.
-- **Motivación:** Permitir ciudades extensas con miles de edificios y múltiples agentes con LOS.
-- **Alternativas consideradas:** BVH genérico (más complejo que una rejilla uniforme alineada con sectores `64 m`).
-- **Consecuencias positivas:** Acelera `police.ts` inmediatamente y habilita streaming físico posterior.
-- **Consecuencias negativas:** Requiere sincronizar la inserción de cajas entre generadores y rejilla espacial.
-- **Sistemas afectados:** `world/district.ts`, `physics/physics.ts`, `ai/police/police.ts`.
+- **Estado:** Parcialmente implementada
+- **Contexto:** `clearLine()` recorría linealmente todos los `StaticBox` (`VB-002`) y Rapier retiene todo el mapa en memoria.
+- **Decisión:** Indexar `StaticBox` en `SpatialBoxGrid` (`src/physics/spatial-index.ts`, celdas `32×32 m` con sello `Uint32Array` y omisión de losas de suelo `y + halfY <= 0.05`) para consultas `raycast`, `clearLine` y `queryRadius` `O(celdas)`, preparando activación/desactivación física futura.
+- **Motivación:** Permitir ciudades extensas con miles de edificios y múltiples agentes con línea de visión simultánea.
+- **Alternativas consideradas:** BVH genérico (más complejo que una rejilla uniforme con DDA).
+- **Consecuencias positivas:** Acelera `police.ts` y `PerceptionSystem` inmediatamente y deja lista la base de proximidad espacial.
+- **Consecuencias negativas:** El streaming de cuerpos rígidos en Rapier queda pendiente para etapas posteriores.
+- **Sistemas afectados:** `physics/spatial-index.ts`, `physics/physics.ts`, `ai/police/police.ts`, `ai/perception.ts`.
 - **Referencias:** [KNOWN_ISSUES.md](KNOWN_ISSUES.md) (`VB-002`).
+
+### `ADR-0007` — Bus central de eventos no omnisciente y registro dinámico de entidades por nivel de detalle
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Los sistemas de juego se acoplaban directamente en `main.ts` sin propagación espacial ni memoria temporal de acontecimientos del mundo.
+- **Decisión:** Introducir `WorldEventBus` (`src/core/events.ts`, historial acotado a 256 eventos y TTL `30 s`, consultas espaciales `queryNear`) y `EntityRegistry` (`src/simulation/entities.ts`, cubetas espaciales `32 m`, arrays reutilizados y `computeSimulationTier` con umbrales `high <= 65 m`, `medium <= 135 m`, `low > 135 m`).
+- **Motivación:** Habilitar situaciones emergentes donde cada agente o sistema reacciona únicamente a eventos percibibles dentro de su radio e intensidad reales.
+- **Alternativas consideradas:** Callbacks directos entre módulos (alto acoplamiento y ausencia de filtrado espacial/temporal).
+- **Consecuencias positivas:** Desacopla emisor y oyentes y evita asignaciones por frame en consultas de proximidad.
+- **Consecuencias negativas:** Requiere mantener sincronizadas las altas/bajas de entidades y avanzar el reloj del bus por tick.
+- **Sistemas afectados:** `core/events.ts`, `simulation/entities.ts`, `main.ts`, `debug/inspector.ts`.
+- **Referencias:** [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [CORE_AND_INPUT.md](systems/CORE_AND_INPUT.md).
+
+### `ADR-0008` — Percepción realista, cerebro NPC híbrido Utilidad/FSM y grafo peatonal con evitación local
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Para dotar de vida autónoma y reaccionar de forma creíble en fases sucesivas, los NPC necesitan un modelo sensorial, cognitivo y de navegación separado del renderizado y de `src/ui/`.
+- **Decisión:** Implementar `PerceptionSystem` (`src/ai/perception.ts` con cono visual + LOS + temporizador de reconocimiento `0.35 s` y atenuación auditiva por muros `0.42`), perfiles deterministas (`src/ai/npc/profiles.ts`, 10 roles), `NpcBrain` híbrido Utilidad/FSM (`src/ai/npc/npc-brain.ts`, 17 estados emocionales, 9 intenciones, memoria limitada a 8 entradas y `TTL = 26 s` con histéresis) y `PedestrianGraph` (`src/navigation/pedestrian-graph.ts` con A* MinHeap sobre aceras, cruces, puentes y puertas de tiendas + evitación local `steerPedestrian`).
+- **Motivación:** Preparar una base determinista y testeable sin lógica en UI antes de instanciar multitudes y rutinas completas en Fase 2.
+- **Alternativas consideradas:** Máquina de estados rígida sin puntuaciones ni memoria (comportamientos repetitivos y poco creíbles).
+- **Consecuencias positivas:** Comportamiento emergente calibrable y verificado con pruebas unitarias deterministas.
+- **Consecuencias negativas:** Mayor número de parámetros de calibración emocional y de navegación por rol.
+- **Sistemas afectados:** `ai/perception.ts`, `ai/npc/profiles.ts`, `ai/npc/npc-brain.ts`, `navigation/pedestrian-graph.ts`, `world/district.ts`.
+- **Referencias:** [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md).
+

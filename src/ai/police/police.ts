@@ -1,6 +1,7 @@
 import { MathUtils, type Scene } from 'three'
 import { closestRoadNode, findRoadRoute, type RoadGraph, type RoadLane, type RoadNode } from '../../navigation/road-graph'
 import type { StaticBox } from '../../physics/physics'
+import { SpatialBoxGrid } from '../../physics/spatial-index'
 import { createVehicleModel } from '../../vehicles/vehicle-model'
 import { createWantedSystem, responseLevels, type Location } from './wanted'
 
@@ -26,7 +27,15 @@ interface Patrol {
 
 const distance = (a: Location, b: Location) => Math.hypot(a.x - b.x, a.z - b.z)
 
-export function clearLine(origin: Location, target: Location, boxes: readonly StaticBox[], margin = 0) {
+export function clearLine(
+  origin: Location,
+  target: Location,
+  boxes: readonly StaticBox[] | SpatialBoxGrid,
+  margin = 0,
+) {
+  if (boxes instanceof SpatialBoxGrid) {
+    return boxes.clearLine(origin, target, { margin, minY: 1, maxY: 2 })
+  }
   const dx = target.x - origin.x
   const dz = target.z - origin.z
   for (const box of boxes) {
@@ -56,7 +65,8 @@ function viewing(observer: Location & { heading: number }, target: Location, ran
   return gap < 5 || (Math.sin(observer.heading) * dx - Math.cos(observer.heading) * dz) / gap >= fov
 }
 
-export function createPolice(scene: Scene, graph: RoadGraph, boxes: readonly StaticBox[]) {
+export function createPolice(scene: Scene, graph: RoadGraph, obstacleBoxes: readonly StaticBox[] | SpatialBoxGrid) {
+  const boxes = obstacleBoxes instanceof SpatialBoxGrid ? obstacleBoxes : new SpatialBoxGrid(obstacleBoxes)
   const units: Patrol[] = []
   const nodes = [...graph.nodes.values()]
   const wanted = createWantedSystem()

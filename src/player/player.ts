@@ -67,7 +67,10 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     standAt(initialFeet, 0);
   }
 
-  function step(dt: number, input: MovementInput) {
+  let pendingMove = { movement: { x: 0, y: 0, z: 0 }, grounded: false };
+  let pendingMoveY = 0;
+
+  function prepareStep(dt: number, input: MovementInput) {
     if (ride) return;
     previousPosition.copy(position);
     previousHeading = heading;
@@ -99,26 +102,37 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
 
     // Maintain a downward probe while grounded and let Rapier resolve curbs and walls.
     verticalSpeed = Math.max(-30, verticalSpeed + physics.world.gravity.y * dt);
-    const moveY = verticalSpeed * dt;
-    const result = character.move(dt, {
+    pendingMoveY = verticalSpeed * dt;
+    pendingMove = character.prepareMove(dt, {
       x: horizontalVelocity.x * dt,
-      y: moveY,
+      y: pendingMoveY,
       z: horizontalVelocity.y * dt,
     });
+  }
+
+  function finishStep(dt: number) {
+    if (ride) return;
     const feet = character.readFeet();
     position.set(feet.x, feet.y, feet.z);
-    resolvedSpeed = Math.hypot(result.movement.x, result.movement.z) / dt;
+    resolvedSpeed = Math.hypot(pendingMove.movement.x, pendingMove.movement.z) / dt;
 
-    grounded = result.grounded && verticalSpeed <= 0;
+    grounded = pendingMove.grounded && verticalSpeed <= 0;
     if (grounded) {
       groundTime = COYOTE_TIME;
       verticalSpeed = 0;
     } else {
       groundTime = Math.max(0, groundTime - dt);
-      if (verticalSpeed > 0 && result.movement.y < moveY - 0.004) verticalSpeed = 0;
+      if (verticalSpeed > 0 && pendingMove.movement.y < pendingMoveY - 0.004) verticalSpeed = 0;
     }
 
     if (position.y < FALL_RESET_HEIGHT) reset();
+  }
+
+  function step(dt: number, input: MovementInput) {
+    if (ride) return;
+    prepareStep(dt, input);
+    physics.step(dt);
+    finishStep(dt);
   }
 
   function render(alpha: number, dt: number) {
@@ -148,6 +162,11 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     get heading() {
       return heading;
     },
+    get grounded() {
+      return grounded;
+    },
+    prepareStep,
+    finishStep,
     step,
     look: follow.look,
     render,

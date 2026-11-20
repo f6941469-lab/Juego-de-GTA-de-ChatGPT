@@ -107,7 +107,11 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     return true
   }
 
-  function step(dt: number, input: MovementInput) {
+  let pendingAdvanceX = 0
+  let pendingAdvanceZ = 0
+  let pendingThrottle = 0
+
+  function prepareStep(dt: number, input: MovementInput) {
     if (!driver) return
     previous.copy(position)
     previousHeading = heading
@@ -122,6 +126,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     const handbrake = !!input.handbrake
     const reversing = throttle * longitudinal < -0.22
     braking = handbrake || reversing
+    pendingThrottle = throttle
 
     let driveSpeed: number
     if (braking || Math.abs(throttle) < 0.02) {
@@ -138,13 +143,14 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     steering = MathUtils.damp(steering, MathUtils.clamp(input.x, -1, 1) * steeringLimit, 13, dt)
     const yaw = MathUtils.clamp(driveSpeed * Math.tan(steering) / WHEELBASE, -1.9, 1.9)
     const slip = lateral * Math.exp(-(handbrake ? 2.6 : 9.5) * dt)
-    const advanceX = forwardX * driveSpeed + rightX * slip
-    const advanceZ = forwardZ * driveSpeed + rightZ * slip
-    body.setLinvel({ x: advanceX, y: velocity.y, z: advanceZ }, true)
+    pendingAdvanceX = forwardX * driveSpeed + rightX * slip
+    pendingAdvanceZ = forwardZ * driveSpeed + rightZ * slip
+    body.setLinvel({ x: pendingAdvanceX, y: velocity.y, z: pendingAdvanceZ }, true)
     body.setAngvel({ x: 0, y: -yaw, z: 0 }, true)
-    world.timestep = dt
-    world.step()
+  }
 
+  function finishStep(dt: number) {
+    if (!driver) return
     const pose = body.translation()
     const orientation = body.rotation()
     const result = body.linvel()
@@ -153,9 +159,16 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     signedSpeed = result.x * Math.sin(heading) - result.z * Math.cos(heading)
     speed = Math.hypot(result.x, result.z)
     // Rapier modifies the applied velocity on a contact. Tracking the change avoids false damage from deliberate braking.
-    impact = Math.hypot(advanceX - result.x, advanceZ - result.z)
-    engineLoad = MathUtils.damp(engineLoad, braking ? 0 : Math.abs(throttle), 7, dt)
+    impact = Math.hypot(pendingAdvanceX - result.x, pendingAdvanceZ - result.z)
+    engineLoad = MathUtils.damp(engineLoad, braking ? 0 : Math.abs(pendingThrottle), 7, dt)
     if (position.y < -15) reset(driver)
+  }
+
+  function step(dt: number, input: MovementInput) {
+    if (!driver) return
+    prepareStep(dt, input)
+    physics.step(dt)
+    finishStep(dt)
   }
 
   function render(alpha: number, dt: number) {
@@ -195,6 +208,8 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     get impact() { return impact },
     canInteract,
     interact,
+    prepareStep,
+    finishStep,
     step,
     render,
     setLights: model.setLights,

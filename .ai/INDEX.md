@@ -50,8 +50,9 @@ Enrutador documental para recuperación selectiva (Nivel 1). Carga únicamente l
 | [VEHICLES.md](systems/VEHICLES.md) | Vehículo conducible (`Rayo GT`) y modelo 3D | `src/vehicles/*` | `PHYSICS_AND_COLLISIONS.md`, `PLAYER_AND_CAMERA.md` |
 | [TRAFFIC_AND_NAVIGATION.md](systems/TRAFFIC_AND_NAVIGATION.md) | Grafo vial, Dijkstra, semáforos y tráfico | `src/navigation/road-graph.ts`, `src/ai/traffic/*` | `WORLD_AND_STREAMING.md`, `PHYSICS_AND_COLLISIONS.md` |
 | [POLICE_AND_WANTED.md](systems/POLICE_AND_WANTED.md) | Patrullas, LOS (`clearLine`) y niveles de búsqueda | `src/ai/police/*` | `TRAFFIC_AND_NAVIGATION.md`, `PHYSICS_AND_COLLISIONS.md` |
+| [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md) | Eventos, entidades, percepción, emociones NPC y grafo peatonal | `src/core/events.ts`, `src/simulation/*`, `src/ai/perception.ts`, `src/ai/npc/*`, `src/navigation/pedestrian-graph.ts` | `PHYSICS_AND_COLLISIONS.md`, `CORE_AND_INPUT.md` |
 | [AUDIO.md](systems/AUDIO.md) | Mezclador y síntesis procedural Web Audio Doppler | `src/audio/**` | `DATA_FLOW.md`, `CORE_AND_INPUT.md` |
-| [UI_AND_DEBUG.md](systems/UI_AND_DEBUG.md) | Portada, HUD, minimapa, táctil y debug F3/F4 | `index.html`, `src/ui/*`, `src/debug/*` | `DATA_FLOW.md`, `CORE_AND_INPUT.md` |
+| [UI_AND_DEBUG.md](systems/UI_AND_DEBUG.md) | Portada, HUD, minimapa, táctil y debug F3/F4/F5 | `index.html`, `src/ui/*`, `src/debug/*` | `DATA_FLOW.md`, `CORE_AND_INPUT.md` |
 
 ## 4. Plantillas (`.ai/templates/`)
 - [TASK_TEMPLATE.md](templates/TASK_TEMPLATE.md) · [ADR_TEMPLATE.md](templates/ADR_TEMPLATE.md) · [ISSUE_TEMPLATE.md](templates/ISSUE_TEMPLATE.md) · [SYSTEM_TEMPLATE.md](templates/SYSTEM_TEMPLATE.md)
@@ -61,11 +62,12 @@ Enrutador documental para recuperación selectiva (Nivel 1). Carga únicamente l
 | Tipo de tarea | Documentación a cargar (Nivel 2) |
 | :--- | :--- |
 | **Renderizado, shaders o FPS** | `systems/RENDERING.md`, `architecture/EXECUTION_FLOW.md`, `KNOWN_ISSUES.md` (`VB-005`, `VB-006`, `VB-008`, `VB-011`) |
-| **Movimiento a pie o cámara** | `systems/PLAYER_AND_CAMERA.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/CORE_AND_INPUT.md`, `KNOWN_ISSUES.md` (`VB-001`, `VB-006`) |
-| **Vehículos o conducción** | `systems/VEHICLES.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/PLAYER_AND_CAMERA.md`, `KNOWN_ISSUES.md` (`VB-001`, `VB-012`) |
+| **Movimiento a pie o cámara** | `systems/PLAYER_AND_CAMERA.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/CORE_AND_INPUT.md`, `KNOWN_ISSUES.md` (`VB-006`) |
+| **Vehículos o conducción** | `systems/VEHICLES.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/PLAYER_AND_CAMERA.md`, `KNOWN_ISSUES.md` (`VB-012`) |
 | **Generación de mundo o streaming** | `systems/WORLD_AND_STREAMING.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `KNOWN_ISSUES.md` (`VB-002`, `VB-003`, `VB-010`) |
 | **Tráfico o navegación vial** | `systems/TRAFFIC_AND_NAVIGATION.md`, `systems/WORLD_AND_STREAMING.md`, `KNOWN_ISSUES.md` (`VB-004`, `VB-007`) |
-| **Policía o búsqueda (Wanted)** | `systems/POLICE_AND_WANTED.md`, `systems/TRAFFIC_AND_NAVIGATION.md`, `KNOWN_ISSUES.md` (`VB-002`, `VB-004`, `VB-005`) |
+| **Policía o búsqueda (Wanted)** | `systems/POLICE_AND_WANTED.md`, `systems/TRAFFIC_AND_NAVIGATION.md`, `systems/NPC_AND_PERCEPTION.md`, `KNOWN_ISSUES.md` (`VB-002`, `VB-004`, `VB-005`) |
+| **NPC, percepción, eventos o navegación peatonal** | `systems/NPC_AND_PERCEPTION.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/WORLD_AND_STREAMING.md`, `DECISIONS.md` (`ADR-0007`, `ADR-0008`) |
 | **Audio procedural** | `systems/AUDIO.md`, `architecture/DATA_FLOW.md`, `KNOWN_ISSUES.md` (`VB-013`) |
-| **UI, HUD, minimapa o controles** | `systems/UI_AND_DEBUG.md`, `systems/CORE_AND_INPUT.md`, `KNOWN_ISSUES.md` (`VB-013`, `VB-014`) |
+| **UI, HUD, minimapa o controles** | `systems/UI_AND_DEBUG.md`, `systems/CORE_AND_INPUT.md`, `KNOWN_ISSUES.md` (`VB-013`, `VB-014`, `VB-015`) |
 | **Optimización o refactor arquitectónico** | `architecture/OVERVIEW.md`, `architecture/EXECUTION_FLOW.md`, `audits/AUDIT-0001-v0.2.0.md`, `KNOWN_ISSUES.md` |

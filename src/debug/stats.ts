@@ -5,7 +5,13 @@ export class FrameStats {
   private renderTime = 0
   private frames = 0
 
-  sample(dt: number, renderTimeMs: number, renderer: WebGLRenderer, colliders: number): string | undefined {
+  sample(
+    dt: number,
+    renderTimeMs: number,
+    renderer: WebGLRenderer,
+    colliders: number,
+    entityCount = 1,
+  ): string | undefined {
     this.time += dt
     this.renderTime += renderTimeMs
     this.frames++
@@ -15,7 +21,7 @@ export class FrameStats {
       `${Math.round(this.frames / this.time)} FPS`,
       `${(this.renderTime / this.frames).toFixed(2)} ms render (CPU)`,
       `${calls.toLocaleString('es')} llamadas · ${triangles.toLocaleString('es')} triángulos`,
-      `1 personaje · ${colliders} colisionadores`,
+      `${entityCount} entidades · ${colliders} colisionadores`,
     ].join('\n')
     this.time = this.renderTime = this.frames = 0
     return result

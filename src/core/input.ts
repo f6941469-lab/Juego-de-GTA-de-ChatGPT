@@ -18,6 +18,7 @@ interface InputActions {
   onPause(): void
   onDebug(): void
   onDebugOverlay(): void
+  onDebugInspector?(): void
   onDebugWanted(level: number): void
 }
 
@@ -57,11 +58,12 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
   })
 
   window.addEventListener('keydown', (event) => {
-    if ((event.code === 'F3' || event.code === 'F4') && !event.ctrlKey && !event.altKey && !event.metaKey) {
+    if ((event.code === 'F3' || event.code === 'F4' || event.code === 'F5') && !event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault()
       if (!event.repeat) {
         if (event.code === 'F3') actions.onDebug()
-        else actions.onDebugOverlay()
+        else if (event.code === 'F4') actions.onDebugOverlay()
+        else actions.onDebugInspector?.()
       }
       return
     }

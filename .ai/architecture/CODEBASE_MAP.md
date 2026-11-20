@@ -24,19 +24,26 @@ verification_scope: "static-analysis-only"
 | `src/main.ts` | `startGame`, `step`, `frame`, `play`, `pause` | Punto de entrada y bucle principal |
 | `src/config/game.ts` | `Quality`, `gameConfig` | Semilla (`240817`), hora (`17.25`), `fixedStep` (`1/60`) |
 | `src/core/fixed-loop.ts` | `FixedLoop` | Acumulador de paso fijo e interpolación `alpha` |
-| `src/core/input.ts` | `createInput` | Teclado, Pointer Lock, arrastre y controles táctiles |
-| `src/physics/physics.ts` | `createPhysics`, `createCharacterCollider`, `createCameraClearance`, `createExitClearance` | Mundo Rapier WASM y consultas espaciales |
+| `src/core/events.ts` | `WorldEventBus`, `WorldEvent`, `WorldEventType` | Bus de eventos espacial/temporal acotado (no omnisciente) |
+| `src/core/input.ts` | `createInput` | Teclado, Pointer Lock, arrastre, táctil y F3/F4/F5 |
+| `src/simulation/entities.ts` | `EntityRegistry`, `WorldEntity`, `computeSimulationTier` | Registro espacial de entidades y tiers `high`/`medium`/`low` |
+| `src/physics/physics.ts` | `createPhysics`, `createCharacterCollider`, `createCameraClearance`, `createExitClearance` | Mundo Rapier WASM, `step(dt)` centralizado y consultas |
+| `src/physics/spatial-index.ts` | `SpatialBoxGrid` | Índice espacial `32m` y raycast DDA `O(celdas)` sobre `StaticBox` |
 | `src/physics/vehicle-obstacles.ts` | `createVehicleObstacles` | Cuerpos cinemáticos en Rapier para tráfico/patrullas |
-| `src/player/player.ts` | `createPlayer`, `MovementInput` | Locomoción a pie, salto y transición con vehículo |
+| `src/player/player.ts` | `createPlayer`, `MovementInput` | Locomoción a pie (`prepareStep`/`finishStep`) y transición con vehículo |
 | `src/player/follow-camera.ts` | `createFollowCamera` | Cámara en tercera persona con *spring arm* |
 | `src/characters/avatar.ts` | `createAvatar`, `AvatarPose` | Modelo cúbico jerárquico y animación procedural |
-| `src/vehicles/vehicle.ts` | `createVehicle` | Dinámica `Rayo GT`, embarque/desembarque y `impact` |
+| `src/vehicles/vehicle.ts` | `createVehicle` | Dinámica `Rayo GT` (`prepareStep`/`finishStep`), embarque/salida |
 | `src/vehicles/vehicle-model.ts` | `createVehicleModel`, `vehicleDimensions` | Malla biselada, ruedas, luces y sirena |
-| `src/navigation/road-graph.ts` | `buildRoadGraph`, `closestRoadNode`, `findRoadRoute` | Grafo vial dirigido (88 nodos, 314 carriles) y Dijkstra |
+| `src/navigation/road-graph.ts` | `buildRoadGraph`, `closestRoadNode`, `findRoadRoute` | Grafo vial dirigido (146 nodos) y Dijkstra |
+| `src/navigation/pedestrian-graph.ts` | `buildPedestrianGraph`, `findPedestrianRoute`, `findEscapeNode`, `steerPedestrian` | Grafo peatonal (aceras/puentes/tiendas), A* MinHeap y esquiva |
+| `src/ai/perception.ts` | `evaluatePerception`, `createObserverState`, `inFieldOfView` | Percepción visual (FOV + LOS + reconocimiento) y auditiva |
+| `src/ai/npc/profiles.ts` | `createNpcIdentity`, `NpcRole`, `NpcTraits` | 10 roles y rasgos individuales deterministas |
+| `src/ai/npc/npc-brain.ts` | `createNpcBrain`, `stepNpcBrain`, `NpcEmotionalState` | 17 estados emocionales, memoria limitada y Utility AI |
 | `src/ai/traffic/traffic.ts` | `createTraffic`, `profiles` | Población, rutas, curvas Bézier y evitación 1D |
 | `src/ai/traffic/signals.ts` | `createSignals`, `signalAt`, `controlsJunction` | Fases semafóricas e `InstancedMesh` de semáforos |
 | `src/ai/traffic/traffic-visuals.ts` | `createTrafficVisuals` | Render instanciado de hasta 23 vehículos |
-| `src/ai/police/police.ts` | `createPolice`, `clearLine` | Patrullas, FOV + LOS, cerco y detención |
+| `src/ai/police/police.ts` | `createPolice`, `clearLine` | Patrullas, FOV + `SpatialBoxGrid`, cerco y detención |
 | `src/ai/police/wanted.ts` | `createWantedSystem`, `responseLevels` | Estados de búsqueda y predicción |
 | `src/world/district.ts` | `buildDistrict` | Ensamblado multi-distrito, puentes, manzanas, parques y skyline |
 | `src/world/stores.ts` | `createStores`, `StoreMapMarker`, `RobberyResult` | Balizas instanciadas e interacción básica de asalto a tiendas |
@@ -59,7 +66,7 @@ verification_scope: "static-analysis-only"
 | `src/ui/ui.ts` | `createUI` | Portada, HUD, modales y gestión de modo |
 | `src/ui/minimap.ts` | `createMinimap` | Canvas 2D multi-distrito, puentes, tiendas y flecha del jugador |
 | `src/ui/*.css` | — | Estilos de menú, HUD/táctil y diálogos |
-| `src/debug/stats.ts` / `overlay.ts` | `FrameStats`, `createDebugOverlay` | Métricas F3 y wireframe colisionadores/rutas F4 |
+| `src/debug/stats.ts` / `overlay.ts` / `inspector.ts` | `FrameStats`, `createDebugOverlay`, `formatSimulationInspector` | Métricas F3, wireframe+navegación+FOV F4 e inspector F5 |
 
-## `tests/` (10 archivos, 27 pruebas)
-`district.test.ts` (3), `stores.test.ts` (1), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).
+## `tests/` (13 archivos, 35 pruebas)
+`district.test.ts` (3), `stores.test.ts` (1), `events-and-entities.test.ts` (4), `perception-and-npc.test.ts` (2), `pedestrian-navigation.test.ts` (2), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).

@@ -14,24 +14,24 @@ verification_scope: "static-analysis-only"
 
 ### `VB-001` — `world.step()` acoplado dentro de `character.move()` y `vehicle.step()`
 - **Prioridad:** P1 — Alto
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Resuelto (en working tree sobre `ef1f5d1`)
 - **Sistema afectado:** Física / Jugador / Vehículos
-- **Archivo o símbolo:** `src/physics/physics.ts` (`createCharacterCollider.move`), `src/vehicles/vehicle.ts` (`step`), `src/main.ts` (`step`)
-- **Descripción:** Cada controlador avanza el mundo físico Rapier completo; `main.ts` evita doble integración solo porque `player` y `vehicle` son mutuamente excluyentes.
-- **Evidencia:** `world.step()` en `physics.ts` y `vehicle.ts`.
-- **Impacto:** Bloquea simular múltiples vehículos dinámicos, objetos físicos o NPCs físicos en el mismo tick.
-- **Solución propuesta:** Centralizar `physics.step(dt)` al final del paso fijo y leer poses post-step (`ADR-0005`).
+- **Archivo o símbolo:** `src/physics/physics.ts` (`step`, `createCharacterCollider.prepareMove`), `src/player/player.ts` (`prepareStep`, `finishStep`), `src/vehicles/vehicle.ts` (`prepareStep`, `finishStep`), `src/main.ts` (`step`)
+- **Descripción:** Cada controlador avanzaba el mundo físico Rapier completo; ahora `main.ts` ejecuta `prepareStep()` antes de un único `physics.step(dt)` y `finishStep()` después, conservando `move()`/`step()` solo como envoltorios para pruebas unitarias aisladas.
+- **Evidencia:** `physics.step(dt)` en `src/main.ts` y pruebas en `tests/events-and-entities.test.ts` + `player.test.ts` + `vehicle.test.ts`.
+- **Impacto:** Desbloquea la simulación física simultánea de múltiples vehículos y NPCs.
+- **Solución propuesta:** Implementado (`ADR-0005`).
 - **Referencias:** `TASK-0002`, `ADR-0005`.
 
 ### `VB-002` — Colisionadores estáticos residentes y `clearLine` lineal `O(N)`
 - **Prioridad:** P1 — Alto
-- **Estado:** Confirmado (Abierto)
-- **Sistema afectado:** Mundo / Física / Policía
-- **Archivo o símbolo:** `src/world/district.ts` (`colliders`), `src/physics/physics.ts` (`createPhysics`), `src/ai/police/police.ts` (`clearLine`)
-- **Descripción:** Todas las cajas estáticas del distrito se cargan en Rapier al inicio sin streaming físico, y `clearLine()` recorre linealmente el array completo en cada chequeo de visión/movimiento policial.
-- **Evidencia:** Bucle `for (const box of boxes)` en `clearLine` y carga única en `createPhysics(district.colliders)`.
-- **Impacto:** Limita el crecimiento territorial del mundo y degrada CPU linealmente con el número de edificios.
-- **Solución propuesta:** Rejilla espacial de `StaticBox` (`64×64 m`) para consultas LOS y streaming físico por radio activo (`ADR-0006`).
+- **Estado:** Parcialmente mitigado (`clearLine` `O(celdas)` implementado; streaming físico pendiente)
+- **Sistema afectado:** Mundo / Física / Policía / Percepción
+- **Archivo o símbolo:** `src/physics/spatial-index.ts` (`SpatialBoxGrid`), `src/physics/physics.ts` (`physics.spatial`), `src/ai/police/police.ts` (`clearLine`), `src/world/district.ts` (`colliders`)
+- **Descripción:** Las consultas `clearLine()` y `raycast()` ahora utilizan `SpatialBoxGrid` (`32×32 m`) en tiempo `O(celdas)` tanto en policía como en `PerceptionSystem`. No obstante, Rapier sigue cargando todas las cajas estáticas del distrito en memoria al inicio sin streaming físico activo/inactivo.
+- **Evidencia:** `SpatialBoxGrid` integrado en `createPhysics` y `createPolice`; falta carga/descarga de colliders Rapier por ventana activa.
+- **Impacto:** El cuello de CPU por raycast/LOS queda mitigado; queda pendiente el control de memoria física al multiplicar la escala del mapa.
+- **Solución propuesta:** Añadir streaming físico de colliders estáticos sobre Rapier en fases de optimización territorial (`ADR-0006`).
 - **Referencias:** `TASK-0006`, `ADR-0006`.
 
 ### `VB-003` — Reconstrucción síncrona de sectores en el hilo principal
@@ -91,13 +91,13 @@ verification_scope: "static-analysis-only"
 
 ### `VB-008` — Geometrías globales sin liberar y falta de `dispose()` en subsistemas
 - **Prioridad:** P2 — Medio
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Parcialmente mitigado (`overlay.ts` ya implementa `dispose()`)
 - **Sistema afectado:** Mundo / Renderizado / Entrada / Policía / Debug
-- **Archivo o símbolo:** `streets.ts` (`pole`), `vegetation.ts` (`trunk`, `crown`, `leaf`), `renderer.ts`, `atmosphere.ts`, `police.ts`, `overlay.ts`, `input.ts`
-- **Descripción:** Geometrías de módulo nunca liberadas en `district.dispose()`; varios módulos carecen de `dispose()` para WebGL o listeners globales.
-- **Evidencia:** Declaraciones top-level en `streets.ts`/`vegetation.ts` y ausencia de `dispose()` en los retornos de fábrica citados.
+- **Archivo o símbolo:** `streets.ts` (`pole`), `vegetation.ts` (`trunk`, `crown`, `leaf`), `renderer.ts`, `atmosphere.ts`, `police.ts`, `input.ts`, `overlay.ts` (`dispose`)
+- **Descripción:** Geometrías de módulo nunca liberadas en `district.dispose()`; varios módulos aún carecen de `dispose()` para WebGL o listeners globales (`overlay.ts` ya libera su `BufferGeometry`, material e hijos).
+- **Evidencia:** Declaraciones top-level en `streets.ts`/`vegetation.ts` y ausencia de `dispose()` en los retornos de fábrica restantes.
 - **Impacto:** Impide desmontar/reiniciar la escena sin fugas de memoria o listeners duplicados.
-- **Solución propuesta:** Integrar geometrías en `DistrictResources` y añadir `dispose()` simétrico en todos los subsistemas.
+- **Solución propuesta:** Integrar geometrías en `DistrictResources` y añadir `dispose()` simétrico en todos los subsistemas restantes.
 - **Referencias:** `TASK-0003`.
 
 ### `VB-009` — Asignaciones de arrays/sets temporales por tick (`60 Hz`) y frame
@@ -144,24 +144,36 @@ verification_scope: "static-analysis-only"
 - **Solución propuesta:** Evaluar envolvente real en tráfico y separar actualización de pose interpolada antes de la cámara.
 - **Referencias:** `TASK-0003`.
 
-### `VB-013` — Desajustes menores en audio salto/pasos, minimapa estático y pausa/debug
+### `VB-013` — Desajustes menores en audio pasos, minimapa estático y pausa
 - **Prioridad:** P3 — Bajo
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Parcialmente mitigado (`jump` ligado a `player.grounded` y `stats.ts` muestra conteo real de entidades)
 - **Sistema afectado:** Audio / UI / Debug
-- **Archivo o símbolo:** `src/main.ts` (`audio.cue('jump')`), `src/audio/audio.ts` (`frame.y < 0.5`), `src/ui/minimap.ts`, `src/ui/ui.ts`, `src/debug/stats.ts`
-- **Descripción:** Sonido de salto se dispara en el aire; pasos dependen de `y < 0.5` en vez de `grounded`; minimapa es fijo sin zoom ni entidades dinámicas; `stats.ts` escribe siempre `'1 personaje'`.
-- **Evidencia:** Inspección directa de los 5 archivos.
-- **Impacto:** Detalles de pulido UX; el minimapa fijo impedirá ampliar el mapa.
-- **Solución propuesta:** Exponer `grounded` en `player` y añadir seguimiento/marcadores en `minimap.ts`.
+- **Archivo o símbolo:** `src/audio/audio.ts` (`frame.y < 0.5`), `src/ui/minimap.ts`, `src/ui/ui.ts`, `src/player/player.ts` (`grounded`), `src/debug/stats.ts` (`entities`)
+- **Descripción:** `main.ts` ya condiciona `audio.cue('jump')` a `player.grounded` y `stats.ts` muestra el conteo real de `EntityRegistry`. Siguen pendientes: pasos dependientes de `y < 0.5` en `audio.ts`, minimapa sin zoom ni entidades dinámicas y cierre del modal de pausa al reiniciar.
+- **Evidencia:** Inspección de `main.ts`, `stats.ts`, `audio.ts`, `minimap.ts`, `ui.ts`.
+- **Impacto:** Detalles de pulido UX; el minimapa fijo requerirá actualización al mostrar NPCs/patrullas dinámicas.
+- **Solución propuesta:** Usar `grounded` en pasos de `audio.ts` y añadir seguimiento/marcadores dinámicos en `minimap.ts`.
 - **Referencias:** `TASK-0007`.
 
 ### `VB-014` — Brecha de pruebas en UI, audio, entrada, persistencia, render y aviso dev `picomatch`
 - **Prioridad:** P3 — Bajo
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Parcialmente mitigado (35 tests actuales; pendiente cobertura DOM/WebGL/Audio)
 - **Sistema afectado:** Calidad / DevOps
 - **Archivo o símbolo:** `tests/*.test.ts`, `package-lock.json` (`picomatch@4.0.7`)
-- **Descripción:** 25 pruebas cubren simulación y mundo, pero `ui`, `minimap`, `input`, `preferences`, `audio`, `renderer`, `atmosphere`, `contact-shadows`, `avatar` y `main` no tienen tests automatizados. `picomatch@4.0.7` (dev) tiene aviso `GHSA-fc5q-39xc-vjpf`.
-- **Evidencia:** Inventario `tests/*.test.ts` y `KNOWN_ISSUES.md` raíz.
+- **Descripción:** 35 pruebas cubren simulación, eventos, entidades, percepción, cerebro NPC, navegación vial/peatonal y mundo; `ui`, `minimap`, `input`, `preferences`, `audio`, `renderer`, `atmosphere`, `contact-shadows`, `avatar` y `main` carecen de pruebas unitarias DOM/WebGL. `picomatch@4.0.7` (dev) tiene aviso `GHSA-fc5q-39xc-vjpf`.
+- **Evidencia:** Inventario `tests/*.test.ts` (13 archivos, 35 tests) y `KNOWN_ISSUES.md` raíz.
 - **Impacto:** Riesgo de regresiones silenciosas en interfaz, entrada y audio.
 - **Solución propuesta:** Añadir pruebas de integración/DOM y verificación E2E en CI; vigilar actualización upstream de herramientas dev.
 - **Referencias:** `TASK-0001`, `TASK-0009`.
+
+### `VB-015` — Conflicto de tecla `ArrowUp` entre movimiento y futuro teléfono móvil
+- **Prioridad:** P2 — Medio
+- **Estado:** Confirmado (Abierto — detectado en diagnóstico Fase 1)
+- **Sistema afectado:** Entrada / UI (Teléfono móvil en Fase 5)
+- **Archivo o símbolo:** `src/core/input.ts` (`keyBindings`: `'ArrowUp': 'forward'`, `'ArrowDown'`, `'ArrowLeft'`, `'ArrowRight'`)
+- **Descripción:** Las flechas de dirección duplican actualmente las acciones `WASD` (`forward`, `backward`, `left`, `right`). El futuro teléfono móvil de Fase 5 se abrirá con `ArrowUp` y navegará su interfaz con las flechas.
+- **Evidencia:** Mapa `keyBindings` en `src/core/input.ts`.
+- **Impacto:** Si se enlaza `ArrowUp` al teléfono sin aislar contexto o definir pulsación corta vs. teclas de conducción, abrir o usar el teléfono aceleraría/movería al personaje o vehículo.
+- **Solución propuesta:** Desacoplar el mapeo de movimiento vs. teléfono (por ejemplo, pulsar `ArrowUp` para abrir/cerrar sin mover y capturar flechas mientras el teléfono esté abierto, o usar `WASD` para conducir/caminar y flechas reservadas al teléfono).
+- **Referencias:** `ROADMAP.md` (Fase 5).
+

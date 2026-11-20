@@ -375,7 +375,7 @@ function makeWestBlocks(register: RegisterSectorFeature, colliders: StaticBox[],
 function makeCentralIslandBlocks(register: RegisterSectorFeature, colliders: StaticBox[], seed: number): void {
   const random = makeRandom(seed ^ 0x7712b9);
   const lots: BuildingSpec[] = [
-    { x: -239, z: -11, width: 14, depth: 12, floors: 2, palette: 1, style: 'deco', entrance: 'east', sign: 'CAFE' },
+    { x: -238, z: -11, width: 12, depth: 12, floors: 2, palette: 1, style: 'deco', entrance: 'east', sign: 'CAFE' },
     { x: -211, z: -11, width: 12, depth: 11, floors: 2, palette: 0, style: 'porch', entrance: 'west' },
     { x: -211, z: 23, width: 12, depth: 11, floors: 2, palette: 3, style: 'deco', entrance: 'west' },
   ];
