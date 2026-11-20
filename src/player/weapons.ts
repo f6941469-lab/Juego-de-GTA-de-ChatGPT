@@ -380,6 +380,11 @@ export function createWeaponSystem(scene: Scene) {
     get spec(): WeaponSpec { return currentSpec(); },
     get reloading(): boolean { return reloadTimer > 0; },
     get ammo(): { mag: number; reserve: number } { return { ...ammo[currentId()] }; },
+    supplyPistolAmmo(rounds: number): boolean {
+      if (!Number.isInteger(rounds) || rounds <= 0 || ammo.pistol.reserve + rounds > 120) return false;
+      ammo.pistol.reserve += rounds;
+      return true;
+    },
     addTracer,
     selectSlot,
     cycle,

@@ -90,6 +90,8 @@ export function buildingColliders(spec: BuildingSpec): StaticBox[] {
   const t = interiorWallThickness;
   const frontF = depthSpan / 2 - t / 2;
   const boxes: StaticBox[] = [];
+  // Match the floor tile height instead of leaving feet below the visible floor.
+  boxes.push(place(0, 0.03, 0, depthSpan - 0.12, 0.06, frontSpan - 0.12));
 
   if (wingSpan > 0.05) {
     const wingCenter = doorWidth / 2 + wingSpan / 2;

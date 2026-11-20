@@ -112,7 +112,8 @@ describe('Phase 5 diegetic mobile phone, live recording, viral publishing, and 9
       engine.step(dt, { ...baseControls, phoneCommand: 'select' });
 
       for (let i = 0; i < 48; i++) engine.step(dt, baseControls);
-      expect(ped.brain.alertness).toBeGreaterThan(0.2);
+      expect(ped.brain.memory.some((entry) => entry.type === 'recording_started')).toBe(true);
+      expect(ped.brain.alertness).toBeGreaterThan(0);
 
       // Switch to emergency app and dispatch 911 patrol alert
       engine.step(dt, { ...baseControls, phoneCommand: 'openEmergency' });

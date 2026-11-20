@@ -18,6 +18,7 @@ import { getDistrictAt } from '../world/generation/layout';
 import { createStores } from '../world/stores';
 import { EntityRegistry } from './entities';
 import { createPhoneSystem, type PhoneCommand, type PhoneStepContext } from './phone';
+import { Economy, products, type Item, type TradeSnapshot } from './economy';
 
 type RawInput = ReturnType<ReturnType<typeof createInput>['read']>;
 type ControlState = Omit<RawInput, 'weaponSlot' | 'phoneCommand'> & {
@@ -73,7 +74,10 @@ export function createSimulationEngine(
 
   let hour = initialHour;
   let health = 100;
-  let cash = 0;
+  const economy = new Economy(district.map.stores ?? []);
+  let trading: string | undefined;
+  let tradeSelection = 0;
+  const idleControls: ControlState = { x: 0, z: 0, run: false, jump: false, handbrake: false, interact: false, horn: false, challenge: false, aim: false, fire: false, reload: false, cycleWeapon: false };
   let impactCooldown = 0;
   let recovery = 0;
   let smokeTimer = 0;
@@ -261,7 +265,8 @@ export function createSimulationEngine(
       hour,
       district: getDistrictAt(focusNow.x, focusNow.z),
       position: focusNow,
-      cash,
+      cash: economy.money,
+      onUseItem: useItem,
       wanted: police.wanted.level,
       nearbyNpcs,
       eventBus,
@@ -294,7 +299,7 @@ export function createSimulationEngine(
     eventBus.reset();
     previousPlayer.copy(player.position);
     health = 100;
-    cash = 0;
+    economy.reset(); trading = undefined; tradeSelection = 0;
     hour = restoreHour;
     impactCooldown = recovery = smokeTimer = walkingSpeed = throttle = 0;
     recentFireThreat = weaponEventCooldown = aimEventCooldown = 0;
@@ -333,8 +338,10 @@ export function createSimulationEngine(
     destructibles.step(dt);
     const pCtx = phoneContext();
     if (controls.phoneCommand) {
-      phone.handleCommand(controls.phoneCommand, pCtx);
+      sendPhoneCommand(controls.phoneCommand);
     }
+    if (trading && !canTrade(trading)) trading = undefined;
+    if (phone.isOpen || trading) controls = idleControls;
     phone.step(dt, pCtx);
     recentFireThreat = Math.max(0, recentFireThreat - dt * 0.4);
     weaponEventCooldown = Math.max(0, weaponEventCooldown - dt);
@@ -401,7 +408,10 @@ export function createSimulationEngine(
           callbacks.onAudioCue?.('enter');
           callbacks.onNotice?.(`Vehículo tomado a ${hijacked.driver.name}`, 3.0);
         } else {
-          startStoreHeist(player.position);
+          const nearby = stores.getInteriors().find((interior) => canTrade(interior.store.id));
+          if (weapons.equipped === 'unarmed' && nearby) {
+            trading = nearby.store.id; tradeSelection = 0; controls = idleControls;
+          } else startStoreHeist(player.position);
         }
       }
     }
@@ -489,6 +499,7 @@ export function createSimulationEngine(
     }
 
     if (shot.fired) {
+      player.kick();
       callbacks.onAudioCue?.('shot');
       recentFireThreat = 1.0;
       eventBus.emit({
@@ -554,10 +565,10 @@ export function createSimulationEngine(
           0.35,
         );
       } else if (heistStep.status === 'completed') {
-        cash += heistStep.loot;
+        const paid = economy.rob(heistStep.store.id, heistStep.loot);
         callbacks.onAudioCue?.('cash');
         callbacks.onNotice?.(
-          `Asalto completado en ${heistStep.store.name} · +$${heistStep.loot.toLocaleString('es')}`,
+          `Asalto completado en ${heistStep.store.name} · +$${paid.toLocaleString('es')}`,
           4.2,
         );
         eventBus.emit({
@@ -575,7 +586,7 @@ export function createSimulationEngine(
         npcPopulation.releaseStoreClerk(heistStep.store.id, player.position);
       } else {
         if (heistStep.loot > 0) {
-          cash += heistStep.loot;
+          economy.rob(heistStep.store.id, heistStep.loot);
           callbacks.onAudioCue?.('cash');
           callbacks.onNotice?.(
             `Saliste de ${heistStep.store.name} · +$${heistStep.loot.toLocaleString('es')}`,
@@ -852,6 +863,8 @@ export function createSimulationEngine(
   }
 
   function getInteractionPrompt(): InteractionPrompt {
+    const shop = !vehicles.active && stores.getInteriors().find((interior) => canTrade(interior.store.id));
+    if (shop) return { canInteract: true, label: `Hablar / comprar en ${shop.store.name}`, touchLabel: 'Comprar' };
     const canVehicleInteract = vehicles.canInteract(player);
     if (canVehicleInteract) return { canInteract: true };
 
@@ -886,13 +899,50 @@ export function createSimulationEngine(
     return phone.snapshot({
       hour,
       district: getDistrictAt(focusNow.x, focusNow.z),
-      cash,
+      cash: economy.money,
+      inventory: economy.inventory,
       wanted: police.wanted.level,
     });
   }
 
   function sendPhoneCommand(command: PhoneCommand) {
+    if (trading) {
+      if (command === 'back' || command === 'toggle') trading = undefined;
+      else if (command === 'up' || command === 'left') tradeSelection = (tradeSelection + products.length - 1) % products.length;
+      else if (command === 'down' || command === 'right') tradeSelection = (tradeSelection + 1) % products.length;
+      else if (command === 'select') buyProduct(tradeSelection);
+      return;
+    }
     phone.handleCommand(command, phoneContext());
+    if (phone.isOpen) { weapons.selectSlot(0); player.setAimPose(false, 'unarmed'); }
+  }
+
+  function canTrade(id: string): boolean {
+    if (vehicles.active || weapons.equipped !== 'unarmed' || stores.activeHeist) return false;
+    const interior = stores.getInteriors().find((entry) => entry.store.id === id);
+    const clerk = npcPopulation.agents.find((agent) => agent.kind === 'clerk' && agent.home?.storeId === id);
+    if (!interior || !clerk || clerk.brain.health <= 0 || clerk.recoverTimer > 0 || clerk.brain.fear > 0.45) return false;
+    return Math.abs(player.position.y) < 0.8 && Math.hypot(player.position.x - interior.counterFrontX, player.position.z - interior.counterFrontZ) < 2
+      && physics.spatial.clearLine(player.position, clerk, { minY: 1.2, maxY: 1.75 });
+  }
+
+  function buyProduct(index: number) {
+    if (!trading || !canTrade(trading)) { trading = undefined; return; }
+    const product = products[index]; if (!product) return;
+    const error = economy.buy(trading, product.id);
+    callbacks.onNotice?.(error ?? `${product.name} en tu mochila · −$${product.price}`, 3);
+    callbacks.onAudioCue?.(error ? 'ui' : 'cash');
+  }
+
+  function useItem(item: Item) {
+    if (economy.inventory[item] <= 0) { callbacks.onNotice?.('No tienes este producto', 2); return; }
+    if (item === 'ammo') {
+      if (!weapons.supplyPistolAmmo(12)) { callbacks.onNotice?.('Reserva de munición llena', 2); return; }
+    } else {
+      if (health >= 100) { callbacks.onNotice?.('Tu salud ya está al máximo', 2); return; }
+      health = Math.min(100, health + (item === 'water' ? 15 : 30));
+    }
+    economy.use(item); callbacks.onAudioCue?.('ui');
   }
 
   return {
@@ -908,10 +958,17 @@ export function createSimulationEngine(
     phone,
     npcPopulation,
     timings,
+    economy,
+    buyProduct,
+    get overlayOpen() { return phone.isOpen || trading !== undefined; },
+    getTradeSnapshot(): TradeSnapshot | null {
+      if (!trading) return null;
+      return { name: (district.map.stores ?? []).find((store) => store.id === trading)!.name, selection: tradeSelection, cash: economy.money, stock: economy.stock(trading)! };
+    },
     get hour() { return hour; },
     set hour(value: number) { hour = ((value % 24) + 24) % 24; },
     get health() { return health; },
-    get cash() { return cash; },
+    get cash() { return economy.money; },
     get aiming() { return aimingNow; },
     get armed() { return weapons.equipped !== 'unarmed'; },
     get weaponLabel() { return weapons.hudLabel(); },

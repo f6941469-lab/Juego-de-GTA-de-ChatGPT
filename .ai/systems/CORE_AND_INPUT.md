@@ -34,3 +34,9 @@ related_files:
 17. **Referencias relacionadas:** [EXECUTION_FLOW.md](../architecture/EXECUTION_FLOW.md), [DATA_FLOW.md](../architecture/DATA_FLOW.md), [NPC_AND_PERCEPTION.md](NPC_AND_PERCEPTION.md).
 18. **Última verificación:** 2026-11-20 (`typecheck`, Vitest 45/45 y build tras Fase 5).
 
+
+### Integración Mercado Palma
+
+Los botones del ratón usan mousedown/mouseup para admitir apuntar+disparar. El drag táctil no dispara. setPhoneOpen limpia entradas y libera el cursor; Escape vuelve, blur/visibility pausan. El mismo aislamiento se aplica al comercio. Regresión directa en tests/input.test.ts.
+
+Las órdenes del teléfono usan una cola FIFO acotada a 16 entradas para no perder dos Escape o Enter consecutivos entre ticks. Abrir/cerrar panel limpia el movimiento y conserva esa cola.

@@ -39,3 +39,7 @@ related_files:
 17. **Referencias relacionadas:** [PHYSICS_AND_COLLISIONS.md](PHYSICS_AND_COLLISIONS.md), [TRAFFIC_AND_NAVIGATION.md](TRAFFIC_AND_NAVIGATION.md), [UI_AND_DEBUG.md](UI_AND_DEBUG.md), [NPC_AND_PERCEPTION.md](NPC_AND_PERCEPTION.md).
 18. **Última verificación:** 2026-11-20 (`typecheck`, Vitest 43/43 y build tras Fase 4).
 
+
+### Integración Mercado Palma
+
+El lote 3:3:1 contiene Mercado Palma (15,34.2), registrado como décima tienda. El punto inicial es (15,0,41.5). Los interiores incorporan collider del suelo a la cota visible de 0.06 m. Se conserva la carga sectorial y las demás tiendas/distritos.

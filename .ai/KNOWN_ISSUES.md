@@ -177,3 +177,7 @@ verification_scope: "static-analysis-only"
 - **Solución propuesta:** Implementado (`ADR-0012`).
 - **Referencias:** `ROADMAP.md` (Fase 5), `ADR-0012`.
 
+
+### Integración Mercado Palma
+
+Las compras y cajas tienen estado de sesión y se restablecen con el reinicio. La grabación del teléfono existente sigue siendo metadatos de acontecimientos, sin replay de video verificado. SwiftShader solo se usa para comprobar flujos, no para certificar fluidez.

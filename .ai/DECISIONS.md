@@ -202,3 +202,7 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 - **Consecuencias negativas:** En teletransportes instantáneos muy lejanos, la malla visual termina de hidratarse en varios frames salvo invocación explícita de `flush()`.
 - **Sistemas afectados:** `physics/{physics,vehicle-obstacles}.ts`, `world/streaming.ts`, `renderer/{renderer,resolution,lighting/atmosphere}.ts`, `core/input.ts`, `simulation/engine.ts`, `main.ts`.
 - **Referencias:** [PHYSICS_AND_COLLISIONS.md](systems/PHYSICS_AND_COLLISIONS.md), [RENDERING.md](systems/RENDERING.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+
+## Integrar Mercado Palma sobre el motor de main
+
+La rama work partía de `2ee553f`; main ya había evolucionado hasta `d0c70d9`. La integración conserva sus contratos de vehículos, mundo, streaming, NPC, armas, teléfono y policía. Se trasladan mercado, comercio/inventario y correcciones de entradas/cámara; los controladores de prototipo equivalentes se resuelven a favor de los sistemas existentes. El historial de work queda como segundo padre del merge. No se añaden dependencias.

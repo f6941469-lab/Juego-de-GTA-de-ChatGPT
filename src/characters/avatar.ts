@@ -188,11 +188,37 @@ export function createAvatar(scene: THREE.Scene) {
 
   reset();
 
+  // Group fixed blocks per joint and finish; keep the carbine barrel independently visible.
+  const joints: THREE.Object3D[] = [];
+  const batches: THREE.InstancedMesh[] = [];
+  const finishes = new Map<number, THREE.MeshStandardMaterial>();
+  mesh.traverse((object) => { if (object instanceof THREE.Group) joints.push(object); });
+  for (const joint of joints) {
+    const groups = new Map<number, THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>[]>();
+    for (const child of [...joint.children]) {
+      if (!(child instanceof THREE.Mesh) || child === carbineBarrel) continue;
+      const part = child as THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>;
+      const finish = part.material.roughness;
+      const parts = groups.get(finish) ?? [];
+      parts.push(part); groups.set(finish, parts);
+    }
+    for (const [finish, parts] of groups) {
+      let material = finishes.get(finish);
+      if (!material) { material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: finish }); finishes.set(finish, material); materials.push(material); }
+      const batch = new THREE.InstancedMesh(geometry, material, parts.length);
+      for (const [index, part] of parts.entries()) {
+        part.updateMatrix(); batch.setMatrixAt(index, part.matrix); batch.setColorAt(index, part.material.color); part.removeFromParent();
+      }
+      batch.castShadow = batch.receiveShadow = true; batch.computeBoundingSphere(); joint.add(batch); batches.push(batch);
+    }
+  }
+
   return {
     mesh,
     animate,
     reset,
     dispose() {
+      for (const batch of batches) batch.dispose();
       mesh.removeFromParent();
       geometry.dispose();
       for (const material of materials) material.dispose();

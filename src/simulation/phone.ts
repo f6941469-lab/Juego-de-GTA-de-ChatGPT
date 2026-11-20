@@ -1,5 +1,6 @@
 import type { WorldEvent, WorldEventBus } from '../core/events';
 import { makeRandom } from '../world/generation/layout';
+import { products, type Inventory, type Item } from './economy';
 
 export type PhoneCommand =
   | 'toggle'
@@ -12,9 +13,10 @@ export type PhoneCommand =
   | 'openCamera'
   | 'openFeed'
   | 'openEmergency'
-  | 'openAlerts';
+  | 'openAlerts'
+  | 'openBag';
 
-export type PhoneScreen = 'home' | 'camera' | 'feed' | 'emergency' | 'alerts';
+export type PhoneScreen = 'home' | 'camera' | 'feed' | 'emergency' | 'alerts' | 'bag';
 
 export interface PhoneClip {
   id: string;
@@ -34,6 +36,7 @@ export interface PhoneAlert {
 }
 
 export interface PhoneSnapshot {
+  inventory: Readonly<Inventory>;
   open: boolean;
   screen: PhoneScreen;
   selectedIndex: number;
@@ -52,6 +55,7 @@ export interface PhoneSnapshot {
 }
 
 export interface PhoneStepContext {
+  onUseItem?: (item: Item) => void;
   hour: number;
   district: string;
   position: { x: number; y: number; z: number };
@@ -69,6 +73,7 @@ const HOME_APPS: readonly { screen: Exclude<PhoneScreen, 'home'>; label: string 
   { screen: 'feed', label: 'Social' },
   { screen: 'emergency', label: '911' },
   { screen: 'alerts', label: 'Ciudad' },
+  { screen: 'bag', label: 'Mochila' },
 ];
 
 function formatClock(hour: number): string {
@@ -294,6 +299,9 @@ export function createPhoneSystem(seed = 240817) {
         openScreen('alerts', ctx);
         ctx.onAudioCue?.();
         return;
+      case 'openBag':
+        openScreen('bag', ctx);
+        return;
       case 'back':
         if (!open) return;
         if (screen === 'home') {
@@ -307,7 +315,7 @@ export function createPhoneSystem(seed = 240817) {
       case 'left':
         if (!open) return;
         if (screen === 'home') {
-          selectedIndex = (selectedIndex + 3) % HOME_APPS.length;
+          selectedIndex = (selectedIndex + HOME_APPS.length - 1) % HOME_APPS.length;
           ctx.onAudioCue?.();
         }
         return;
@@ -326,6 +334,8 @@ export function createPhoneSystem(seed = 240817) {
           selectedIndex = (selectedIndex + 1) % 2;
         } else if (screen === 'feed' && clips.length > 0) {
           selectedIndex = (selectedIndex + clips.length - 1) % clips.length;
+        } else if (screen === 'bag') {
+          selectedIndex = (selectedIndex + products.length - 1) % products.length;
         }
         ctx.onAudioCue?.();
         return;
@@ -337,11 +347,14 @@ export function createPhoneSystem(seed = 240817) {
           selectedIndex = (selectedIndex + 1) % 2;
         } else if (screen === 'feed' && clips.length > 0) {
           selectedIndex = (selectedIndex + 1) % clips.length;
+        } else if (screen === 'bag') {
+          selectedIndex = (selectedIndex + 1) % products.length;
         }
         ctx.onAudioCue?.();
         return;
       case 'select':
         if (!open) return;
+        if (screen === 'bag') { ctx.onUseItem?.(products[selectedIndex % products.length].id); return; }
         if (screen === 'home') {
           const target = HOME_APPS[selectedIndex % HOME_APPS.length];
           openScreen(target.screen, ctx);
@@ -469,12 +482,14 @@ export function createPhoneSystem(seed = 240817) {
   }
 
   function snapshot(ctx: {
+    inventory?: Readonly<Inventory>;
     hour: number;
     district: string;
     cash: number;
     wanted: number;
   }): PhoneSnapshot {
     return {
+      inventory: ctx.inventory ?? { water: 0, snack: 0, ammo: 0 },
       open,
       screen,
       selectedIndex,

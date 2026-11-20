@@ -38,6 +38,7 @@ export interface District {
 }
 
 const specialLots = new Map<string, BuildingSpec>([
+  ['3:3:1', { x: 15, z: 34.2, width: 10, depth: 10.4, floors: 1, palette: 1, style: 'porch', entrance: 'south', sign: 'MERCADO PALMA', interior: true }],
   ['-1:2:0', { x: -107, z: -17.4, width: 18.5, depth: 8.75, floors: 2, palette: 5, style: 'ribbon', entrance: 'south', sign: 'MERCADO', interior: true }],
   ['-2:-1:0', { x: -143, z: -132.0, width: 20.4, depth: 10.7, floors: 2, palette: 4, style: 'porch', entrance: 'east', sign: 'TALLER COSTA', interior: true }],
   ['4:6:0', { x: 38, z: 123.4, width: 6.7, depth: 9, floors: 3, palette: 1, style: 'deco', entrance: 'east', sign: 'BRISA', interior: true }],
@@ -55,6 +56,7 @@ const westSpecialBlocks = new Map<string, BuildingSpec>([
 ]);
 
 const landmarkPins = [
+  { x: 15, z: 34.2, name: 'Mercado Palma' },
   { x: -12.15, z: 20.8, name: 'Hotel Miramar' },
   { x: 15.15, z: 21, name: 'Club Neón' },
   { x: 15, z: -51.2, name: 'Torre Alba' },
@@ -75,7 +77,7 @@ export function buildDistrict(scene: Scene, seed = 61865): District {
   const resources = new DistrictResources();
   const geometry = new DistrictGeometry(resources);
   const streaming = createDistrictStreaming(scene, resources);
-  const spawn = { x: 0, y: 0, z: 25 };
+  const spawn = { x: 15, y: 0, z: 41.5 };
 
   // Base landmasses
   geometry.box('pavement', '#8c918c', -61, -0.29, 0, 244, 0.463, eastLandBounds.maxZ - eastLandBounds.minZ);

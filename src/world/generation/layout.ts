@@ -244,6 +244,11 @@ export const storeSpecs: StoreSpec[] = [
     width: 20,
     depth: 12,
   },
+  {
+    id: 'mercado-palma', name: 'Mercado Palma', district: 'Costa Palmera',
+    x: 15, z: 34.2, doorX: 15, doorZ: 40.3, facing: 'south',
+    loot: 90, sign: 'MERCADO PALMA', width: 10, depth: 10.4,
+  },
 ];
 
 export function getDistrictAt(x: number, z: number): string {

@@ -129,7 +129,8 @@ export function createCameraClearance({ world }: Pick<Physics, 'world'>, exclude
     // The offset is the entire displacement, so the time of impact is a fraction in [0, 1].
     const hit = world.castShape(
       origin, CAMERA_ORIENTATION, offset, cameraProbe, CHARACTER_SKIN, 1, false,
-      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, excluded, undefined, enabled,
+      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, excluded, undefined,
+      (candidate) => enabled(candidate) && candidate.shapeType() !== RAPIER.ShapeType.Capsule,
     );
     return hit ? Math.max(0, hit.time_of_impact) : 1;
   };

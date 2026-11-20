@@ -38,3 +38,7 @@ related_files:
 17. **Referencias relacionadas:** [CORE_AND_INPUT.md](CORE_AND_INPUT.md), [NPC_AND_PERCEPTION.md](NPC_AND_PERCEPTION.md), [DATA_FLOW.md](../architecture/DATA_FLOW.md).
 18. **Última verificación:** 2026-11-20 (`typecheck`, Vitest 45/45, build y Chromium tras Fase 5).
 
+
+### Integración Mercado Palma
+
+TradeSnapshot presenta catálogo/saldo/existencias; las compras y consumos se validan en SimulationEngine/Economy. La app Mochila comparte navegación nativa del teléfono. La interfaz no aplica dinero, munición ni salud directamente.

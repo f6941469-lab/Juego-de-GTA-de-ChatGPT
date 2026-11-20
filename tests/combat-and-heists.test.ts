@@ -102,6 +102,7 @@ describe('Phase 3 weapons, combat, witnesses, and complete store heists', () => 
 
     try {
       const store = storeSpecs[0];
+      const startingCash = engine.cash;
       const interior = getStoreInteriorLayout(store);
 
       // Walk/warp inside the store facing the clerk behind the counter (heading toward clerk)
@@ -129,7 +130,7 @@ describe('Phase 3 weapons, combat, witnesses, and complete store heists', () => 
       }
 
       expect(engine.stores.activeHeist).toBeNull();
-      expect(engine.cash).toBe(store.loot);
+      expect(engine.cash).toBe(startingCash + store.loot);
       expect(engine.eventBus.recent(10).some((evt) => evt.type === 'robbery_finished')).toBe(true);
 
       // Fire a gunshot at a street NPC and verify ballistic injury + gunshot_fired event

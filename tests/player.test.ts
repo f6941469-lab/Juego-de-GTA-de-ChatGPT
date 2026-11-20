@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Scene } from 'three'
 import { describe, expect, it } from 'vitest'
-import { createPhysics, type StaticBox } from '../src/physics/physics'
+import { createCharacterCollider, createPhysics, type StaticBox } from '../src/physics/physics'
 import { createPlayer } from '../src/player/player'
 
 const floor: StaticBox = { x: 0, y: -0.5, z: 0, halfX: 30, halfY: 0.5, halfZ: 30 }
@@ -32,6 +32,20 @@ function advance(player: Player, frames: number, input = idle) {
 }
 
 describe('third-person character', () => {
+  it('keeps the camera stable when a pedestrian capsule crosses the boom', async () => {
+    const physics = await createPhysics([floor]);
+    const other = createCharacterCollider(physics, { x: 0, y: 0, z: 2 }); physics.step(fixedStep);
+    const camera = new PerspectiveCamera(58, 1.6, 0.08, 650);
+    const player = createPlayer(new Scene(), camera, physics, { x: 0, y: 0, z: 0 });
+    try { expect(camera.position.z).toBeGreaterThan(4.5); }
+    finally { player.dispose(); other.dispose(); physics.dispose(); }
+  })
+  it('restores normal camera zoom and unarmed pose on reset', async () => {
+    await withPlayer([], (player, camera) => {
+      player.setAimPose(true, 'pistol'); player.render(1, 1); expect(camera.fov).toBeLessThan(50);
+      player.reset(); player.render(1, 1); expect(camera.fov).toBe(58);
+    });
+  })
   it('moves forward, covers more ground while running and returns to spawn on reset', async () => {
     await withPlayer([], (player) => {
       advance(player, 60, forward)

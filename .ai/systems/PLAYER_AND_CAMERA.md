@@ -32,3 +32,7 @@ related_files:
 16. **Riesgos de modificación:** Cambiar `follow.yaw` o signos de `turnDelta` rompe la alineación movimiento-cámara (`0 = -Z`, `+θ -> +X`) y la dirección de disparo (`aimYaw`).
 17. **Referencias relacionadas:** [VEHICLES.md](VEHICLES.md), [PHYSICS_AND_COLLISIONS.md](PHYSICS_AND_COLLISIONS.md).
 18. **Última verificación:** 2026-11-20 (`typecheck`, Vitest 40/40 y build tras Fase 3).
+
+### Integración Mercado Palma
+
+El rumbo de control usa la cámara interpolada; apuntar reduce velocidad, distancia y FOV. El retroceso procede de disparos reales. Reset restaura arma/zoom. El avatar agrupa por articulación y acabado, conservando visibilidad independiente del cañón de carabina. Se mantienen los contratos de conducción.

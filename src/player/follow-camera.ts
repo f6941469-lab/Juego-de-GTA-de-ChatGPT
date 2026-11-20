@@ -20,17 +20,17 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, clearFractio
   let pitch = desiredPitch;
   let boom = 1;
 
-  function update(position: THREE.Vector3, dt: number, vehicle?: VehicleCamera) {
+  function update(position: THREE.Vector3, dt: number, vehicle?: VehicleCamera, aiming = false, recoil = 0) {
     const targetYaw = desiredYaw + (vehicle?.heading ?? 0);
     const turn = THREE.MathUtils.euclideanModulo(targetYaw - yaw + Math.PI, Math.PI * 2) - Math.PI;
     yaw += turn * (1 - Math.exp(-(vehicle ? 9 : 18) * dt));
     pitch = THREE.MathUtils.damp(pitch, desiredPitch, 18, dt);
     const sin = Math.sin(yaw);
     const cos = Math.cos(yaw);
-    const distance = vehicle ? 8.25 : CAMERA_DISTANCE;
+    const distance = vehicle ? 8.25 : aiming ? 3.1 : CAMERA_DISTANCE;
     const planar = Math.cos(pitch) * distance;
     const shoulder = vehicle ? 0 : 0.42;
-    offset.set(-sin * planar + cos * shoulder, Math.sin(pitch) * distance, cos * planar + sin * shoulder);
+    offset.set(-sin * planar + cos * shoulder, Math.sin(pitch - recoil) * distance, cos * planar + sin * shoulder);
     pivot.copy(position);
     pivot.y += vehicle ? 1.55 : 1.32;
 
@@ -43,12 +43,14 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, clearFractio
       pivot.z + sin * 0.29 * boom - cos * 0.2,
     );
     camera.lookAt(lookTarget);
+    const fov = THREE.MathUtils.damp(camera.fov, aiming && !vehicle ? 49 : 58, 12, dt);
+    if (Math.abs(camera.fov - fov) > 0.001) { camera.fov = fov; camera.updateProjectionMatrix(); }
     return boom * distance;
   }
 
   return {
     get yaw() {
-      return desiredYaw;
+      return yaw;
     },
 
     look(dx: number, dy: number) {
@@ -59,6 +61,8 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, clearFractio
     update,
 
     reset(position: THREE.Vector3, heading = 0, vehicle?: VehicleCamera) {
+      camera.fov = 58;
+      camera.updateProjectionMatrix();
       yaw = heading;
       desiredYaw = vehicle ? 0 : heading;
       pitch = desiredPitch = vehicle ? 0.34 : INITIAL_PITCH;

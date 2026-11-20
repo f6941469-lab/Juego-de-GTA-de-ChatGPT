@@ -66,3 +66,7 @@ verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 
 
 ## 2026-11-18 · `0.1.0` · Commit `2ee553f08532ebd18ea48597eb7c1db879bcf2ad`
 - **Resumen:** Base modular Vite + TypeScript + Three.js + Rapier + Vitest; primer distrito costero Costa Palmera, personaje cúbico en tercera persona, ciclo solar/cielo/agua, HUD/minimapa, persistencia IndexedDB de calidad gráfica y 3 suites iniciales (8 pruebas).
+
+## 2026-11-20 · Mercado Palma en main
+
+Décima tienda y nuevo punto inicial, economía con validación e inventario en teléfono, ratón con botones simultáneos, pausa por foco, aislamiento de paneles, cámara/zoom y avatar agrupado. Se conserva el motor de fases anteriores y se adapta la entrega work mediante merge semántico.

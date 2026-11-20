@@ -31,6 +31,8 @@ async function startGame() {
   let engine: ReturnType<typeof createSimulationEngine> | undefined
   let noticeText: string | null = null
   let noticeTimer = 0
+  let frameId = 0
+  let disposed = false
 
   const loop = new FixedLoop(gameConfig.fixedStep)
   const stats = new FrameStats()
@@ -56,6 +58,7 @@ async function startGame() {
     onPhoneCommand: (command) => {
       if (mode === 'playing') engine?.sendPhoneCommand(command)
     },
+    onBuy: (index) => { if (mode === 'playing') engine?.buyProduct(index) },
   })
   ui.setMode('loading')
 
@@ -87,6 +90,8 @@ async function startGame() {
   function play() {
     if (mode !== 'start' && mode !== 'paused') return
     mode = 'playing'
+    loop.reset()
+    lastTime = performance.now()
     ui.setMode(mode)
     input.setActive(true)
     input.capture()
@@ -171,7 +176,7 @@ async function startGame() {
         if (noticeTimer <= 0) noticeText = null
       }
       simulation.step(dt, input.read(), debug || inspectorDebug)
-      input.setPhoneOpen(simulation.phone.isOpen)
+      input.setPhoneOpen(simulation.overlayOpen)
     }
 
     function frame(now: number) {
@@ -186,7 +191,7 @@ async function startGame() {
         intro.position.set(-3.3 + Math.sin(elapsed * 0.16) * 0.65, 6.3, 41)
         intro.lookAt(introFocus)
       }
-      simulation.render(alpha, visualDt, elapsed)
+      simulation.render(alpha, mode === 'playing' ? visualDt : 0, elapsed)
 
       const position = simulation.focusPosition
       const heading = simulation.focusHeading
@@ -221,7 +226,7 @@ async function startGame() {
       const prompt = simulation.getInteractionPrompt()
       const activeCar = simulation.activeVehicle
       const phoneState = simulation.getPhoneSnapshot()
-      input.setPhoneOpen(phoneState.open)
+      input.setPhoneOpen(simulation.overlayOpen)
 
       ui.update({
         x, z, heading, hour, district: getDistrictAt(x, z),
@@ -240,6 +245,7 @@ async function startGame() {
         wanted: simulation.police.wanted.level,
         policeStatus: simulation.police.statusLabel,
         phone: phoneState,
+        trade: simulation.getTradeSnapshot(),
       })
 
       audioTimer -= visualDt
@@ -306,19 +312,33 @@ async function startGame() {
           }))
         }
       }
-      requestAnimationFrame(frame)
+      frameId = requestAnimationFrame(safeFrame)
     }
 
-    window.addEventListener('pagehide', () => {
+    function safeFrame(now: number) {
+      if (disposed) return
+      try { frame(now) } catch (error) {
+        mode = 'error'; input.setActive(false); audio.setPaused(true)
+        console.error('Viceblock detuvo la simulación', error)
+        ui.setMode(mode, 'La simulación se ha detenido. Recarga para reintentar.')
+      }
+    }
+
+    window.addEventListener('pagehide', (event) => {
+      if (event.persisted) { pause(); return }
+      if (disposed) return
+      disposed = true
+      cancelAnimationFrame(frameId)
       resizeObserver.disconnect()
       input.dispose()
       overlay.dispose()
       atmosphere.dispose()
       simulation.dispose()
+      player.dispose()
       district.dispose()
       physics.dispose()
       display.dispose()
-    }, { once: true })
+    })
 
     mode = 'start'
     lastTime = performance.now()

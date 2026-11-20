@@ -14,3 +14,7 @@ Viceblock 0.2.0 amplía Costa Palmera en una primera entrega integrada de las oc
 La instalación limpia, la compilación de producción y las 25 pruebas automatizadas pasaron. Las pruebas cubren la conducción, la salida segura y los impactos, el tráfico, la detección y pérdida de contacto, la descarga y recarga de sectores y la resolución adaptativa. La prueba de navegador usa Chromium con WebGL 2 y SwiftShader.
 
 Consulta el historial para ver el alcance de cada versión. [Historial](CHANGELOG.md) · [Limitaciones](KNOWN_ISSUES.md)
+
+## Integración Mercado Palma — 2026-11-20
+
+La entrega de work se integra sobre main conservando conducción, streaming, NPC, policía y distritos. La partida comienza frente a Mercado Palma, décima tienda, con compra validada e inventario utilizable en el teléfono. El estado y la evidencia actuales están en [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md); los resultados anteriores corresponden a sus respectivas fases.

@@ -115,7 +115,11 @@ describe('Phase 7 optimization, streaming, resolution budget, and E2E ecosystem'
       engine.sendPhoneCommand('select');
       expect(engine.getPhoneSnapshot().clips.length).toBeGreaterThanOrEqual(2);
 
-      // Walk from spawn (0, 25) toward Rayo GT (3.9, 22), board with E when prompt appears, and drive across Costa Palmera
+      engine.sendPhoneCommand('toggle');
+      expect(engine.phone.isOpen).toBe(false);
+      player.exitVehicle({ x: 0, y: 0, z: 25 }, 0);
+
+      // Walk from the boulevard (0, 25) toward Rayo GT (3.9, 22), board with E when prompt appears, and drive across Costa Palmera
       for (let i = 0; i < 90 && !engine.getInteractionPrompt().canInteract; i++) {
         engine.step(1 / 60, { ...baseControls, x: 1, z: 1, run: true });
       }

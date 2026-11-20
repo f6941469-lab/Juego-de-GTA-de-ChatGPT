@@ -22,3 +22,5 @@ verification_scope: "static-analysis-only"
 | `TASK-0008` | A* con min-heap y reservas parciales de cruces en tráfico | P2 | Propuesta | `VB-007` | `TASK-0006` | `navigation`, `traffic` | Cruce simultáneo de sentidos compatibles en verde; rutas `O((V+E) log V)` |
 | `TASK-0009` | Ampliar pruebas automatizadas (UI, entrada, audio, persistencia, E2E) | P3 | Propuesta | `VB-014` | `TASK-0001` | `tests`, `.github/workflows` | Tests unitarios de módulos faltantes + smoke test navegador en CI |
 | `TASK-0010` | Streaming físico Rapier y soporte multi-vehículo / NPCs | P4 | Propuesta | `ROADMAP` Et. 5–6 | `TASK-0006`, `TASK-0008` | `physics`, `world`, `vehicles`, `ai` | Carga/descarga de colisionadores estáticos por radio y múltiples coches conducibles |
+
+- Integración Mercado Palma: conservar un único motor; medir fluidez en GPU física y ampliar la cobertura gráfica de NPC/policía/replay. La verificación de software no acredita 60 FPS.

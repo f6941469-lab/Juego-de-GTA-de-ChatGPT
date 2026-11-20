@@ -42,6 +42,9 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   let grounded = false;
   let resolvedSpeed = 0;
   let ride: VehicleRide | undefined;
+  let aimingPose = false;
+  let equippedWeapon: 'unarmed' | 'pistol' | 'carbine' = 'unarmed';
+  let recoil = 0;
 
   // Wrap only differences so interpolation always follows the shortest arc.
   function turnDelta(from: number, to: number) {
@@ -59,6 +62,9 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     resolvedSpeed = verticalSpeed = groundTime = bufferedJump = 0;
     grounded = previousJump = false;
     avatar.reset();
+    aimingPose = false;
+    equippedWeapon = 'unarmed';
+    recoil = 0;
     follow.reset(position, direction);
     render(1, 0);
   }
@@ -86,7 +92,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     }
 
     const magnitude = Math.max(1, Math.hypot(input.x, input.z));
-    const speed = (input.run ? RUN_SPEED : WALK_SPEED) / magnitude;
+    const speed = (aimingPose ? 2.4 : input.run ? RUN_SPEED : WALK_SPEED) / magnitude;
     const sin = Math.sin(follow.yaw);
     const cos = Math.cos(follow.yaw);
     const targetX = (input.x * cos + input.z * sin) * speed;
@@ -95,8 +101,8 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     horizontalVelocity.x = THREE.MathUtils.damp(horizontalVelocity.x, targetX, acceleration, dt);
     horizontalVelocity.y = THREE.MathUtils.damp(horizontalVelocity.y, targetZ, acceleration, dt);
 
-    if (Math.hypot(targetX, targetZ) > 0.05) {
-      const targetHeading = Math.atan2(targetX, -targetZ);
+    if (aimingPose || Math.hypot(targetX, targetZ) > 0.05) {
+      const targetHeading = aimingPose ? follow.yaw : Math.atan2(targetX, -targetZ);
       heading += turnDelta(heading, targetHeading) * (1 - Math.exp(-16 * dt));
     }
 
@@ -135,10 +141,8 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     finishStep(dt);
   }
 
-  let aimingPose = false;
-  let equippedWeapon: 'unarmed' | 'pistol' | 'carbine' = 'unarmed';
-
   function render(alpha: number, dt: number) {
+    recoil = THREE.MathUtils.damp(recoil, 0, 17, dt);
     if (ride) {
       avatar.mesh.visible = false;
       follow.update(ride.position, dt, ride);
@@ -146,10 +150,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     }
     const blend = THREE.MathUtils.clamp(alpha, 0, 1);
     interpolated.lerpVectors(previousPosition, position, blend);
-    const cameraDistance = follow.update(interpolated, dt);
-    if (aimingPose && equippedWeapon !== 'unarmed') {
-      heading += turnDelta(heading, follow.yaw) * (1 - Math.exp(-20 * dt));
-    }
+    const cameraDistance = follow.update(interpolated, dt, undefined, aimingPose, recoil);
     avatar.mesh.position.copy(interpolated);
     avatar.mesh.rotation.y = -(previousHeading + turnDelta(previousHeading, heading) * blend);
     avatar.mesh.visible = cameraDistance > 0.75;
@@ -177,9 +178,10 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
       return grounded;
     },
     setAimPose(aiming: boolean, weapon: 'unarmed' | 'pistol' | 'carbine') {
-      aimingPose = aiming;
+      aimingPose = aiming && weapon !== 'unarmed';
       equippedWeapon = weapon;
     },
+    kick() { recoil = 0.13; },
     prepareStep,
     finishStep,
     step,

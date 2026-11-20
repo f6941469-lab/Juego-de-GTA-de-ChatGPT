@@ -74,3 +74,7 @@ Enrutador documental para recuperación selectiva (Nivel 1). Carga únicamente l
 
 
 
+
+## Integración Mercado Palma (2026-11-20)
+
+`CURRENT_STATE.md` y `HANDOFF.md` describen la integración de `work@5660edc` en main. Comercio/inventario: `src/simulation/economy.ts`, `src/simulation/engine.ts`, `src/simulation/phone.ts` y `src/ui/ui.ts`. `AUDIT.md` y `SIMULATION.md` son referencia histórica de la rama work; sus clases de prototipo no sustituyen al motor de main.

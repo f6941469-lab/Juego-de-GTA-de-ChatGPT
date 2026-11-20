@@ -1,5 +1,10 @@
 # Viceblock
 
+## Mercado Palma · integración en main
+
+La partida comienza frente a Mercado Palma, junto a Club Neón. Entra por la abertura central y acércate al mostrador: **E** abre la compra si estás desarmado. Dispones de $120; agua, comida y munición van a **Mochila** en el teléfono (**↑**). Flechas/Enter/Esc navegan los paneles. **2** equipa la pistola, **1** la guarda; botón derecho + izquierdo apunta y dispara, **R** recarga. La conducción, el resto de tiendas, los barrios y los sistemas de policía y tráfico de main se conservan.
+
+
 Viceblock es un juego 3D de exploración urbana para navegador. Recorre barrios costeros de arquitectura art déco a pie o en coche, observa el ciclo de día y noche, y prueba el desafío de búsqueda de cinco estrellas. Los modelos, materiales, distritos y sonidos se generan con código.
 
 ## Jugar

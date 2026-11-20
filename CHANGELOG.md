@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 2026-11-20 · Integración de Mercado Palma en main
+
+- Inicio frente al mercado y décima tienda integrada en la ciudad existente.
+- Compras con fondos/existencias/cajas independientes e inventario utilizable desde el teléfono.
+- Corrección de botones simultáneos del ratón, bloqueo de controles en paneles, pausa al perder foco, cámara/zoom/reinicio y agrupación del avatar.
+- Se conservan conducción, streaming, tráfico, policía y destructibles de main; se adaptan las pruebas al motor existente.
+
 ## 0.2.0 · Distritos conectados
 
 - Conducción con colisiones, marcha atrás, freno de mano, cámara y salida comprobada.

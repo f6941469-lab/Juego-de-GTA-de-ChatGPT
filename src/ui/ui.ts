@@ -6,6 +6,8 @@ import "./dialog.css";
 import { gameConfig, type Quality } from "../config/game";
 import type { PhoneCommand, PhoneSnapshot } from "../simulation/phone";
 import { createMinimap, type PlayerMapPosition } from "./minimap";
+import { products, type TradeSnapshot } from "../simulation/economy";
+import "./commerce.css";
 
 export type GameMode = "loading" | "start" | "playing" | "paused" | "error";
 type PanelMode = "settings" | "controls" | "paused";
@@ -18,6 +20,7 @@ export interface UIActions {
   onPause?(): void;
   onVolume?(volume: number, muted: boolean): void;
   onPhoneCommand?(command: PhoneCommand): void;
+  onBuy?(index: number): void;
 }
 
 interface HudState extends PlayerMapPosition {
@@ -37,6 +40,7 @@ interface HudState extends PlayerMapPosition {
   wanted?: number;
   policeStatus?: string;
   phone?: PhoneSnapshot;
+  trade?: TradeSnapshot | null;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {
@@ -81,6 +85,13 @@ export function createUI(actions: UIActions) {
   const cashDisplay = requiredElement("cash-display");
   const weaponDisplay = requiredElement("weapon-display");
   const aimReticle = requiredElement("aim-reticle");
+  const tradePanel = requiredElement("trade-panel");
+  let tradeSignature = "";
+  tradePanel.addEventListener("click", (event) => {
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-buy], [data-trade-close]");
+    if (target?.dataset.buy !== undefined) actions.onBuy?.(Number(target.dataset.buy));
+    else if (target?.hasAttribute("data-trade-close")) actions.onPhoneCommand?.("back");
+  });
   const speedDisplay = requiredElement("speed-display");
   const speedOutput = requiredElement<HTMLOutputElement>("speed-output");
   const prompt = requiredElement("interaction-prompt");
@@ -289,6 +300,25 @@ export function createUI(actions: UIActions) {
     }
 
     const phone = state.phone;
+    tradePanel.hidden = !state.trade;
+    if (state.trade) {
+      const trade = state.trade;
+      const signature = `${trade.name}|${trade.selection}|${trade.cash}|${Object.values(trade.stock)}`;
+      if (signature !== tradeSignature) {
+        tradeSignature = signature; tradePanel.replaceChildren();
+        const heading = document.createElement("h2"); heading.textContent = trade.name;
+        const balance = document.createElement("p"); balance.textContent = `Tu saldo: $${trade.cash} · Compras a la mochila del teléfono`;
+        tradePanel.append(heading, balance);
+        products.forEach((product, index) => {
+          const button = document.createElement("button"); button.type = "button"; button.dataset.buy = String(index);
+          button.dataset.selected = String(index === trade.selection);
+          button.textContent = `${product.name} · $${product.price} · ${trade.stock[product.id]} disponibles`;
+          tradePanel.appendChild(button);
+        });
+        const close = document.createElement("button"); close.type = "button"; close.dataset.tradeClose = ""; close.textContent = "Volver · Esc";
+        tradePanel.appendChild(close);
+      }
+    } else tradeSignature = "";
     phoneDevice.hidden = !phone || !phone.open;
     if (phone && phone.open) {
       if (phoneTime.textContent !== phone.timeText) phoneTime.textContent = phone.timeText;
@@ -299,7 +329,7 @@ export function createUI(actions: UIActions) {
 
       const clipSig = phone.clips.map((c) => `${c.id}:${c.views}`).join(",");
       const alertSig = phone.alerts.map((a) => `${a.id}:${a.message}`).join(",");
-      const nextSig = `${phone.screen}|${phone.selectedIndex}|${phone.recording ? 1 : 0}|${Math.floor(phone.recordingSeconds)}|${phone.detectedSubject}|${clipSig}|${alertSig}`;
+      const nextSig = `${phone.screen}|${phone.selectedIndex}|${phone.recording ? 1 : 0}|${Math.floor(phone.recordingSeconds)}|${phone.detectedSubject}|${clipSig}|${alertSig}|${Object.values(phone.inventory)}`;
       if (displayedPhoneSig !== nextSig) {
         displayedPhoneSig = nextSig;
         phoneScreen.replaceChildren();
@@ -311,6 +341,7 @@ export function createUI(actions: UIActions) {
             { cmd: "openFeed", label: `Social (${phone.clips.length})` },
             { cmd: "openEmergency", label: "Emerg. 911" },
             { cmd: "openAlerts", label: `Ciudad (${phone.alerts.length})` },
+            { cmd: "openBag", label: "Mochila" },
           ];
           apps.forEach((app, idx) => {
             const btn = document.createElement("button");
@@ -322,6 +353,17 @@ export function createUI(actions: UIActions) {
             grid.appendChild(btn);
           });
           phoneScreen.appendChild(grid);
+        } else if (phone.screen === "bag") {
+          products.forEach((product, index) => {
+            const button = document.createElement("button"); button.type = "button"; button.className = "phone-action-btn";
+            button.dataset.selected = String(phone.selectedIndex === index);
+            button.textContent = `${product.name} ×${phone.inventory[product.id]} · ${product.detail}`;
+            button.addEventListener("click", () => {
+              for (let step = 0; step < (index - phone.selectedIndex + products.length) % products.length; step++) actions.onPhoneCommand?.("down");
+              actions.onPhoneCommand?.("select");
+            });
+            phoneScreen.appendChild(button);
+          });
         } else if (phone.screen === "camera") {
           const card = document.createElement("div");
           card.className = "phone-card";
