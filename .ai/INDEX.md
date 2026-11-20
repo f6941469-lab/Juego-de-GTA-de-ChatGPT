@@ -2,8 +2,8 @@
 document_id: CORE-INDEX
 status: active
 last_updated: 2026-11-20
-verified_against: "3a830a4-dirty (Phase 6)"
-verification_scope: "typecheck + vitest (49/49) + vite build + Chromium WebGL 2 live test"
+verified_against: "173aa01-dirty (Phase 7)"
+verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 live test"
 ---
 
 # Índice Inteligente de Conocimiento (`.ai/INDEX.md`)
@@ -43,9 +43,9 @@ Enrutador documental para recuperación selectiva (Nivel 1). Carga únicamente l
 | Documento | Sistema | Archivos de código principales | Dependencias documentales |
 | :--- | :--- | :--- | :--- |
 | [CORE_AND_INPUT.md](systems/CORE_AND_INPUT.md) | Ciclo fijo, entrada (`WASD` + teléfono), config y persistencia | `src/core/*`, `src/config/game.ts`, `src/persistence/preferences.ts` | `EXECUTION_FLOW.md`, `UI_AND_DEBUG.md` |
-| [RENDERING.md](systems/RENDERING.md) | Render WebGL 2, resolución, cielo, sombras | `src/renderer/**`, `src/shaders/sky.ts` | `DATA_FLOW.md`, `WORLD_AND_STREAMING.md` |
+| [RENDERING.md](systems/RENDERING.md) | Render WebGL 2, resolución CPU-aware, cielo, sombras | `src/renderer/**`, `src/shaders/sky.ts` | `DATA_FLOW.md`, `WORLD_AND_STREAMING.md` |
 | [WORLD_AND_STREAMING.md](systems/WORLD_AND_STREAMING.md) | Costa Palmera, destructibles, tiendas y sectores | `src/world/**` | `PHYSICS_AND_COLLISIONS.md`, `RENDERING.md` |
-| [PHYSICS_AND_COLLISIONS.md](systems/PHYSICS_AND_COLLISIONS.md) | Rapier WASM, cajas estáticas, tráfico cinemático | `src/physics/*` | `EXECUTION_FLOW.md`, `PLAYER_AND_CAMERA.md`, `VEHICLES.md` |
+| [PHYSICS_AND_COLLISIONS.md](systems/PHYSICS_AND_COLLISIONS.md) | Rapier WASM, streaming físico `streamFocus`, tráfico cinemático | `src/physics/*` | `EXECUTION_FLOW.md`, `PLAYER_AND_CAMERA.md`, `VEHICLES.md` |
 | [PLAYER_AND_CAMERA.md](systems/PLAYER_AND_CAMERA.md) | Jugador a pie, armas/balística, avatar cúbico y cámara | `src/player/*`, `src/characters/avatar.ts` | `PHYSICS_AND_COLLISIONS.md`, `CORE_AND_INPUT.md` |
 | [VEHICLES.md](systems/VEHICLES.md) | Vehículo conducible (`Rayo GT`), daños y multi-vehículo | `src/vehicles/*` | `PHYSICS_AND_COLLISIONS.md`, `PLAYER_AND_CAMERA.md` |
 | [TRAFFIC_AND_NAVIGATION.md](systems/TRAFFIC_AND_NAVIGATION.md) | Grafo vial, Dijkstra, semáforos, tráfico y accidentes | `src/navigation/road-graph.ts`, `src/ai/traffic/*` | `WORLD_AND_STREAMING.md`, `PHYSICS_AND_COLLISIONS.md` |
@@ -61,15 +61,16 @@ Enrutador documental para recuperación selectiva (Nivel 1). Carga únicamente l
 
 | Tipo de tarea | Documentación a cargar (Nivel 2) |
 | :--- | :--- |
-| **Renderizado, shaders o FPS** | `systems/RENDERING.md`, `architecture/EXECUTION_FLOW.md`, `KNOWN_ISSUES.md` (`VB-006`, `VB-008`, `VB-011`) |
+| **Renderizado, shaders o FPS** | `systems/RENDERING.md`, `architecture/EXECUTION_FLOW.md`, `KNOWN_ISSUES.md` (`VB-006`, `VB-008`) |
 | **Movimiento a pie, armas o cámara** | `systems/PLAYER_AND_CAMERA.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/CORE_AND_INPUT.md`, `KNOWN_ISSUES.md` (`VB-006`) |
 | **Vehículos, daños o conducción** | `systems/VEHICLES.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/PLAYER_AND_CAMERA.md`, `KNOWN_ISSUES.md` (`VB-012`) |
-| **Generación de mundo, destructibles, asaltos o streaming** | `systems/WORLD_AND_STREAMING.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `DECISIONS.md` (`ADR-0011`), `KNOWN_ISSUES.md` (`VB-002`, `VB-003`, `VB-010`) |
+| **Generación de mundo, destructibles, asaltos o streaming** | `systems/WORLD_AND_STREAMING.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `DECISIONS.md` (`ADR-0011`, `ADR-0014`), `KNOWN_ISSUES.md` (`VB-010`) |
 | **Tráfico, accidentes o navegación vial** | `systems/TRAFFIC_AND_NAVIGATION.md`, `systems/WORLD_AND_STREAMING.md`, `KNOWN_ISSUES.md` (`VB-007`) |
-| **Policía, perímetros o búsqueda (Wanted)** | `systems/POLICE_AND_WANTED.md`, `systems/TRAFFIC_AND_NAVIGATION.md`, `systems/NPC_AND_PERCEPTION.md`, `DECISIONS.md` (`ADR-0013`), `KNOWN_ISSUES.md` (`VB-002`) |
+| **Policía, perímetros o búsqueda (Wanted)** | `systems/POLICE_AND_WANTED.md`, `systems/TRAFFIC_AND_NAVIGATION.md`, `systems/NPC_AND_PERCEPTION.md`, `DECISIONS.md` (`ADR-0013`), `KNOWN_ISSUES.md` |
 | **NPC, percepción, teléfono, testigos o navegación peatonal** | `systems/NPC_AND_PERCEPTION.md`, `systems/PHYSICS_AND_COLLISIONS.md`, `systems/WORLD_AND_STREAMING.md`, `DECISIONS.md` (`ADR-0007`, `ADR-0008`, `ADR-0010`, `ADR-0012`) |
 | **Audio procedural** | `systems/AUDIO.md`, `architecture/DATA_FLOW.md`, `KNOWN_ISSUES.md` (`VB-013`) |
 | **UI, HUD, teléfono, minimapa o controles** | `systems/UI_AND_DEBUG.md`, `systems/CORE_AND_INPUT.md`, `DECISIONS.md` (`ADR-0012`), `KNOWN_ISSUES.md` (`VB-013`, `VB-014`) |
-| **Optimización o refactor arquitectónico** | `architecture/OVERVIEW.md`, `architecture/EXECUTION_FLOW.md`, `audits/AUDIT-0001-v0.2.0.md`, `KNOWN_ISSUES.md` |
+| **Optimización o refactor arquitectónico** | `architecture/OVERVIEW.md`, `architecture/EXECUTION_FLOW.md`, `DECISIONS.md` (`ADR-0014`), `audits/AUDIT-0001-v0.2.0.md`, `KNOWN_ISSUES.md` |
+
 
 

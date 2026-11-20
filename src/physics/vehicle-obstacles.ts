@@ -11,16 +11,22 @@ export interface RoadVehiclePosition {
 export function createVehicleObstacles(physics: Physics) {
   const { world } = physics
   const bodies = new Map<string | number, RAPIER.RigidBody>()
+  const present = new Set<string | number>()
+  const position = { x: 0, y: 0.58, z: 0 }
+  const rotation = { x: 0, y: 0, z: 0, w: 1 }
 
   function update(vehicles: readonly RoadVehiclePosition[], focus: { x: number; z: number }) {
-    const present = new Set<string | number>()
+    present.clear()
     for (const vehicle of vehicles) {
       const id = vehicle.id
       let body = bodies.get(id)
       const limit = body ? 46 : 36
       if ((vehicle.x - focus.x) ** 2 + (vehicle.z - focus.z) ** 2 > limit ** 2) continue
-      const position = { x: vehicle.x, y: 0.58, z: vehicle.z }
-      const rotation = { x: 0, y: -Math.sin(vehicle.heading / 2), z: 0, w: Math.cos(vehicle.heading / 2) }
+      position.x = vehicle.x
+      position.y = 0.58
+      position.z = vehicle.z
+      rotation.y = -Math.sin(vehicle.heading / 2)
+      rotation.w = Math.cos(vehicle.heading / 2)
       present.add(id)
       if (!body) {
         body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased()

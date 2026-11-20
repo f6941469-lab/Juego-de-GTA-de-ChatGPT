@@ -8,7 +8,7 @@ import type { createInput } from '../core/input';
 import type { SystemTimings } from '../debug/inspector';
 import { buildPedestrianGraph } from '../navigation/pedestrian-graph';
 import type { Physics } from '../physics/physics';
-import { createVehicleObstacles } from '../physics/vehicle-obstacles';
+import { createVehicleObstacles, type RoadVehiclePosition } from '../physics/vehicle-obstacles';
 import type { createPlayer } from '../player/player';
 import { createWeaponSystem, type BallisticTarget } from '../player/weapons';
 import { createVehicleManager } from '../vehicles/vehicle-manager';
@@ -66,6 +66,7 @@ export function createSimulationEngine(
 
   const playerObstacle = { x: 0, z: 0, radius: 0.6 };
   const trafficObstacleScratch: { x: number; z: number; radius?: number }[] = [];
+  const roadObstaclesScratch: RoadVehiclePosition[] = [];
   const movingVehiclesScratch: MovingObstacle[] = [];
   const ballisticTargetScratch: BallisticTarget[] = [];
   const timings: SystemTimings = { physicsMs: 0, trafficMs: 0, policeMs: 0, eventsMs: 0 };
@@ -283,6 +284,7 @@ export function createSimulationEngine(
     physicalTraffic.reset();
     vehicles.reset(player);
     player.reset();
+    physics.streamFocus(player.position.x, player.position.z, true);
     weapons.reset();
     police.reset();
     stores.reset();
@@ -709,7 +711,11 @@ export function createSimulationEngine(
     previousWantedLevel = police.wanted.level;
 
     const physStart = measure ? performance.now() : 0;
-    physicalTraffic.update([...traffic.vehicles, ...police.units], position);
+    physics.streamFocus(position.x, position.z);
+    roadObstaclesScratch.length = 0;
+    for (const car of traffic.vehicles) roadObstaclesScratch.push(car);
+    for (const unit of police.units) roadObstaclesScratch.push(unit);
+    physicalTraffic.update(roadObstaclesScratch, position);
     if (activeCar) {
       vehicles.prepareStep(dt, controls);
     } else {

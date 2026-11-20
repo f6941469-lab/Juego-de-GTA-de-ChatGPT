@@ -67,15 +67,23 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     configuredScene = scene;
   }
 
+  let lastRenderCpuMs: number | undefined
+
   function render(scene: Scene, camera: PerspectiveCamera, now = performance.now(), adaptive = true): void {
-    if (budget.sample(now, adaptive)) applyResolution();
+    if (budget.sample(now, adaptive, lastRenderCpuMs)) applyResolution();
     if (configuredScene !== scene) configureScene(scene);
+    const start = performance.now();
     renderer.render(scene, camera);
+    lastRenderCpuMs = performance.now() - start;
   }
 
   setQuality(quality);
   return {
     renderer, setQuality, resize, render,
-    getFrameTiming() { return { frameMs: budget.average, renderScale: budget.scale, pixelRatio: renderer.getPixelRatio() }; },
+    getFrameTiming() { return { frameMs: budget.average, renderCpuMs: lastRenderCpuMs, renderScale: budget.scale, pixelRatio: renderer.getPixelRatio() }; },
+    dispose() {
+      reflection.dispose();
+      renderer.dispose();
+    },
   };
 }

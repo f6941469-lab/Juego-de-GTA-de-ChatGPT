@@ -33,6 +33,8 @@ interface InputActions {
 }
 
 export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
+  const listeners = new AbortController()
+  const { signal } = listeners
   const heldKeys = new Set<string>()
   const heldPointers = new Map<number, Control>()
   let active = false
@@ -76,7 +78,7 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     if (active && hadLock && !locked) actions.onPause()
     hadLock = locked
     if (!active && locked) document.exitPointerLock()
-  })
+  }, { signal })
 
   window.addEventListener('keydown', (event) => {
     if ((event.code === 'F3' || event.code === 'F4' || event.code === 'F5') && !event.ctrlKey && !event.altKey && !event.metaKey) {
@@ -145,21 +147,21 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     heldKeys.add(event.code)
     if (control === 'jump' && !event.repeat) jumpQueued = true
     if (control === 'fire' && !event.repeat) fireQueued = true
-  })
+  }, { signal })
 
-  window.addEventListener('keyup', (event) => heldKeys.delete(event.code))
-  window.addEventListener('blur', clear)
+  window.addEventListener('keyup', (event) => heldKeys.delete(event.code), { signal })
+  window.addEventListener('blur', clear, { signal })
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) clear()
-  })
+  }, { signal })
   document.addEventListener('mousemove', (event) => {
     if (active && document.pointerLockElement === canvas) {
       actions.onLook(event.movementX, event.movementY)
     }
-  })
+  }, { signal })
   canvas.addEventListener('contextmenu', (event) => {
     if (active) event.preventDefault()
-  })
+  }, { signal })
   canvas.addEventListener('pointerdown', (event) => {
     if (!active) return
     if (event.button === 2) {
@@ -178,11 +180,11 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       canvas.setPointerCapture(event.pointerId)
       if (event.pointerType === 'mouse') lockPointer()
     }
-  })
+  }, { signal })
   canvas.addEventListener('pointerup', (event) => {
     if (event.button === 2) mouseAim = false
     if (event.button === 0) mouseFire = false
-  })
+  }, { signal })
   canvas.addEventListener('pointermove', (event) => {
     if (!active || !drag || drag.pointerId !== event.pointerId) return
     if (document.pointerLockElement !== canvas) {
@@ -190,10 +192,10 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     }
     drag.x = event.clientX
     drag.y = event.clientY
-  })
+  }, { signal })
   canvas.addEventListener('lostpointercapture', (event) => {
     if (drag?.pointerId === event.pointerId) drag = null
-  })
+  }, { signal })
 
   for (const button of document.querySelectorAll<HTMLElement>('[data-move]')) {
     const control = button.dataset.move as Control
@@ -204,8 +206,8 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       heldPointers.set(event.pointerId, control)
       if (control === 'jump') jumpQueued = true
       if (control === 'fire') fireQueued = true
-    })
-    button.addEventListener('lostpointercapture', (event) => heldPointers.delete(event.pointerId))
+    }, { signal })
+    button.addEventListener('lostpointercapture', (event) => heldPointers.delete(event.pointerId), { signal })
   }
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-action]')) {
@@ -219,7 +221,7 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       } else if (act) {
         queuedActions.add(act as Action)
       }
-    })
+    }, { signal })
   }
 
   const isHeld = (control: Control) => {
@@ -266,6 +268,11 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       phoneCommand = undefined
       queuedActions.clear()
       return input
+    },
+    dispose() {
+      clear()
+      listeners.abort()
+      if (document.pointerLockElement === canvas) document.exitPointerLock()
     },
   }
 }

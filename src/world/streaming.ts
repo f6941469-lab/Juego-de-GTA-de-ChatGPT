@@ -39,6 +39,7 @@ export function createDistrictStreaming(scene: Scene, resources: DistrictResourc
   let lastZ = Infinity;
   let loaded = 0;
   let detailedCount = 0;
+  let pendingCount = 0;
 
   function register(x: number, z: number, feature: SectorFeature): void {
     const col = Math.floor(x / sectorSize);
@@ -52,10 +53,36 @@ export function createDistrictStreaming(scene: Scene, resources: DistrictResourc
     sector.draw.push(feature);
   }
 
-  function update(focus: WorldFocus): void {
-    if (Math.hypot(focus.x - lastX, focus.z - lastZ) < updateDistance) return;
-    lastX = focus.x;
-    lastZ = focus.z;
+  function rebuildSector(key: string, sector: Sector, detailed: boolean): void {
+    if (sector.instance) {
+      disposeInstances(sector.instance);
+      sector.instance = undefined;
+      sector.detailed = undefined;
+    }
+    const geometry = new DistrictGeometry(resources);
+    for (const feature of sector.draw) feature(geometry, detailed);
+    sector.instance = geometry.render();
+    sector.instance.name = `Sector ${key} · ${detailed ? 'detalle' : 'silueta'}`;
+    sector.detailed = detailed;
+    root.add(sector.instance);
+  }
+
+  function update(focus: WorldFocus, maxRebuilds = 1): void {
+    const initialLoad = !Number.isFinite(lastX) || !Number.isFinite(lastZ);
+    const movedEnough = initialLoad || Math.hypot(focus.x - lastX, focus.z - lastZ) >= updateDistance;
+    if (!movedEnough && pendingCount === 0) return;
+    if (movedEnough) {
+      lastX = focus.x;
+      lastZ = focus.z;
+    }
+
+    const budget = initialLoad ? Infinity : Math.max(1, maxRebuilds);
+    let dirtyClosestKey: string | undefined;
+    let dirtyClosestSector: Sector | undefined;
+    let dirtyClosestDetailed = false;
+    let dirtyClosestDist = Infinity;
+    let queued = 0;
+
     loaded = 0;
     detailedCount = 0;
 
@@ -63,36 +90,65 @@ export function createDistrictStreaming(scene: Scene, resources: DistrictResourc
       const distance = distanceToSector(sector, focus);
       const visible = distance <= loadRadius + (sector.instance ? transitionMargin : 0);
       const detailed = distance <= detailRadius + (sector.detailed ? transitionMargin : 0);
-      if (sector.instance && (!visible || sector.detailed !== detailed)) {
-        disposeInstances(sector.instance);
-        sector.instance = undefined;
-        sector.detailed = undefined;
+
+      if (!visible) {
+        if (sector.instance) {
+          disposeInstances(sector.instance);
+          sector.instance = undefined;
+          sector.detailed = undefined;
+        }
+        continue;
       }
-      if (!visible) continue;
-      if (!sector.instance) {
-        const geometry = new DistrictGeometry(resources);
-        for (const feature of sector.draw) feature(geometry, detailed);
-        sector.instance = geometry.render();
-        sector.instance.name = `Sector ${key} · ${detailed ? 'detalle' : 'silueta'}`;
-        sector.detailed = detailed;
-        root.add(sector.instance);
+
+      const needsRebuild = !sector.instance || sector.detailed !== detailed;
+      if (needsRebuild) {
+        if (budget === Infinity) {
+          rebuildSector(key, sector, detailed);
+        } else {
+          queued++;
+          if (distance < dirtyClosestDist) {
+            dirtyClosestDist = distance;
+            dirtyClosestKey = key;
+            dirtyClosestSector = sector;
+            dirtyClosestDetailed = detailed;
+          }
+        }
       }
-      loaded += 1;
-      if (detailed) detailedCount += 1;
+
+      if (sector.instance) {
+        loaded += 1;
+        if (sector.detailed) detailedCount += 1;
+      }
     }
+
+    if (budget !== Infinity && dirtyClosestKey && dirtyClosestSector) {
+      const wasLoaded = Boolean(dirtyClosestSector.instance);
+      const wasDetailed = Boolean(dirtyClosestSector.detailed);
+      rebuildSector(dirtyClosestKey, dirtyClosestSector, dirtyClosestDetailed);
+      if (!wasLoaded) loaded += 1;
+      if (dirtyClosestDetailed && !wasDetailed) detailedCount += 1;
+      else if (!dirtyClosestDetailed && wasDetailed) detailedCount = Math.max(0, detailedCount - 1);
+      queued = Math.max(0, queued - 1);
+    }
+
+    pendingCount = queued;
   }
 
   return {
     register,
     update,
-    stats: () => ({ loaded, detailed: detailedCount, total: sectors.size }),
+    flush(focus: WorldFocus) {
+      update(focus, Infinity);
+    },
+    stats: () => ({ loaded, detailed: detailedCount, total: sectors.size, pending: pendingCount }),
     dispose() {
       for (const sector of sectors.values()) {
         if (sector.instance) disposeInstances(sector.instance);
       }
       sectors.clear();
       root.removeFromParent();
-      loaded = detailedCount = 0;
+      loaded = detailedCount = pendingCount = 0;
+      lastX = lastZ = Infinity;
     },
   };
 }

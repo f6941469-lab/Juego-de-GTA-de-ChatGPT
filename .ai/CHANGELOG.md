@@ -2,19 +2,25 @@
 document_id: CORE-CHANGELOG
 status: active
 last_updated: 2026-11-20
-verified_against: "3a830a4-dirty (Phase 6)"
-verification_scope: "typecheck + vitest (49/49) + vite build + Chromium WebGL 2 live test"
+verified_against: "173aa01-dirty (Phase 7)"
+verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 live test"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
-## 2026-11-20 · Fase 6 — Policía avanzada, instanciación GPU, memoria descriptiva y cerco a pie (working tree sobre `3a830a4`)
+## 2026-11-20 · Fase 7 — Pulido, streaming físico Rapier, presupuesto sectorial y E2E (working tree sobre `173aa01`)
+- **Resumen:** Streaming espacial de colisionadores estáticos en `createPhysics` (`streamingRadius = 112 m`, histéresis `+16 m`, cierre de `VB-002`) reduciendo de `514` a `131` colisionadores activos; presupuesto `1 sector/frame` y `flush()` en `streaming.ts` (`VB-003`); reutilización zero-alloc en `vehicle-obstacles.ts`, `engine.ts` y `main.ts` (`VB-009`); heurística de resolución basada en `renderCpuMs` insensible a 30 Hz ociosos (`VB-011`); `dispose()` simétrico en `renderer.ts`, `atmosphere.ts` e `input.ts` (`AbortController`) más teardown `pagehide` (`VB-008`); y suite E2E `tests/optimization-and-streaming.test.ts` (`VB-014`).
+- **Sistemas afectados:** Física (`physics/{physics,vehicle-obstacles}.ts`), Mundo (`world/streaming.ts`), Render (`renderer/{renderer,resolution,lighting/atmosphere}.ts`), Entrada (`core/input.ts`), Simulación/Orquestador (`simulation/engine.ts`, `main.ts`) y pruebas (`tests/optimization-and-streaming.test.ts`).
+- **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`19` archivos, `53/53` verdes), `npm run build` (`65` módulos) y prueba viva en Chromium headless WebGL 2 (`131 colisionadores` activos, `194 llamadas`, `3.20 ms render CPU`, `1.00× píxeles`, `0` excepciones JS y `0` errores de consola).
+- **Riesgos pendientes:** Únicamente deuda menor P2/P3 (`VB-006`, `VB-007`, `VB-010`, `VB-012`, `VB-013`).
+
+## 2026-11-20 · Fase 6 — Policía avanzada, instanciación GPU, memoria descriptiva y cerco a pie · Commit `173aa01`
 - **Resumen:** Patrullas y agentes a pie GPU-instanciados en `createPoliceVisuals` (`4` `InstancedMesh` compartidos + `dispose()`, cierre de `VB-005`), integración de `traffic.vehicles` como obstáculos reales y doble sonda de chasis en `police.ts` (cierre de `VB-004`), memoria descriptiva `SuspectDescription`/`matchesSuspect` en `wanted.ts` (sigilo al cambiar de vehículo fuera de vista), perímetros tácticos, cerco en tienda (`storeSiege`) y oficiales a pie desplegados alrededor de `lastKnown` con estado táctico en HUD (`police.statusLabel`).
 - **Sistemas afectados:** Policía (`ai/police/{police-visuals,police,wanted}.ts`), Simulación/HUD (`simulation/engine.ts`, `main.ts`) y pruebas (`tests/police-investigation.test.ts`).
 - **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`18` archivos, `49/49` verdes), `npm run build` (`65` módulos) y prueba viva en Chromium headless WebGL 2 (`Shift+Digit3` -> `3 patrullas · Investigación`, `194 llamadas`, `0` excepciones JS y `0` errores de consola).
-- **Riesgos pendientes:** Optimización final (Fase 7): `VB-002` (streaming físico Rapier), `VB-003` (`streaming.ts`), `VB-009` (GC) y `VB-011` (`resolution.ts`).
+- **Riesgos pendientes:** Optimización final abordada a continuación en Fase 7.
 
 ## 2026-11-20 · Fases 4 y 5 — Entorno destructible, accidentes y teléfono móvil diegético · Commit `3a830a4`
 - **Resumen:** Sistema destructible GPU-instanciado (`createDestructibles`) para `18` vidrieras fracturables y mobiliario físico destructible, daño vehicular y accidentes con huida de conductores (`Fase 4`), más teléfono móvil diegético `createPhoneSystem` conectado a `WorldEventBus`, viralización urbana, 911, reacción NPC ante grabaciones y cierre de `VB-015` (`Fase 5`).

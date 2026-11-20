@@ -2,13 +2,13 @@
 document_id: ARCH-CODEBASE-MAP
 status: active
 last_updated: 2026-11-20
-verified_against: "3a830a4-dirty (Phase 6)"
-verification_scope: "typecheck-tests-build-phase6"
+verified_against: "173aa01-dirty (Phase 7)"
+verification_scope: "typecheck-tests-build-phase7"
 ---
 
 # Mapa del Código Fuente (`CODEBASE_MAP.md`)
 
-> Inventario de módulos y pruebas de Viceblock tras Fases 1–6.
+> Inventario de módulos y pruebas de Viceblock tras completar Fases 1–7.
 
 ## Raíz y configuración
 - `index.html`: Shell DOM de portada, HUD (`#cash-display`, `#weapon-display`, `#aim-reticle`, `#phone-device`), `<dialog>` de ajustes/pausa, controles táctiles (`#touch-phone`) y `#debug-panel`.
@@ -21,17 +21,17 @@ verification_scope: "typecheck-tests-build-phase6"
 
 | Directorio / Archivo | Símbolos principales | Responsabilidad |
 | :--- | :--- | :--- |
-| `src/main.ts` | `startGame`, `step`, `frame`, `play`, `pause` | Arranque, bucle rAF, HUD/teléfono/estado policial/UI, audio y debug F3/F4/F5 |
+| `src/main.ts` | `startGame`, `step`, `frame`, `play`, `pause` | Arranque con `streamingRadius = 112`, bucle zero-alloc, HUD/teléfono/policía, F3/F4/F5 y `pagehide` dispose |
 | `src/config/game.ts` | `Quality`, `gameConfig` | Semilla (`240817`), hora (`17.25`), `fixedStep` (`1/60`) |
 | `src/core/fixed-loop.ts` | `FixedLoop` | Acumulador de paso fijo e interpolación `alpha` |
 | `src/core/events.ts` | `WorldEventBus`, `WorldEvent`, `WorldEventType` | Bus de eventos espacial/temporal acotado (no omnisciente) |
-| `src/core/input.ts` | `createInput` | Teclado (`WASD`, `1-3`, `Q`, `R`, `F`, `G`, `↑/M` teléfono), ratón, arrastre, táctil y F3/F4/F5 (`VB-015` resuelto) |
+| `src/core/input.ts` | `createInput` | Teclado (`WASD`, `1-3`, `Q`, `R`, `F`, `G`, `↑/M` teléfono), ratón, arrastre, táctil, F3/F4/F5 y `dispose()` (`AbortController`) |
 | `src/simulation/entities.ts` | `EntityRegistry`, `WorldEntity`, `computeSimulationTier` | Registro espacial de entidades y tiers `high`/`medium`/`low` |
 | `src/simulation/phone.ts` | `createPhoneSystem`, `PhoneCommand`, `PhoneSnapshot` | Teléfono diegético: cámara/directo, feed viral, emergencias 911 y alertas urbanas |
-| `src/simulation/engine.ts` | `createSimulationEngine` | Orquestador de simulación (física única, armas/balística, destructibles, accidentes, teléfono, vehículos, tráfico, NPCs, asaltos, policía) |
-| `src/physics/physics.ts` | `createPhysics`, `createCharacterCollider`, `createCameraClearance`, `createExitClearance` | Mundo Rapier WASM, `step(dt)` centralizado y consultas |
+| `src/simulation/engine.ts` | `createSimulationEngine` | Orquestador de simulación (física única + `streamFocus`, armas, destructibles, accidentes, teléfono, vehículos, tráfico, NPCs, asaltos, policía) |
+| `src/physics/physics.ts` | `createPhysics`, `createCharacterCollider`, `createCameraClearance`, `createExitClearance` | Mundo Rapier WASM, streaming físico `streamFocus` (`VB-002`) y `step(dt)` centralizado |
 | `src/physics/spatial-index.ts` | `SpatialBoxGrid` | Índice espacial `32m` y raycast DDA `O(celdas)` sobre `StaticBox` |
-| `src/physics/vehicle-obstacles.ts` | `createVehicleObstacles` | Cuerpos cinemáticos en Rapier para tráfico/patrullas |
+| `src/physics/vehicle-obstacles.ts` | `createVehicleObstacles` | Cuerpos cinemáticos en Rapier para tráfico/patrullas sin asignaciones por tick (`VB-009`) |
 | `src/player/player.ts` | `createPlayer`, `MovementInput` | Locomoción a pie (`prepareStep`/`finishStep`), apuntado y transición vehicular |
 | `src/player/weapons.ts` | `createWeaponSystem`, `weaponSpecs` | Armas, munición, recarga, raycast contra `SpatialBoxGrid`/objetivos/props y trazadores `InstancedMesh` |
 | `src/player/follow-camera.ts` | `createFollowCamera` | Cámara en tercera persona con *spring arm* |
@@ -55,16 +55,16 @@ verification_scope: "typecheck-tests-build-phase6"
 | `src/world/district.ts` | `buildDistrict` | Ensamblado multi-distrito, puentes, manzanas, parques y tiendas |
 | `src/world/stores.ts` | `createStores`, `getStoreInteriorLayout`, `StoreMapMarker` | Balizas, interiores (`StoreInteriorLayout`) y asaltos progresivos (`beginHeist`/`stepHeist`) |
 | `src/world/destructibles.ts` | `createDestructibles`, `DestructibleProp`, `DestructibleKind` | Vidrieras fracturables, mobiliario físico destructible y escombros/chorros/humo (`InstancedMesh`) |
-| `src/world/streaming.ts` | `createDistrictStreaming` | Sectores `64×64 m` con histéresis visual y 2 LODs |
+| `src/world/streaming.ts` | `createDistrictStreaming` | Sectores `64×64 m`, 2 LODs, presupuesto `1 sector/frame` y `flush()` (`VB-003`) |
 | `src/world/generation/layout.ts` | `districtBounds`, `districtZones`, `bridges`, `storeSpecs`, `getDistrictAt`, `makeRandom`, `roadRectangles` | Trazado multi-isla, puentes, tiendas y PRNG determinista |
 | `src/world/generation/geometry.ts` | `DistrictGeometry`, `DistrictResources`, `disposeInstances` | Batching `InstancedMesh` y textura grano XZ |
 | `src/world/generation/buildings.ts` | `addBuilding`, `buildingCollider`, `buildingColliders` | Fachadas art déco/torre/porche y plantas bajas enterables con huecos de escaparate |
 | `src/world/generation/streets.ts` | `addStreets`, `addLamppost`, `addBench` | Vías por isla, puentes, aceras, cebras, bordillos y mobiliario |
 | `src/world/generation/coast.ts` | `addCoast` | Playa, paseo marítimo y shader de bahía/océano |
 | `src/world/generation/vegetation.ts` | `addPalm`, `addPlanter` | Palmeras curvas y jardineras |
-| `src/renderer/renderer.ts` | `createRenderer` | `WebGLRenderer`, perfiles `low`–`ultra` y sombras |
-| `src/renderer/resolution.ts` | `createFrameBudget` | Escala dinámica `1.0 → 0.64` |
-| `src/renderer/lighting/atmosphere.ts` | `createAtmosphere` | Ciclo solar/lunar, *texel snapping*, niebla y domo |
+| `src/renderer/renderer.ts` | `createRenderer` | `WebGLRenderer`, perfiles `low`–`ultra`, medición `renderCpuMs` y `dispose()` |
+| `src/renderer/resolution.ts` | `createFrameBudget` | Escala dinámica `1.0 → 0.64` insensible a 30 Hz ociosos (`VB-011`) |
+| `src/renderer/lighting/atmosphere.ts` | `createAtmosphere` | Ciclo solar/lunar, *texel snapping*, niebla, domo y `dispose()` |
 | `src/renderer/lighting/reflection.ts` | `createSkyReflection` | `DataTexture` IBL `128×64` |
 | `src/renderer/postprocessing/contact-shadows.ts` | `createContactShadows` | Hasta 14 sombras de contacto instanciadas |
 | `src/shaders/sky.ts` | `skyVertexShader`, `skyFragmentShader` | Cielo, nubes FBM, estrellas, sol y luna |
@@ -76,6 +76,7 @@ verification_scope: "typecheck-tests-build-phase6"
 | `src/ui/*.css` | — | Estilos de menú, HUD/táctil/teléfono y diálogos |
 | `src/debug/stats.ts` / `overlay.ts` / `inspector.ts` | `FrameStats`, `createDebugOverlay`, `formatSimulationInspector` | Métricas F3, wireframe+navegación+FOV F4 e inspector F5 |
 
-## `tests/` (18 archivos, 49 pruebas)
-`district.test.ts` (3), `stores.test.ts` (1), `events-and-entities.test.ts` (4), `perception-and-npc.test.ts` (2), `pedestrian-navigation.test.ts` (2), `urban-life.test.ts` (2), `combat-and-heists.test.ts` (3), `destructibles-and-accidents.test.ts` (3), `phone-system.test.ts` (2), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `police-investigation.test.ts` (4), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).
+## `tests/` (19 archivos, 53 pruebas)
+`district.test.ts` (3), `stores.test.ts` (1), `events-and-entities.test.ts` (4), `perception-and-npc.test.ts` (2), `pedestrian-navigation.test.ts` (2), `urban-life.test.ts` (2), `combat-and-heists.test.ts` (3), `destructibles-and-accidents.test.ts` (3), `phone-system.test.ts` (2), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `police-investigation.test.ts` (4), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2), `optimization-and-streaming.test.ts` (4).
+
 

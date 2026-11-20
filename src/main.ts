@@ -112,7 +112,9 @@ async function startGame() {
     const district = buildDistrict(scene, gameConfig.seed)
     const atmosphere = createAtmosphere(scene, gameConfig.initialHour)
     const [physics, quality, audioPreference] = await Promise.all([
-      createPhysics(district.colliders), loadQuality(), loadAudioPreference(),
+      createPhysics(district.colliders, { streamingRadius: 112, initialFocus: district.spawn }),
+      loadQuality(),
+      loadAudioPreference(),
     ])
     player = createPlayer(scene, camera, physics, district.spawn)
     const simulation = createSimulationEngine(
@@ -151,11 +153,14 @@ async function startGame() {
       camera.updateProjectionMatrix()
       intro.updateProjectionMatrix()
     }
-    new ResizeObserver(resize).observe(canvas)
+    const resizeObserver = new ResizeObserver(resize)
+    resizeObserver.observe(canvas)
     resize()
 
     const introFocus = new Vector3(-12, 7.2, -32)
     const focusVector = new Vector3()
+    const shadowSources: ContactShadowSource[] = []
+    const combinedRoutesScratch: (typeof simulation.traffic.routes)[number][] = []
     let audioTimer = 0
     let overlayTimer = 0
     let inspectorTimer = 0
@@ -192,19 +197,24 @@ async function startGame() {
       atmosphere.update(hour, focus, elapsed)
       district.update(elapsed, hour, focus)
 
-      const shadowSources: ContactShadowSource[] = []
+      shadowSources.length = 0
+      if (!simulation.driving) shadowSources.push({ x: player.position.x, y: player.position.y, z: player.position.z, radiusX: 0.65, radiusZ: 0.55 })
       for (const entry of simulation.vehicles.all) {
         const carPos = entry.car.position
         if ((carPos.x - focus.x) ** 2 + (carPos.z - focus.z) ** 2 < 55 ** 2) {
-          shadowSources.push({ ...carPos, radiusX: 1.32, radiusZ: 2.45, heading: entry.car.heading })
+          shadowSources.push({ x: carPos.x, y: carPos.y, z: carPos.z, radiusX: 1.32, radiusZ: 2.45, heading: entry.car.heading })
         }
       }
-      for (const unit of [...simulation.traffic.vehicles, ...simulation.police.units]) {
+      for (const unit of simulation.traffic.vehicles) {
         if ((unit.x - focus.x) ** 2 + (unit.z - focus.z) ** 2 < 42 ** 2) {
           shadowSources.push({ x: unit.x, y: 0, z: unit.z, radiusX: 1.15, radiusZ: 2.1, heading: unit.heading })
         }
       }
-      if (!simulation.driving) shadowSources.unshift({ ...player.position, radiusX: 0.65, radiusZ: 0.55 })
+      for (const unit of simulation.police.units) {
+        if ((unit.x - focus.x) ** 2 + (unit.z - focus.z) ** 2 < 42 ** 2) {
+          shadowSources.push({ x: unit.x, y: 0, z: unit.z, radiusX: 1.15, radiusZ: 2.1, heading: unit.heading })
+        }
+      }
       shadows.update(shadowSources, hour)
 
       const { x, y, z } = position
@@ -252,9 +262,12 @@ async function startGame() {
       overlayTimer -= visualDt
       if (geometryDebug && overlayTimer <= 0) {
         overlayTimer = 0.25
+        combinedRoutesScratch.length = 0
+        for (const r of simulation.traffic.routes) combinedRoutesScratch.push(r)
+        for (const r of simulation.police.routes) combinedRoutesScratch.push(r)
         overlay.update(
           district.colliders,
-          [...simulation.traffic.routes, ...simulation.police.routes],
+          combinedRoutesScratch,
           position,
           simulation.pedestrianGraph,
           simulation.npcPopulation.getDebugCones(position),
@@ -264,7 +277,7 @@ async function startGame() {
       const renderStart = debug ? performance.now() : 0
       display.render(scene, startView ? intro : camera, now, mode === 'playing')
       if (debug) {
-        const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, district.colliders.length, simulation.entities.size)
+        const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics.activeStaticColliders, simulation.entities.size)
         const timing = display.getFrameTiming()
         const sectors = district.stats()
         if (reading) ui.setDebug([
@@ -295,6 +308,17 @@ async function startGame() {
       }
       requestAnimationFrame(frame)
     }
+
+    window.addEventListener('pagehide', () => {
+      resizeObserver.disconnect()
+      input.dispose()
+      overlay.dispose()
+      atmosphere.dispose()
+      simulation.dispose()
+      district.dispose()
+      physics.dispose()
+      display.dispose()
+    }, { once: true })
 
     mode = 'start'
     lastTime = performance.now()

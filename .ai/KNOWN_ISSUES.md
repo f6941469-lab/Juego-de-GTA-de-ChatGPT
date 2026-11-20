@@ -25,25 +25,25 @@ verification_scope: "static-analysis-only"
 
 ### `VB-002` — Colisionadores estáticos residentes y `clearLine` lineal `O(N)`
 - **Prioridad:** P1 — Alto
-- **Estado:** Parcialmente mitigado (`clearLine` `O(celdas)` implementado; streaming físico pendiente)
+- **Estado:** Resuelto (en Fase 7 sobre `173aa01`)
 - **Sistema afectado:** Mundo / Física / Policía / Percepción
-- **Archivo o símbolo:** `src/physics/spatial-index.ts` (`SpatialBoxGrid`), `src/physics/physics.ts` (`physics.spatial`), `src/ai/police/police.ts` (`clearLine`), `src/world/district.ts` (`colliders`)
-- **Descripción:** Las consultas `clearLine()` y `raycast()` ahora utilizan `SpatialBoxGrid` (`32×32 m`) en tiempo `O(celdas)` tanto en policía como en `PerceptionSystem`. No obstante, Rapier sigue cargando todas las cajas estáticas del distrito en memoria al inicio sin streaming físico activo/inactivo.
-- **Evidencia:** `SpatialBoxGrid` integrado en `createPhysics` y `createPolice`; falta carga/descarga de colliders Rapier por ventana activa.
-- **Impacto:** El cuello de CPU por raycast/LOS queda mitigado; queda pendiente el control de memoria física al multiplicar la escala del mapa.
-- **Solución propuesta:** Añadir streaming físico de colliders estáticos sobre Rapier en fases de optimización territorial (`ADR-0006`).
-- **Referencias:** `TASK-0006`, `ADR-0006`.
+- **Archivo o símbolo:** `src/physics/spatial-index.ts` (`SpatialBoxGrid`), `src/physics/physics.ts` (`createPhysics`, `streamFocus`), `src/simulation/engine.ts`, `src/main.ts`
+- **Descripción:** `clearLine()` y `raycast()` usan `SpatialBoxGrid` (`O(celdas)`) sobre todo el distrito, y `createPhysics(..., { streamingRadius: 112 })` monta/desmonta dinámicamente los colisionadores estáticos en Rapier alrededor del foco (`+16 m` histéresis).
+- **Evidencia:** `tests/optimization-and-streaming.test.ts` verifica montaje/descarga física con LOS completo preservado; prueba viva Chromium registra `131 colisionadores` activos frente a `514` totales.
+- **Impacto:** Reduce ~74.5 % los colisionadores vivos en Rapier sin afectar balística ni visión policial lejana.
+- **Solución propuesta:** Implementado (`ADR-0006`, `ADR-0014`).
+- **Referencias:** `TASK-0006`, `ADR-0006`, `ADR-0014`.
 
 ### `VB-003` — Reconstrucción síncrona de sectores en el hilo principal
 - **Prioridad:** P1 — Alto
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Resuelto (en Fase 7 sobre `173aa01`)
 - **Sistema afectado:** Mundo / Streaming / Renderizado
-- **Archivo o símbolo:** `src/world/streaming.ts` (`update`), `src/world/generation/vegetation.ts` (`addPalm`)
-- **Descripción:** Al avanzar `≥ 5 m`, `streaming.update()` reconstruye síncronamente todos los sectores que entran o cambian de LOD en un solo frame, generando objetos `Vector3`/`Euler`/`Quaternion` temporales y nuevos `InstancedMesh`.
-- **Evidencia:** Bucle directo sobre `sectors` con `geometry.render()` dentro de `frame()`.
-- **Impacto:** Riesgo de microcortes (*stuttering*) al conducir rápido por zonas densas.
-- **Solución propuesta:** Limitar a 1 reconstrucción de sector por frame (cola por distancia), reutilizar vectores temporales y evaluar Web Workers a futuro.
-- **Referencias:** `TASK-0005`.
+- **Archivo o símbolo:** `src/world/streaming.ts` (`createDistrictStreaming`, `update`, `flush`, `stats`)
+- **Descripción:** Tras la carga inicial, `streaming.update()` aplica un presupuesto `maxRebuilds = 1` sector por fotograma priorizando el sector más cercano al foco y drenando la cola `pending` progresivamente sin bloquear el hilo principal.
+- **Evidencia:** `tests/optimization-and-streaming.test.ts` verifica reducción incremental de `pending` frame a frame sin re-saltar `>= 5 m`.
+- **Impacto:** Elimina picos de reconstrucción síncrona múltiple al conducir rápido entre distritos.
+- **Solución propuesta:** Implementado (`ADR-0014`).
+- **Referencias:** `TASK-0005`, `ADR-0014`.
 
 ### `VB-004` — Patrullas policiales ignoran tráfico civil y frenan con margen menor al vehículo
 - **Prioridad:** P1 — Alto
@@ -91,25 +91,25 @@ verification_scope: "static-analysis-only"
 
 ### `VB-008` — Geometrías globales sin liberar y falta de `dispose()` en subsistemas
 - **Prioridad:** P2 — Medio
-- **Estado:** Parcialmente mitigado (`overlay.ts` y `police.ts`/`police-visuals.ts` ya implementan `dispose()`)
+- **Estado:** Parcialmente mitigado (`overlay.ts`, `police.ts`, `renderer.ts`, `atmosphere.ts` e `input.ts` implementan `dispose()` + `pagehide`)
 - **Sistema afectado:** Mundo / Renderizado / Entrada / Debug
-- **Archivo o símbolo:** `streets.ts` (`pole`), `vegetation.ts` (`trunk`, `crown`, `leaf`), `renderer.ts`, `atmosphere.ts`, `input.ts`, `overlay.ts` (`dispose`), `police.ts` (`dispose`)
-- **Descripción:** Geometrías top-level de `streets.ts`/`vegetation.ts` nunca liberadas en `district.dispose()`; `renderer.ts`, `atmosphere.ts` e `input.ts` aún carecen de `dispose()` simétrico (`police.ts`, `police-visuals.ts` y `overlay.ts` ya lo implementan).
-- **Evidencia:** `police.dispose()` libera `shells`/`wheels`/`lights`/`officers` y geometrías en `SimulationEngine.dispose()`.
-- **Impacto:** Impide desmontar/reiniciar la escena sin fugas de memoria o listeners duplicados en módulos restantes.
-- **Solución propuesta:** Integrar geometrías en `DistrictResources` y añadir `dispose()` simétrico en `renderer`/`atmosphere`/`input`.
-- **Referencias:** `TASK-0003`.
+- **Archivo o símbolo:** `streets.ts` (`pole`), `vegetation.ts` (`trunk`, `crown`, `leaf`), `renderer.ts`, `atmosphere.ts`, `input.ts`, `overlay.ts`, `police.ts`, `main.ts`
+- **Descripción:** Las fábricas de subsistemas clave (`renderer`, `atmosphere`, `input`, `overlay`, `police`, `district`, `simulation`, `physics`) ya implementan `dispose()` y se liberan en `pagehide`. Solo quedan geometrías estáticas top-level compartidas en `streets.ts`/`vegetation.ts`.
+- **Evidencia:** Métodos `dispose()` en `src/renderer/renderer.ts`, `src/renderer/lighting/atmosphere.ts`, `src/core/input.ts` y cierre `pagehide` en `src/main.ts`.
+- **Impacto:** Desmontaje seguro sin fugas de listeners ni recursos principales WebGL/WASM en ciclo de vida estándar.
+- **Solución propuesta:** Integrar las geometrías top-level restantes en `DistrictResources` cuando proceda.
+- **Referencias:** `TASK-0003`, `ADR-0014`.
 
 ### `VB-009` — Asignaciones de arrays/sets temporales por tick (`60 Hz`) y frame
 - **Prioridad:** P2 — Medio
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Resuelto (en Fase 7 sobre `173aa01`)
 - **Sistema afectado:** Orquestador / Física / Render
-- **Archivo o símbolo:** `src/main.ts` (`step`, `frame`), `src/physics/vehicle-obstacles.ts` (`update`)
-- **Descripción:** Uso de spread (`[...]`), `.filter()`, `.map()` y `new Set()` en cada iteración de simulación y render.
-- **Evidencia:** Líneas de `step()` y `frame()` en `main.ts` y `update()` en `vehicle-obstacles.ts`.
-- **Impacto:** Presión innecesaria sobre el GC al escalar entidades.
-- **Solución propuesta:** Reutilizar colecciones preasignadas.
-- **Referencias:** `TASK-0005`.
+- **Archivo o símbolo:** `src/physics/vehicle-obstacles.ts` (`update`), `src/simulation/engine.ts` (`roadObstaclesScratch`), `src/main.ts` (`shadowSources`, `combinedRoutesScratch`)
+- **Descripción:** Preasignados `present`, `position`, `rotation` en `vehicle-obstacles.ts`, `roadObstaclesScratch` en `engine.ts` y `shadowSources`/`combinedRoutesScratch` en `main.ts`, eliminando spreads `[...]` y `new Set()` por tick/frame.
+- **Evidencia:** Lectura directa de `vehicle-obstacles.ts`, `engine.ts` y `main.ts`; `phys=0.20ms` y `0` errores en Chromium.
+- **Impacto:** Reduce presión sobre el recolector de basura a `60 Hz`.
+- **Solución propuesta:** Implementado (`ADR-0014`).
+- **Referencias:** `TASK-0005`, `ADR-0014`.
 
 ### `VB-010` — Mobiliario costero/parques sin colisionadores y spawns rígidos
 - **Prioridad:** P2 — Medio
@@ -124,14 +124,14 @@ verification_scope: "static-analysis-only"
 
 ### `VB-011` — Resolución adaptativa basada en intervalo `rAF` en vez de carga real
 - **Prioridad:** P2 — Medio
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Resuelto (en Fase 7 sobre `173aa01`)
 - **Sistema afectado:** Renderizado
 - **Archivo o símbolo:** `src/renderer/renderer.ts` (`render`), `src/renderer/resolution.ts` (`createFrameBudget`)
-- **Descripción:** Mide `now - last` entre callbacks `rAF`; pantallas a `30 Hz` (`33.3 ms > 24 ms`) disparan degradación de resolución aunque la GPU esté libre.
-- **Evidencia:** `budget.sample(now, adaptive)` en `renderer.ts`.
-- **Impacto:** Pérdida de nitidez falsa en modos ahorro de batería o monitores 30 Hz.
-- **Solución propuesta:** Ponderar tiempo CPU de `render()` / detección de refresco o `EXT_disjoint_timer_query_webgl2` cuando exista.
-- **Referencias:** `TASK-0005`.
+- **Descripción:** `createRenderer` mide `renderCpuMs` en `renderer.render(...)` y lo pasa a `createFrameBudget.sample(now, adaptive, renderCpuMs)`. Si `cpuAverage < 6.5 ms` en una pantalla a `30 Hz` (`~33 ms`), mantiene escala `1.0` sin degradación falsa; solo baja escala bajo sobrecarga real.
+- **Evidencia:** `tests/optimization-and-streaming.test.ts` verifica escala `1.0` sostenida a `33 ms` con `2.5 ms` CPU frente a escalado descendente con `15 ms` CPU.
+- **Impacto:** Nitidez completa en monitores `30 Hz` / modo ahorro sin perder adaptación real ante GPU pesada.
+- **Solución propuesta:** Implementado (`ADR-0014`).
+- **Referencias:** `TASK-0005`, `ADR-0014`.
 
 ### `VB-012` — Radio de obstáculo reducido al conducir y dependencia implícita de orden `render()`
 - **Prioridad:** P2 — Medio
@@ -157,13 +157,13 @@ verification_scope: "static-analysis-only"
 
 ### `VB-014` — Brecha de pruebas en UI, audio, entrada, persistencia, render y aviso dev `picomatch`
 - **Prioridad:** P3 — Bajo
-- **Estado:** Parcialmente mitigado (35 tests actuales; pendiente cobertura DOM/WebGL/Audio)
+- **Estado:** Parcialmente mitigado (`53` pruebas en `19` archivos + smoke/E2E Chromium WebGL 2)
 - **Sistema afectado:** Calidad / DevOps
 - **Archivo o símbolo:** `tests/*.test.ts`, `package-lock.json` (`picomatch@4.0.7`)
-- **Descripción:** 35 pruebas cubren simulación, eventos, entidades, percepción, cerebro NPC, navegación vial/peatonal y mundo; `ui`, `minimap`, `input`, `preferences`, `audio`, `renderer`, `atmosphere`, `contact-shadows`, `avatar` y `main` carecen de pruebas unitarias DOM/WebGL. `picomatch@4.0.7` (dev) tiene aviso `GHSA-fc5q-39xc-vjpf`.
-- **Evidencia:** Inventario `tests/*.test.ts` (13 archivos, 35 tests) y `KNOWN_ISSUES.md` raíz.
-- **Impacto:** Riesgo de regresiones silenciosas en interfaz, entrada y audio.
-- **Solución propuesta:** Añadir pruebas de integración/DOM y verificación E2E en CI; vigilar actualización upstream de herramientas dev.
+- **Descripción:** La suite ha crecido de 27 a 53 pruebas cubriendo simulación, eventos, entidades, percepción, cerebro NPC, navegación, asaltos, destructibles, teléfono, policía investigativa, streaming físico/visual, heurística 30 Hz y flujo E2E; siguen sin pruebas unitarias DOM/WebAudio aisladas `minimap`, `preferences` y `audio`. `picomatch@4.0.7` (dev) conserva el aviso `GHSA-fc5q-39xc-vjpf`.
+- **Evidencia:** Inventario `tests/*.test.ts` (`19` archivos, `53` pruebas verdes).
+- **Impacto:** Bajo riesgo de regresión en simulación central; queda cobertura unitaria menor en audio/DOM aislados.
+- **Solución propuesta:** Añadir tests unitarios específicos para `preferences`/`minimap`/`audio` si se modifican y vigilar actualización dev.
 - **Referencias:** `TASK-0001`, `TASK-0009`.
 
 ### `VB-015` — Conflicto de tecla `ArrowUp` entre movimiento y teléfono móvil

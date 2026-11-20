@@ -18,16 +18,78 @@ export interface Point3 {
 
 let rapierReady: Promise<void> | undefined;
 
-export async function createPhysics(boxes: readonly StaticBox[]) {
+export interface PhysicsOptions {
+  streamingRadius?: number;
+  initialFocus?: { x: number; z: number };
+}
+
+function boxDistance2D(box: StaticBox, x: number, z: number): number {
+  const dx = Math.max(0, box.x - box.halfX - x, x - (box.x + box.halfX));
+  const dz = Math.max(0, box.z - box.halfZ - z, z - (box.z + box.halfZ));
+  return Math.hypot(dx, dz);
+}
+
+export async function createPhysics(boxes: readonly StaticBox[], options?: PhysicsOptions) {
   rapierReady ??= RAPIER.init();
   await rapierReady;
 
   const world = new RAPIER.World({ x: 0, y: -19.5, z: 0 });
-  for (const { x, y, z, halfX, halfY, halfZ } of boxes) {
-    world.createCollider(
+  const streamingRadius = options?.streamingRadius;
+  const hysteresis = 16;
+
+  interface ManagedBox {
+    box: StaticBox;
+    collider?: RAPIER.Collider;
+  }
+
+  const managed: ManagedBox[] = [];
+  let activeColliders = 0;
+  let lastStreamX = Infinity;
+  let lastStreamZ = Infinity;
+
+  function mountBox(entry: ManagedBox): void {
+    if (entry.collider) return;
+    const { x, y, z, halfX, halfY, halfZ } = entry.box;
+    entry.collider = world.createCollider(
       RAPIER.ColliderDesc.cuboid(halfX, halfY, halfZ).setTranslation(x, y, z),
     );
+    activeColliders++;
   }
+
+  function unmountBox(entry: ManagedBox): void {
+    if (!entry.collider) return;
+    world.removeCollider(entry.collider, false);
+    entry.collider = undefined;
+    activeColliders--;
+  }
+
+  for (const box of boxes) {
+    managed.push({ box });
+  }
+
+  function streamFocus(x: number, z: number, force = false): void {
+    if (streamingRadius === undefined) return;
+    if (!force && Math.hypot(x - lastStreamX, z - lastStreamZ) < 8) return;
+    lastStreamX = x;
+    lastStreamZ = z;
+    const unloadRadius = streamingRadius + hysteresis;
+    for (const entry of managed) {
+      const dist = boxDistance2D(entry.box, x, z);
+      if (!entry.collider && dist <= streamingRadius) {
+        mountBox(entry);
+      } else if (entry.collider && dist > unloadRadius) {
+        unmountBox(entry);
+      }
+    }
+  }
+
+  if (streamingRadius === undefined) {
+    for (const entry of managed) mountBox(entry);
+  } else {
+    const start = options?.initialFocus ?? { x: 0, z: 0 };
+    streamFocus(start.x, start.z, true);
+  }
+
   const spatial = new SpatialBoxGrid(boxes);
   // Populate the broad phase so character and camera queries work on the first frame.
   world.step();
@@ -35,6 +97,13 @@ export async function createPhysics(boxes: readonly StaticBox[]) {
   return {
     world,
     spatial,
+    streamFocus,
+    get activeStaticColliders() {
+      return activeColliders;
+    },
+    get totalStaticColliders() {
+      return managed.length;
+    },
     step(dt: number) {
       world.timestep = dt;
       world.step();

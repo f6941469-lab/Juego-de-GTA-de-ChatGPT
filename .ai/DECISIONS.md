@@ -186,3 +186,19 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 - **Consecuencias negativas:** Los agentes a pie usan navegación directa asistida por `clearLine` + sonda lateral sobre `SpatialBoxGrid` en lugar de grafos completos para mantener coste bajo.
 - **Sistemas afectados:** `ai/police/{police-visuals,police,wanted}.ts`, `simulation/engine.ts`, `main.ts`.
 - **Referencias:** [POLICE_AND_WANTED.md](systems/POLICE_AND_WANTED.md), [TRAFFIC_AND_NAVIGATION.md](systems/TRAFFIC_AND_NAVIGATION.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+
+### `ADR-0014` — Streaming físico Rapier, presupuesto sectorial, heurística CPU 30 Hz y cierre de ciclo de vida (Fase 7)
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Cerrar la deuda técnica P1/P2 restante del ecosistema urbano: `514` colisionadores estáticos cargados al arranque en Rapier (`VB-002`), reconstrucciones síncronas ilimitadas en `streaming.ts` (`VB-003`), asignaciones por tick en `vehicle-obstacles.ts`/`engine.ts`/`main.ts` (`VB-009`), falsa degradación de resolución en pantallas 30 Hz (`VB-011`), `dispose()` pendientes (`VB-008`) y cobertura E2E (`VB-014`).
+- **Decisión:**
+  1. Añadir `streamingRadius` opcional e incremental `streamFocus(x, z, force?)` en `createPhysics` (`src/physics/physics.ts`) con histéresis `+16 m` y distancia AABB 2D, manteniendo `SpatialBoxGrid` completo en memoria para balística y LOS a larga distancia (`VB-002`). En `main.ts` se activa con `streamingRadius = 112 m`, reduciendo los colisionadores vivos en Rapier de `514` a `131` en el punto de inicio.
+  2. Limitar `createDistrictStreaming.update()` (`src/world/streaming.ts`) a `maxRebuilds = 1` sector sucio (el más cercano al foco) por frame tras la carga inicial, exponiendo `flush(focus)` y `pending` en `stats()` (`VB-003`).
+  3. Añadir medición opcional `renderCpuMs` en `createRenderer` -> `createFrameBudget.sample(now, adaptive, renderCpuMs)` (`src/renderer/resolution.ts`) para evitar rebajas de resolución en 30 Hz cuando el trabajo CPU de render es `< 6.5 ms` (`VB-011`).
+  4. Preasignar colecciones scratch en `vehicle-obstacles.ts`, `engine.ts` y `main.ts` (`VB-009`) y añadir `dispose()` en `renderer.ts`, `atmosphere.ts` e `input.ts` (`AbortController`) + evento `pagehide` en `main.ts` (`VB-008`).
+- **Motivación:** Reducir picos de frame time en desplazamientos rápidos, rebajar presión física/GC y prevenir fugas de listeners/GPU.
+- **Alternativas consideradas:** Reconstruir todos los sectores en Web Workers con serialización `Transferable` (complejidad innecesaria cuando el presupuesto `1 sector/frame` ya distribuye la carga sin tirones); descargar también `SpatialBoxGrid` (rompería la balística y visión policial a larga distancia).
+- **Consecuencias positivas:** `74.5 %` menos colisionadores activos en Rapier al inicio (`131` vs `514`), reconstrucción visual progresiva sin bloqueos de frame y suite de `53/53` pruebas incluyendo ciclo E2E completo.
+- **Consecuencias negativas:** En teletransportes instantáneos muy lejanos, la malla visual termina de hidratarse en varios frames salvo invocación explícita de `flush()`.
+- **Sistemas afectados:** `physics/{physics,vehicle-obstacles}.ts`, `world/streaming.ts`, `renderer/{renderer,resolution,lighting/atmosphere}.ts`, `core/input.ts`, `simulation/engine.ts`, `main.ts`.
+- **Referencias:** [PHYSICS_AND_COLLISIONS.md](systems/PHYSICS_AND_COLLISIONS.md), [RENDERING.md](systems/RENDERING.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
