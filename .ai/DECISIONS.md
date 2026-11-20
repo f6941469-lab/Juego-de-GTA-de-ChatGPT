@@ -170,3 +170,19 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 - **Consecuencias negativas:** Los jugadores acostumbrados a flechas para caminar deben usar `WASD` (documentado explícitamente en portada/controles).
 - **Sistemas afectados:** `simulation/{phone,engine}.ts`, `core/input.ts`, `ai/{perception,npc/npc-brain}.ts`, `ui/ui.ts`, `ui/hud.css`, `index.html`, `main.ts`.
 - **Referencias:** [CORE_AND_INPUT.md](systems/CORE_AND_INPUT.md), [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [UI_AND_DEBUG.md](systems/UI_AND_DEBUG.md).
+
+### `ADR-0013` — Policía avanzada, patrullas GPU-instanciadas, memoria descriptiva y cerco a pie (Fase 6)
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Faltaban perímetros tácticos reales, unidades a pie para investigar tiendas/callejones y memoria de descripción del sospechoso, además de resolver `VB-004` (evitación de tráfico civil y margen real) y `VB-005` (draw calls por patrulla).
+- **Decisión:**
+  1. Sustituir `createVehicleModel()` por `createPoliceVisuals(scene, 8)` (`src/ai/police/police-visuals.ts`) usando 4 `InstancedMesh` compartidos (`shells`, `wheels`, `lights`, `officers`) con luces/sirenas estroboscópicas y `dispose()` completo (`VB-005`, `VB-008`).
+  2. Pasar `traffic.vehicles` como obstáculos a `police.step(..., obstacles)` en `SimulationEngine` y añadir doble sonda física (`0.94m` lateral + `1.15m` frontal) más frenado/evasión ante tráfico en cono frontal (`VB-004`).
+  3. Añadir `SuspectDescription`, `ReportMetadata` (`kind`, `storeSiege`) y `matchesSuspect` en `wanted.ts`: al cambiar de vehículo o ir a pie desarmado fuera de línea de visión policial, el alcance de reconocimiento cae (`<= 16 m`) hasta identificarlo de cerca (`Búsqueda · Vehículo distinto`).
+  4. Desplegar perímetros (`perimeter`) y cerco de tiendas (`storeSiege`) aparcando las patrullas al acercarse a `lastKnown` (`< 26 m` en tienda / `< 16 m` general) para que su oficial a pie (`foot_search`) inspeccione la zona con cono visual y `clearLine` propios.
+- **Motivación:** Reducir draw calls policiales a coste constante, evitar omnisciencia policial tras cambiar de vehículo e integrar respuesta escalonada física y visual.
+- **Alternativas consideradas:** Mantener un `createVehicleModel()` por patrulla con flag oculto o ignorar cambios de vehículo en `wanted.ts` (rompería la coherencia no omnisciente y mantendría `VB-004`/`VB-005`).
+- **Consecuencias positivas:** `4` `InstancedMesh` fijos para hasta 8 patrullas + agentes a pie (`194` draw calls totales con `3` patrullas en vivo), sigilo vehicular real y cerco táctico verificable.
+- **Consecuencias negativas:** Los agentes a pie usan navegación directa asistida por `clearLine` + sonda lateral sobre `SpatialBoxGrid` en lugar de grafos completos para mantener coste bajo.
+- **Sistemas afectados:** `ai/police/{police-visuals,police,wanted}.ts`, `simulation/engine.ts`, `main.ts`.
+- **Referencias:** [POLICE_AND_WANTED.md](systems/POLICE_AND_WANTED.md), [TRAFFIC_AND_NAVIGATION.md](systems/TRAFFIC_AND_NAVIGATION.md), [KNOWN_ISSUES.md](KNOWN_ISSUES.md).

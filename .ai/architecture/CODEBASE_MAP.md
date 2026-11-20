@@ -2,13 +2,13 @@
 document_id: ARCH-CODEBASE-MAP
 status: active
 last_updated: 2026-11-20
-verified_against: "96ef8fc-dirty (Phase 5)"
-verification_scope: "typecheck-tests-build-phase5"
+verified_against: "3a830a4-dirty (Phase 6)"
+verification_scope: "typecheck-tests-build-phase6"
 ---
 
 # Mapa del Código Fuente (`CODEBASE_MAP.md`)
 
-> Inventario de módulos y pruebas de Viceblock tras Fases 1–5.
+> Inventario de módulos y pruebas de Viceblock tras Fases 1–6.
 
 ## Raíz y configuración
 - `index.html`: Shell DOM de portada, HUD (`#cash-display`, `#weapon-display`, `#aim-reticle`, `#phone-device`), `<dialog>` de ajustes/pausa, controles táctiles (`#touch-phone`) y `#debug-panel`.
@@ -17,11 +17,11 @@ verification_scope: "typecheck-tests-build-phase5"
 - `vite.config.ts`: `base: './'`, chunks manuales `three` y `rapier`.
 - `.github/workflows/ci.yml`: Pipeline CI (`npm ci`, `npm test`, `npm run build` en Node 24).
 
-## `src/` (41 archivos `.ts`, 3 `.css`)
+## `src/` (42 archivos `.ts`, 3 `.css`)
 
 | Directorio / Archivo | Símbolos principales | Responsabilidad |
 | :--- | :--- | :--- |
-| `src/main.ts` | `startGame`, `step`, `frame`, `play`, `pause` | Arranque, bucle rAF, HUD/teléfono/UI, audio y debug F3/F4/F5 |
+| `src/main.ts` | `startGame`, `step`, `frame`, `play`, `pause` | Arranque, bucle rAF, HUD/teléfono/estado policial/UI, audio y debug F3/F4/F5 |
 | `src/config/game.ts` | `Quality`, `gameConfig` | Semilla (`240817`), hora (`17.25`), `fixedStep` (`1/60`) |
 | `src/core/fixed-loop.ts` | `FixedLoop` | Acumulador de paso fijo e interpolación `alpha` |
 | `src/core/events.ts` | `WorldEventBus`, `WorldEvent`, `WorldEventType` | Bus de eventos espacial/temporal acotado (no omnisciente) |
@@ -38,7 +38,7 @@ verification_scope: "typecheck-tests-build-phase5"
 | `src/characters/avatar.ts` | `createAvatar`, `AvatarPose` | Modelo cúbico jerárquico del jugador, pose de apuntado y arma en mano |
 | `src/vehicles/vehicle.ts` | `createVehicle`, `VehicleSpawn` | Dinámica vehicular, daño mecánico (`health`/`applyDamage`), `prepareStep`/`finishStep` y `boardImmediate` |
 | `src/vehicles/vehicle-manager.ts` | `createVehicleManager` | Pool de hasta 4 vehículos conducibles (`Rayo GT` + robados) |
-| `src/vehicles/vehicle-model.ts` | `createVehicleModel`, `vehicleDimensions` | Malla biselada, ruedas, luces y sirena |
+| `src/vehicles/vehicle-model.ts` | `createVehicleModel`, `vehicleDimensions` | Malla biselada, ruedas, luces y dimensiones vehiculares |
 | `src/navigation/road-graph.ts` | `buildRoadGraph`, `closestRoadNode`, `findRoadRoute` | Grafo vial dirigido (146 nodos) y Dijkstra |
 | `src/navigation/pedestrian-graph.ts` | `buildPedestrianGraph`, `findPedestrianRoute`, `findEscapeNode`, `steerPedestrian` | Grafo peatonal (aceras/puentes/tiendas), A* MinHeap y esquiva |
 | `src/ai/perception.ts` | `evaluatePerception`, `createObserverState`, `inFieldOfView` | Percepción visual (FOV + LOS `minY=1.15m`) y auditiva |
@@ -49,8 +49,9 @@ verification_scope: "typecheck-tests-build-phase5"
 | `src/ai/traffic/traffic.ts` | `createTraffic`, `profiles`, `hijackNearest`, `damageVehicle`, `resolveVehicleCrash` | Población, conductores reales, accidentes con eyección y robo vehicular |
 | `src/ai/traffic/signals.ts` | `createSignals`, `signalAt`, `controlsJunction` | Fases semafóricas e `InstancedMesh` de semáforos |
 | `src/ai/traffic/traffic-visuals.ts` | `createTrafficVisuals` | Render instanciado de hasta 23 vehículos, daño visual y conductores |
-| `src/ai/police/police.ts` | `createPolice`, `clearLine` | Patrullas, FOV + `SpatialBoxGrid`, disparo recíproco con LOS y detención |
-| `src/ai/police/wanted.ts` | `createWantedSystem`, `responseLevels` | Estados de búsqueda y predicción |
+| `src/ai/police/police-visuals.ts` | `createPoliceVisuals`, `PoliceVisualUnit` | Render instanciado (`4` `InstancedMesh`) para hasta 8 patrullas + oficiales a pie (`VB-005`) |
+| `src/ai/police/police.ts` | `createPolice`, `clearLine`, `PatrolRole` | Patrullas, evitación de tráfico (`VB-004`), perímetros, cerco en tienda, oficiales a pie y `dispose()` |
+| `src/ai/police/wanted.ts` | `createWantedSystem`, `responseLevels`, `SuspectDescription` | Estados de búsqueda, memoria descriptiva (`matchesSuspect`) y predicción |
 | `src/world/district.ts` | `buildDistrict` | Ensamblado multi-distrito, puentes, manzanas, parques y tiendas |
 | `src/world/stores.ts` | `createStores`, `getStoreInteriorLayout`, `StoreMapMarker` | Balizas, interiores (`StoreInteriorLayout`) y asaltos progresivos (`beginHeist`/`stepHeist`) |
 | `src/world/destructibles.ts` | `createDestructibles`, `DestructibleProp`, `DestructibleKind` | Vidrieras fracturables, mobiliario físico destructible y escombros/chorros/humo (`InstancedMesh`) |
@@ -75,6 +76,6 @@ verification_scope: "typecheck-tests-build-phase5"
 | `src/ui/*.css` | — | Estilos de menú, HUD/táctil/teléfono y diálogos |
 | `src/debug/stats.ts` / `overlay.ts` / `inspector.ts` | `FrameStats`, `createDebugOverlay`, `formatSimulationInspector` | Métricas F3, wireframe+navegación+FOV F4 e inspector F5 |
 
-## `tests/` (17 archivos, 45 pruebas)
-`district.test.ts` (3), `stores.test.ts` (1), `events-and-entities.test.ts` (4), `perception-and-npc.test.ts` (2), `pedestrian-navigation.test.ts` (2), `urban-life.test.ts` (2), `combat-and-heists.test.ts` (3), `destructibles-and-accidents.test.ts` (3), `phone-system.test.ts` (2), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).
+## `tests/` (18 archivos, 49 pruebas)
+`district.test.ts` (3), `stores.test.ts` (1), `events-and-entities.test.ts` (4), `perception-and-npc.test.ts` (2), `pedestrian-navigation.test.ts` (2), `urban-life.test.ts` (2), `combat-and-heists.test.ts` (3), `destructibles-and-accidents.test.ts` (3), `phone-system.test.ts` (2), `fixed-loop.test.ts` (2), `player.test.ts` (4), `vehicle.test.ts` (5), `traffic.test.ts` (4), `police.test.ts` (2), `police-investigation.test.ts` (4), `wanted.test.ts` (2), `world-streaming.test.ts` (2), `resolution.test.ts` (2).
 

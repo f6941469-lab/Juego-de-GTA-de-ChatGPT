@@ -2,25 +2,25 @@
 document_id: CORE-CHANGELOG
 status: active
 last_updated: 2026-11-20
-verified_against: "96ef8fc-dirty (Phases 4-5)"
-verification_scope: "typecheck + vitest (45/45) + vite build + Chromium WebGL 2 live test"
+verified_against: "3a830a4-dirty (Phase 6)"
+verification_scope: "typecheck + vitest (49/49) + vite build + Chromium WebGL 2 live test"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
-## 2026-11-20 · Fase 5 — Teléfono móvil integrado, viralización urbana y cierre de `VB-015` (working tree sobre `96ef8fc`)
-- **Resumen:** Resolución del conflicto `ArrowUp` (`VB-015`) dejando `WASD` dedicado al movimiento/conducción y asignando `ArrowUp`/`KeyM`/`#touch-phone` al teléfono diegético `createPhoneSystem` (`camera`, `feed`, `emergency` 911, `alerts`). La cámara emite `'recording_started'` con percepción NPC directa (`perception.ts` + `npc-brain.ts`), detecta incidentes reales (`glass_broken`, `gunshot_fired`, `robbery_*`, `traffic_accident`) y publica clips en `'video_published'` con vistas crecientes.
-- **Sistemas afectados:** Simulación (`simulation/phone.ts`, `simulation/engine.ts`), Entrada (`core/input.ts`), IA/Percepción (`ai/perception.ts`, `ai/npc/npc-brain.ts`), UI (`index.html`, `ui/hud.css`, `ui/ui.ts`, `main.ts`) y pruebas (`tests/phone-system.test.ts`).
-- **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`17` archivos, `45/45` verdes), `npm run build` (`64` módulos) y prueba viva en Chromium headless WebGL 2 (`ArrowUp` abre `#phone-device` con posición fija `-0.0, 0.0, 25.0`, `Enter` navega `Cámara` -> `● REC 0.1 s` -> `Social · 73 vistas`, `0` excepciones JS y `0` errores de consola).
-- **Riesgos pendientes:** Policía avanzada/investigación en Fase 6; persisten `VB-002` (streaming físico Rapier), `VB-003`, `VB-004` y `VB-005`.
+## 2026-11-20 · Fase 6 — Policía avanzada, instanciación GPU, memoria descriptiva y cerco a pie (working tree sobre `3a830a4`)
+- **Resumen:** Patrullas y agentes a pie GPU-instanciados en `createPoliceVisuals` (`4` `InstancedMesh` compartidos + `dispose()`, cierre de `VB-005`), integración de `traffic.vehicles` como obstáculos reales y doble sonda de chasis en `police.ts` (cierre de `VB-004`), memoria descriptiva `SuspectDescription`/`matchesSuspect` en `wanted.ts` (sigilo al cambiar de vehículo fuera de vista), perímetros tácticos, cerco en tienda (`storeSiege`) y oficiales a pie desplegados alrededor de `lastKnown` con estado táctico en HUD (`police.statusLabel`).
+- **Sistemas afectados:** Policía (`ai/police/{police-visuals,police,wanted}.ts`), Simulación/HUD (`simulation/engine.ts`, `main.ts`) y pruebas (`tests/police-investigation.test.ts`).
+- **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`18` archivos, `49/49` verdes), `npm run build` (`65` módulos) y prueba viva en Chromium headless WebGL 2 (`Shift+Digit3` -> `3 patrullas · Investigación`, `194 llamadas`, `0` excepciones JS y `0` errores de consola).
+- **Riesgos pendientes:** Optimización final (Fase 7): `VB-002` (streaming físico Rapier), `VB-003` (`streaming.ts`), `VB-009` (GC) y `VB-011` (`resolution.ts`).
 
-## 2026-11-20 · Fase 4 — Entorno dinámico y destructible: escaparates, mobiliario Rapier y accidentes con huida (working tree sobre `96ef8fc`)
-- **Resumen:** Sistema destructible GPU-instanciado (`createDestructibles`) para `18` vidrieras fracturables de las 9 tiendas y mobiliario urbano con colisionadores Rapier (`hydrant` con chorro de agua, `bollard`, `crate`, `bench`), pool circular acotado de escombros (`96`) y humo/agua (`64`), cues sonoros (`glass`, `debris`), eventos `'glass_broken'`, `'object_destroyed'` y `'traffic_accident'`, daño mecánico y visual en `vehicle.ts` y `traffic.ts`/`traffic-visuals.ts`, y evacuación de ocupantes (`fromAccident`) con transeúntes acercándose al siniestro.
-- **Sistemas afectados:** Mundo (`world/destructibles.ts`, `world/generation/buildings.ts`), Vehículos/Tráfico (`vehicles/vehicle.ts`, `ai/traffic/traffic*.ts`), NPC (`ai/npc/npc-population.ts`), Balística/Audio (`player/weapons.ts`, `audio/audio.ts`), Simulación (`simulation/engine.ts`) y pruebas (`tests/destructibles-and-accidents.test.ts`).
-- **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`16` archivos, `43/43` verdes), `npm run build` (`63` módulos) y prueba viva en Chromium headless WebGL 2 (`Digit3` -> `Carabina táctica · 24/72`, `F3`, `0` excepciones JS y `0` errores de consola).
-- **Riesgos pendientes:** Teléfono móvil integrado (`VB-015`) en Fase 5; persisten `VB-002` (streaming físico), `VB-003`, `VB-004` y `VB-005`.
+## 2026-11-20 · Fases 4 y 5 — Entorno destructible, accidentes y teléfono móvil diegético · Commit `3a830a4`
+- **Resumen:** Sistema destructible GPU-instanciado (`createDestructibles`) para `18` vidrieras fracturables y mobiliario físico destructible, daño vehicular y accidentes con huida de conductores (`Fase 4`), más teléfono móvil diegético `createPhoneSystem` conectado a `WorldEventBus`, viralización urbana, 911, reacción NPC ante grabaciones y cierre de `VB-015` (`Fase 5`).
+- **Sistemas afectados:** Mundo (`world/destructibles.ts`, `world/generation/buildings.ts`), Vehículos/Tráfico (`vehicles/vehicle.ts`, `ai/traffic/traffic*.ts`), Simulación (`simulation/phone.ts`, `simulation/engine.ts`), Entrada (`core/input.ts`), IA/Percepción (`ai/perception.ts`, `ai/npc/*`), UI (`index.html`, `ui/*`, `main.ts`) y pruebas (`tests/destructibles-and-accidents.test.ts`, `tests/phone-system.test.ts`).
+- **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`17` archivos, `45/45` verdes), `npm run build` (`64` módulos) y pruebas vivas en Chromium WebGL 2.
+- **Riesgos pendientes:** Policía avanzada abordada a continuación en Fase 6; persisten `VB-002`, `VB-003`, `VB-009` y `VB-011`.
 
 ## 2026-11-20 · Fase 3 — Armas, balística, testigos 911, asaltos completos y combate policial · Commit `96ef8fc`
 - **Resumen:** Sistema completo de armas (`unarmed`, `pistol`, `carbine`) con munición/recarga, apuntado y disparo en teclado/ratón/táctil, trazadores instanciados y raycast detenido por muros en `SpatialBoxGrid`, malla armada en el avatar, cues procedurales (`shot`, `reload`, `empty`, `cash`), amenazas perceptibles (`weapon_drawn`, `weapon_aimed`, `shot_fired`, `npc_injured`, `witness_detected`, `robbery_finished`), testigos no omniscientes interrumpibles antes de completar su llamada al 911 (`2.1 s`), asaltos progresivos de tienda con cooperación/intimidación del dependiente y pago de botín (`$`), combate cuerpo a cuerpo NPC y fuego policial recíproco desde 2 estrellas respetando cobertura.

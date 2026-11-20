@@ -90,6 +90,16 @@ export function createSimulationEngine(
     return vehicles.active ? vehicles.active.car.position : player.position;
   }
 
+  function currentSuspectMeta() {
+    const active = vehicles.active;
+    return {
+      inVehicle: Boolean(active),
+      vehicleId: active?.id,
+      vehicleLabel: active?.car.label,
+      armed: weapons.equipped !== 'unarmed',
+    };
+  }
+
   function emitPropDestruction(prop: DestructibleProp): void {
     if (prop.kind === 'store_glass') {
       callbacks.onAudioCue?.('glass');
@@ -111,7 +121,11 @@ export function createSimulationEngine(
       for (const unit of police.units) {
         const d = Math.hypot(unit.x - prop.x, unit.z - prop.z);
         if (d < 30 || (d < 44 && physics.spatial.clearLine(unit, prop))) {
-          police.wanted.report(prop, 1);
+          police.wanted.report(prop, 1, undefined, {
+            kind: 'vandalism',
+            storeSiege: true,
+            suspect: currentSuspectMeta(),
+          });
           break;
         }
       }
@@ -254,7 +268,10 @@ export function createSimulationEngine(
       onNotice: (text, duration = 2.6) => callbacks.onNotice?.(text, duration),
       onEmergency911: (service, location) => {
         if (service === 'police') {
-          police.wanted.report(location, 1);
+          police.wanted.report(location, 1, undefined, {
+            kind: 'crime_report',
+            suspect: currentSuspectMeta(),
+          });
         } else {
           health = Math.min(100, health + 15);
         }
@@ -513,7 +530,11 @@ export function createSimulationEngine(
       for (const unit of police.units) {
         const d = Math.hypot(unit.x - player.position.x, unit.z - player.position.z);
         if (d < 46 && (d < 24 || physics.spatial.clearLine(unit, player.position))) {
-          police.wanted.report(player.position, 1);
+          police.wanted.report(player.position, 1, undefined, {
+            kind: 'gunshot',
+            storeSiege: Boolean(stores.activeHeist),
+            suspect: currentSuspectMeta(),
+          });
           break;
         }
       }
@@ -576,7 +597,10 @@ export function createSimulationEngine(
 
     const position = currentFocus();
     if (controls.challenge) {
-      police.wanted.report(position);
+      police.wanted.report(position, 1, undefined, {
+        kind: 'crime_report',
+        suspect: currentSuspectMeta(),
+      });
       callbacks.onAudioCue?.('ui');
     }
     if (forceWanted !== undefined) {
@@ -605,6 +629,7 @@ export function createSimulationEngine(
     if (measure) timings.trafficMs = performance.now() - trafficStart;
 
     const policeStart = measure ? performance.now() : 0;
+    const suspectMeta = currentSuspectMeta();
     police.step(
       dt,
       {
@@ -612,6 +637,10 @@ export function createSimulationEngine(
         z: position.z,
         speed: activeCar ? activeCar.speed : walkingSpeed,
         heading: activeCar ? activeCar.heading : player.heading,
+        inVehicle: suspectMeta.inVehicle,
+        vehicleId: suspectMeta.vehicleId,
+        vehicleLabel: suspectMeta.vehicleLabel,
+        armed: suspectMeta.armed,
       },
       {
         onFire: (shooter, hitPlayer, damage) => {
@@ -639,6 +668,7 @@ export function createSimulationEngine(
           }
         },
       },
+      traffic.vehicles,
     );
     if (measure) timings.policeMs = performance.now() - policeStart;
 
@@ -730,7 +760,11 @@ export function createSimulationEngine(
       policeNearby: police.units.length > 0 && police.wanted.level > 0,
       vehicles: movingVehiclesScratch,
       onReportCrime: (location, severity) => {
-        police.wanted.report(location, severity);
+        police.wanted.report(location, severity, undefined, {
+          kind: stores.activeHeist ? 'robbery' : 'witness',
+          storeSiege: Boolean(stores.activeHeist),
+          suspect: currentSuspectMeta(),
+        });
       },
       onHitPlayer: (damage) => {
         if (!activeCar) {
@@ -894,7 +928,7 @@ export function createSimulationEngine(
       destructibles.dispose();
       stores.dispose();
       weapons.dispose();
-      police.reset();
+      police.dispose();
       traffic.dispose();
       vehicles.dispose();
       eventBus.reset();

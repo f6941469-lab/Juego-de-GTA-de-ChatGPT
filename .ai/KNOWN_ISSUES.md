@@ -47,25 +47,25 @@ verification_scope: "static-analysis-only"
 
 ### `VB-004` — Patrullas policiales ignoran tráfico civil y frenan con margen menor al vehículo
 - **Prioridad:** P1 — Alto
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Resuelto (en Fase 6 sobre `3a830a4`)
 - **Sistema afectado:** Policía / Tráfico
-- **Archivo o símbolo:** `src/ai/police/police.ts` (`steer`, `step`)
-- **Descripción:** `police.step()` comprueba cola solo frente a otras patrullas (`units`), ignorando `traffic.vehicles`. `steer()` frena usando `clearLine(unit, next, boxes, 0.65)` cuando el medio largo del modelo es `1.96 m`.
-- **Evidencia:** Ausencia de parámetro de obstáculos de tráfico en `police.ts`; margen `0.65` en `steer()`.
-- **Impacto:** Patrullas atraviesan visualmente coches civiles y pueden clavar esquinas de edificios ~1.3 m.
-- **Solución propuesta:** Pasar obstáculos dinámicos compartidos a `police.step()` y validar huella real del vehículo.
-- **Referencias:** `TASK-0004`.
+- **Archivo o símbolo:** `src/ai/police/police.ts` (`steer`, `step`), `src/simulation/engine.ts` (`police.step`)
+- **Descripción:** Anteriormente `police.step()` ignoraba `traffic.vehicles` y frenaba con margen `0.65m`. Ahora `engine.ts` pasa `traffic.vehicles` como obstáculos a `police.step()`, `steer()` frena o desvía frente a vehículos civiles dentro del cono frontal (`7.2m`/`4.2m`) y usa doble sonda física realista (`0.94m` lateral + `1.15m` frontal) acorde a `vehicleDimensions`.
+- **Evidencia:** `tests/police-investigation.test.ts` verifica que una patrulla frena (`speed < 0.5`) ante vehículos civiles detenidos delante.
+- **Impacto:** Elimina el solapamiento visual sistemático de patrullas atravesando tráfico y reduce enganches en esquinas de edificios.
+- **Solución propuesta:** Implementado (`ADR-0013`).
+- **Referencias:** `TASK-0004`, `ADR-0013`.
 
 ### `VB-005` — Patrullas policiales sin `InstancedMesh` y con duplicación de recursos GPU
 - **Prioridad:** P1 — Alto
-- **Estado:** Confirmado (Abierto)
+- **Estado:** Resuelto (en Fase 6 sobre `3a830a4`)
 - **Sistema afectado:** Policía / Renderizado / Vehículos
-- **Archivo o símbolo:** `src/ai/police/police.ts` (`sendPatrol`), `src/vehicles/vehicle-model.ts` (`createVehicleModel`)
-- **Descripción:** Cada patrulla creada llama a `createVehicleModel()`, instanciando geometrías y 10 materiales `MeshStandardMaterial` nuevos (~25–30 draw calls por patrulla).
-- **Evidencia:** Llamada directa a `createVehicleModel` dentro de `sendPatrol()`.
-- **Impacto:** Multiplicación innecesaria de draw calls y shaders al escalar unidades policiales.
-- **Solución propuesta:** Compartir geometrías/materiales base o usar `InstancedMesh` como `traffic-visuals.ts`.
-- **Referencias:** `TASK-0005`.
+- **Archivo o símbolo:** `src/ai/police/police-visuals.ts` (`createPoliceVisuals`), `src/ai/police/police.ts` (`render`, `dispose`)
+- **Descripción:** Sustituido `createVehicleModel()` por patrulla por `createPoliceVisuals(scene, 8)` con 4 `InstancedMesh` compartidos (`shells`, `wheels`, `lights`, `officers`) para hasta 8 patrullas y sus agentes a pie con luces/sirenas estroboscópicas y liberación simétrica `dispose()`.
+- **Evidencia:** `tests/police-investigation.test.ts` verifica exactamente `4` `InstancedMesh` compartidos al renderizar múltiples patrullas; prueba viva Chromium registra `194` draw calls totales con `3` patrullas activas.
+- **Impacto:** Elimina ~130+ draw calls dinámicos y duplicación de materiales al escalar unidades policiales.
+- **Solución propuesta:** Implementado (`ADR-0013`).
+- **Referencias:** `TASK-0005`, `ADR-0013`.
 
 ### `VB-006` — Desfase de cota en aceras (`+4.9 cm`) y oclusión de sombras de contacto
 - **Prioridad:** P2 — Medio
@@ -91,13 +91,13 @@ verification_scope: "static-analysis-only"
 
 ### `VB-008` — Geometrías globales sin liberar y falta de `dispose()` en subsistemas
 - **Prioridad:** P2 — Medio
-- **Estado:** Parcialmente mitigado (`overlay.ts` ya implementa `dispose()`)
-- **Sistema afectado:** Mundo / Renderizado / Entrada / Policía / Debug
-- **Archivo o símbolo:** `streets.ts` (`pole`), `vegetation.ts` (`trunk`, `crown`, `leaf`), `renderer.ts`, `atmosphere.ts`, `police.ts`, `input.ts`, `overlay.ts` (`dispose`)
-- **Descripción:** Geometrías de módulo nunca liberadas en `district.dispose()`; varios módulos aún carecen de `dispose()` para WebGL o listeners globales (`overlay.ts` ya libera su `BufferGeometry`, material e hijos).
-- **Evidencia:** Declaraciones top-level en `streets.ts`/`vegetation.ts` y ausencia de `dispose()` en los retornos de fábrica restantes.
-- **Impacto:** Impide desmontar/reiniciar la escena sin fugas de memoria o listeners duplicados.
-- **Solución propuesta:** Integrar geometrías en `DistrictResources` y añadir `dispose()` simétrico en todos los subsistemas restantes.
+- **Estado:** Parcialmente mitigado (`overlay.ts` y `police.ts`/`police-visuals.ts` ya implementan `dispose()`)
+- **Sistema afectado:** Mundo / Renderizado / Entrada / Debug
+- **Archivo o símbolo:** `streets.ts` (`pole`), `vegetation.ts` (`trunk`, `crown`, `leaf`), `renderer.ts`, `atmosphere.ts`, `input.ts`, `overlay.ts` (`dispose`), `police.ts` (`dispose`)
+- **Descripción:** Geometrías top-level de `streets.ts`/`vegetation.ts` nunca liberadas en `district.dispose()`; `renderer.ts`, `atmosphere.ts` e `input.ts` aún carecen de `dispose()` simétrico (`police.ts`, `police-visuals.ts` y `overlay.ts` ya lo implementan).
+- **Evidencia:** `police.dispose()` libera `shells`/`wheels`/`lights`/`officers` y geometrías en `SimulationEngine.dispose()`.
+- **Impacto:** Impide desmontar/reiniciar la escena sin fugas de memoria o listeners duplicados en módulos restantes.
+- **Solución propuesta:** Integrar geometrías en `DistrictResources` y añadir `dispose()` simétrico en `renderer`/`atmosphere`/`input`.
 - **Referencias:** `TASK-0003`.
 
 ### `VB-009` — Asignaciones de arrays/sets temporales por tick (`60 Hz`) y frame

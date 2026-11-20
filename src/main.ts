@@ -228,7 +228,7 @@ async function startGame() {
         stores: simulation.stores.getMarkers(),
         speed: (activeCar?.speed ?? 0) * 3.6,
         wanted: simulation.police.wanted.level,
-        policeStatus: simulation.police.wanted.state,
+        policeStatus: simulation.police.statusLabel,
         phone: phoneState,
       })
 
@@ -271,7 +271,7 @@ async function startGame() {
           reading,
           `${timing.frameMs?.toFixed(1) ?? '—'} ms cuadro · ${timing.pixelRatio.toFixed(2)}× píxeles`,
           `${sectors.loaded}/${sectors.total} sectores · ${sectors.detailed} detallados`,
-          `${simulation.traffic.count} tráfico · ${simulation.npcPopulation.count} NPC · ${simulation.police.units.length} patrullas · ${simulation.police.wanted.state}`,
+          `${simulation.traffic.count} tráfico · ${simulation.npcPopulation.count} NPC · ${simulation.police.units.length} patrullas · ${simulation.police.statusLabel}`,
           `Posición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`,
         ].join('\n'))
       } else if (inspectorDebug) {

@@ -2,8 +2,8 @@
 document_id: ARCH-OVERVIEW
 status: active
 last_updated: 2026-11-20
-verified_against: "96ef8fc-dirty (Phase 5)"
-verification_scope: "typecheck-tests-build-phase5"
+verified_against: "3a830a4-dirty (Phase 6)"
+verification_scope: "typecheck-tests-build-phase6"
 ---
 
 # Visión General de Arquitectura (`OVERVIEW.md`)
@@ -26,7 +26,7 @@ flowchart TD
         VEH["src/vehicles/ (vehicle-manager + daño + Rayo GT + robados)"]
         TRF["src/ai/traffic/ + navigation/ (road-graph + accidentes + pedestrian-graph)"]
         NPC["src/ai/perception.ts + ai/npc/ (Población + Testigos + Utility/FSM)"]
-        POL["src/ai/police/ (Patrullas + Combate LOS + Wanted)"]
+        POL["src/ai/police/ (Patrullas + Tráfico + Perímetros + Oficiales a pie + Memoria)"]
     end
 
     subgraph WORLD ["Mundo Procedural"]
@@ -36,7 +36,7 @@ flowchart TD
 
     subgraph PRES ["Presentación"]
         REN["src/renderer/ + shaders/sky.ts"]
-        MOD["avatar.ts + vehicle-model.ts + traffic-visuals.ts + npc-visuals.ts + signals.ts"]
+        MOD["avatar.ts + vehicle-model.ts + traffic-visuals.ts + police-visuals.ts + npc-visuals.ts + signals.ts"]
         AUD["src/audio/"]
         DBG["src/debug/ (stats + overlay + inspector)"]
     end
