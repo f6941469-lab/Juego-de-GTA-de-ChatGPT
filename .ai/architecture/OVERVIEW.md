@@ -1,10 +1,13 @@
 ---
 document_id: ARCH-OVERVIEW
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "3a830a4-dirty (Phase 6)"
 verification_scope: "typecheck-tests-build-phase6"
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Visión General de Arquitectura (`OVERVIEW.md`)
 

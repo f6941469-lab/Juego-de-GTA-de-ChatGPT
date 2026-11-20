@@ -1,5 +1,3 @@
-> Documento histórico de la entrega `work@5660edc`, basada en `2ee553f`. La integración en `main` usa `src/simulation/engine.ts` y los sistemas de `.ai/systems/`; los módulos de prototipo descritos aquí fueron sustituidos por esos contratos, no ejecutados en paralelo.
-
 # Auditoría de rescate — 2026-11-20
 
 Referencia: `2ee553f` (`feat: entregar el distrito jugable de Viceblock`). Checkout limpio antes de intervenir. No existía `.ai/`; se consultaron AGENTS.md, PROJECT_STATE.md, TASKS.md, ARCHITECTURE.md y KNOWN_ISSUES.md.

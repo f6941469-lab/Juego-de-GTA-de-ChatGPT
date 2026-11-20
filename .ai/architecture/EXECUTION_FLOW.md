@@ -1,10 +1,13 @@
 ---
 document_id: ARCH-EXECUTION-FLOW
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "248f8b44b7aebf77fc38a0d5c0bde996e680cec5"
 verification_scope: "static-analysis-only"
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Flujo de Ejecución (`EXECUTION_FLOW.md`)
 

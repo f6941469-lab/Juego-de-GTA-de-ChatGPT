@@ -1,6 +1,6 @@
 # Diseño de Viceblock
 
-Viceblock presenta una ciudad ficticia donde una avenida tropical conecta hoteles, comercio y costa. La primera sesión propone reconocer las calles a pie, tomar el coche del bulevar y recorrer la costa mientras cambian la luz y el tráfico. El desafío de búsqueda se activa a voluntad y termina al escapar o reaparecer.
+Viceblock presenta una ciudad ficticia donde una avenida tropical conecta hoteles, comercio y costa. La primera sesión propone recorrer el distrito a pie, reconocer sus calles y ver cómo el cielo y las fachadas cambian con la hora.
 
 Los edificios usan perfiles escalonados, marquesinas y ventanas hundidas para que su silueta se lea tanto cerca como a distancia. Las fachadas crema y pastel recogen la luz cálida del sol, mientras el asfalto, las palmeras y la costa aportan contraste. Los acentos emisivos ayudan a ubicar entradas y locales cuando baja la luz.
 

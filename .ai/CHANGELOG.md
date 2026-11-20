@@ -70,3 +70,7 @@ verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 
 ## 2026-11-20 · Mercado Palma en main
 
 Décima tienda y nuevo punto inicial, economía con validación e inventario en teléfono, ratón con botones simultáneos, pausa por foco, aislamiento de paneles, cámara/zoom y avatar agrupado. Se conserva el motor de fases anteriores y se adapta la entrega work mediante merge semántico.
+
+## 0.3.0 · Sustitución completa autorizada
+
+Se restaura la entrega de Mercado Palma de las primeras capturas desde 5660edc: Session, mundo compacto, HUD y teléfono propios, NPC, tráfico, policía a pie, comercio, arma, destrucción y audio. Se eliminan del árbol activo motor, distritos, conducción y módulos de las fases anteriores; su código se conserva en el historial. Portada y documento HTML incluyen identificador de versión.

@@ -1,6 +1,8 @@
 # Hoja de ruta
 
-La versión 0.1.0 introdujo las fases 0 y 1. La versión 0.2.0 integra el primer alcance jugable de las fases 2 a 7. Cada fase entrega una versión verificable. Las metas visuales y de rendimiento se evalúan con escenas y equipos identificados.
+Cada fase entrega una versión verificable. Las metas visuales y de rendimiento se evalúan con escenas y equipos identificados.
+
+La intervención Mercado Palma anticipa versiones parciales de tráfico, policía y audio para validar una experiencia integrada; no marca estas fases como terminadas. Estado concreto: [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
 | Fase | Entrega | Verificación |
 | --- | --- | --- |

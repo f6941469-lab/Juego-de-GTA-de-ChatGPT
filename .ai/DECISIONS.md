@@ -206,3 +206,7 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 ## Integrar Mercado Palma sobre el motor de main
 
 La rama work partía de `2ee553f`; main ya había evolucionado hasta `d0c70d9`. La integración conserva sus contratos de vehículos, mundo, streaming, NPC, armas, teléfono y policía. Se trasladan mercado, comercio/inventario y correcciones de entradas/cámara; los controladores de prototipo equivalentes se resuelven a favor de los sistemas existentes. El historial de work queda como segundo padre del merge. No se añaden dependencias.
+
+## Sustitución completa por Mercado Palma 0.3.0
+
+El usuario rechazó conservar el sistema y presentación anteriores tras comparar las capturas. Se sustituye todo el árbol operativo de src/ y sus pruebas por la entrega `5660edc`, y se retiran los módulos ajenos a ella. Cambia la entrada de SimulationEngine a Session y vuelven el HUD, teléfono, distrito compacto y controles de la captura de referencia. El historial de main se mantiene mediante un commit normal posterior a d565cdc. Los contratos anteriores quedan archivados, no se combinan ni se ejecutan como alternativa.

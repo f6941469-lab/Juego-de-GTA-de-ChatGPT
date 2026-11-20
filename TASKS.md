@@ -1,18 +1,18 @@
 # Tareas
 
-## Versión 0.2.0
+## Primera entrega
 
-- [x] Integrar entrada y salida del coche, física de conducción y respuesta a impactos.
-- [x] Conectar tráfico autónomo, semáforos y búsqueda policial.
-- [x] Integrar el mezclador, ajustes de audio y fuentes espaciales.
-- [x] Ampliar el distrito con sectores y ajustar el coste del renderizado.
-- [x] Verificar instalación, compilación y 25 pruebas, incluidas salida segura y colisiones.
+- [x] Verificar la instalación limpia, los tipos, las ocho pruebas automatizadas y la compilación de producción.
+- [x] Verificar desplazamiento, salto, pausa, cambios de iluminación y persistencia de calidad en Chromium. Cubrir carrera y colisiones con Vitest.
+- [x] Revisar la vista al atardecer y de noche, el HUD a 390 × 844 y el desplazamiento táctil.
 
-## Después de la publicación
+## Siguiente entrega
 
-- Medir tiempos de cuadro y memoria en equipos físicos representativos por perfil.
-- Ajustar densidad, cámaras y tiempos de persecución con pruebas de jugadores.
-- Evaluar cambios de carril, incidentes de tráfico prolongados y más configuraciones de vehículo.
-- Extender los puntos de interés con actividades e interiores.
+La prioridad actual es estabilizar y ampliar la escena integrada Mercado Palma. Consultar [.ai/HANDOFF.md](.ai/HANDOFF.md) antes de intervenir. La conducción y la red vial general que siguen en esta lista continúan pendientes; los tres coches actuales son tráfico autónomo local.
 
-[Estado de los sistemas](PROJECT_STATE.md) · [Criterios por fase](ROADMAP.md)
+- Definir un contrato de vehículo que permita manejar la misma entidad con un jugador o, más adelante, con la IA.
+- Construir y ajustar un vehículo para el distrito actual. Validar aceleración, frenado, giros y colisiones.
+- Probar entrada y salida con una puerta cercana a un obstáculo y en superficies transitables.
+- Medir el coste de sombras y píxeles por perfil en equipos representativos antes de fijar metas por configuración.
+
+La lista de sistemas posteriores y sus condiciones de aceptación está en [ROADMAP.md](ROADMAP.md).

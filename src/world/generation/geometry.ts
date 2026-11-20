@@ -52,9 +52,9 @@ type Batch = {
 };
 
 export class DistrictGeometry {
+  private readonly boxGeometry = new BoxGeometry(1, 1, 1);
   private readonly batches = new Map<string, Batch>();
-
-  constructor(private readonly resources = new DistrictResources()) {}
+  private readonly materials = new Map<Finish, MeshStandardMaterial>();
 
   box(
     finish: Finish,
@@ -67,7 +67,7 @@ export class DistrictGeometry {
     depth: number,
     castsShadow = false,
   ): void {
-    this.add(this.resources.box, finish, castsShadow, { x, y, z, width, height, depth, color });
+    this.add(this.boxGeometry, finish, castsShadow, { x, y, z, width, height, depth, color });
   }
 
   add(
@@ -81,7 +81,7 @@ export class DistrictGeometry {
     if (!batch) {
       batch = {
         geometry,
-        material: this.resources.material(finish),
+        material: this.getMaterial(finish),
         castsShadow,
         instances: [],
       };
@@ -116,23 +116,15 @@ export class DistrictGeometry {
     this.batches.clear();
     return group;
   }
-}
-
-export class DistrictResources {
-  readonly box = new BoxGeometry(1, 1, 1);
-  private readonly materials = new Map<Finish, MeshStandardMaterial>();
-  private darkness = 0;
 
   setNightLighting(darkness: number): void {
-    if (this.darkness === darkness) return;
-    this.darkness = darkness;
     for (const finish of ['glassLit', 'coralLight', 'aquaLight', 'goldLight'] as const) {
       const material = this.materials.get(finish);
       if (material) material.emissiveIntensity = presets[finish].emissiveIntensity * (0.78 + darkness * 1.20);
     }
   }
 
-  material(finish: Finish): MeshStandardMaterial {
+  private getMaterial(finish: Finish): MeshStandardMaterial {
     const existing = this.materials.get(finish);
     if (existing) return existing;
 
@@ -140,43 +132,10 @@ export class DistrictResources {
     material.name = `District · ${finish}`;
     if (finish === 'asphalt' || finish === 'pavement') {
       material.map = grainTexture(finish === 'asphalt' ? 17 : 27);
-      // Sampling by world position keeps the same grain on long roads and short sidewalk blocks.
-      material.onBeforeCompile = (shader) => {
-        shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', `
-          #include <uv_vertex>
-          #ifdef USE_MAP
-            vec4 surfacePosition = vec4(position, 1.0);
-            #ifdef USE_INSTANCING
-              surfacePosition = instanceMatrix * surfacePosition;
-            #endif
-            vMapUv = (modelMatrix * surfacePosition).xz * 0.19;
-          #endif
-        `);
-      };
-    }
-    if ('emissiveIntensity' in presets[finish] && finish !== 'glass') {
-      material.emissiveIntensity *= 0.78 + this.darkness * 1.20;
     }
     this.materials.set(finish, material);
     return material;
   }
-
-  dispose(): void {
-    this.box.dispose();
-    for (const material of this.materials.values()) {
-      material.map?.dispose();
-      material.dispose();
-    }
-    this.materials.clear();
-  }
-}
-
-export function disposeInstances(group: Group): void {
-  group.removeFromParent();
-  for (const instance of group.children) {
-    if (instance instanceof InstancedMesh) instance.dispose();
-  }
-  group.clear();
 }
 
 function grainTexture(strength: number): DataTexture {
@@ -195,6 +154,7 @@ function grainTexture(strength: number): DataTexture {
   texture.colorSpace = SRGBColorSpace;
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
+  texture.repeat.set(18, 18);
   texture.generateMipmaps = true;
   texture.minFilter = LinearMipmapLinearFilter;
   texture.needsUpdate = true;

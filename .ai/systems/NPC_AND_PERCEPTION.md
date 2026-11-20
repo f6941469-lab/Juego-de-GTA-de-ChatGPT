@@ -1,6 +1,6 @@
 ---
 document_id: SYSTEM-NPC-PERCEPTION
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "96ef8fc-dirty (Phase 5 working tree)"
 verification_scope: "typecheck + vitest (45/45) + vite build (Phase 5)"
@@ -17,6 +17,9 @@ related_files:
   - src/ai/npc/npc-population.ts
   - src/navigation/pedestrian-graph.ts
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Sistema: Fundamentos de Simulación, Eventos, Percepción y NPC (`NPC_AND_PERCEPTION.md`)
 

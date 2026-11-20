@@ -1,85 +1,76 @@
-import { PerspectiveCamera, Scene, Vector3 } from 'three'
-import { createGameAudio } from './audio/audio'
-import { gameConfig, type Quality } from './config/game'
+import { PerspectiveCamera, Scene, Vector3, Mesh, InstancedMesh, type Material, type BufferGeometry, Texture } from 'three'
+import { createAudio } from './audio/audio'
+import { gameConfig } from './config/game'
+import type { Quality } from './config/game'
 import { FixedLoop } from './core/fixed-loop'
-import { createInput } from './core/input'
-import { formatSimulationInspector } from './debug/inspector'
-import { createDebugOverlay } from './debug/overlay'
+import { createInput, type Command } from './core/input'
 import { FrameStats } from './debug/stats'
-import { loadAudioPreference, loadQuality, saveAudioPreference, saveQuality } from './persistence/preferences'
+import { loadQuality, saveQuality } from './persistence/preferences'
 import { createPhysics } from './physics/physics'
 import { createPlayer } from './player/player'
-import { createAtmosphere, createContactShadows, createRenderer, type ContactShadowSource } from './renderer/renderer'
-import { createSimulationEngine } from './simulation/engine'
+import { createAtmosphere, createRenderer } from './renderer/renderer'
 import { createUI } from './ui/ui'
+import { createGameplayUI } from './ui/gameplay'
+import { createSession, type Session } from './simulation/session'
+import type { Physics } from './physics/physics'
 import { buildDistrict } from './world/district'
-import { getDistrictAt } from './world/generation/layout'
 
 async function startGame() {
   const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')
   if (!canvas) throw new Error('Falta el lienzo del juego')
 
   let mode: 'loading' | 'start' | 'playing' | 'paused' | 'error' = 'loading'
+  let hour = gameConfig.initialHour
   let debug = false
-  let inspectorDebug = false
-  let geometryDebug = false
   let alpha = 1
   let elapsed = 0
   let lastTime = performance.now()
   let video: ReturnType<typeof createRenderer> | undefined
   let player: ReturnType<typeof createPlayer>
-  let engine: ReturnType<typeof createSimulationEngine> | undefined
-  let noticeText: string | null = null
-  let noticeTimer = 0
+  let session: Session | undefined
+  let physics: Physics | undefined
+  let scene: Scene | undefined
+  let resizeObserver: ResizeObserver | undefined
   let frameId = 0
   let disposed = false
+  const audio = createAudio()
+  const gameplayUI = createGameplayUI(command, (index) => {
+    if (mode === 'playing') session?.select(index)
+  })
 
   const loop = new FixedLoop(gameConfig.fixedStep)
   const stats = new FrameStats()
-  const audio = createGameAudio()
   const ui = createUI({
     onPlay: play,
     onPause: pause,
     onQuality: setQuality,
-    onHour: (value) => { if (engine) engine.hour = value },
-    onVolume: (volume, muted) => {
-      audio.setVolume(volume)
-      audio.setMuted(muted)
-      void saveAudioPreference({ volume, muted })
-    },
+    onHour: (value) => { hour = ((value % 24) + 24) % 24 },
     onReset: () => {
-      engine?.reset(gameConfig.initialHour)
+      if (!player) return
+      session?.reset()
       loop.reset()
       alpha = 1
-      noticeText = null
-      noticeTimer = 0
-      audio.cue('ui')
+      hour = gameConfig.initialHour
     },
-    onPhoneCommand: (command) => {
-      if (mode === 'playing') engine?.sendPhoneCommand(command)
-    },
-    onBuy: (index) => { if (mode === 'playing') engine?.buyProduct(index) },
   })
   ui.setMode('loading')
 
   const input = createInput(canvas, {
     onLook: (dx, dy) => player?.look(dx, dy),
     onPause: pause,
+    onCommand: command,
     onDebug: () => {
       debug = !debug
-      if (debug) inspectorDebug = false
       ui.setDebug(debug ? 'Midiendo fotogramas…' : null)
     },
-    onDebugOverlay: () => { geometryDebug = !geometryDebug },
-    onDebugInspector: () => {
-      inspectorDebug = !inspectorDebug
-      if (inspectorDebug) debug = false
-      ui.setDebug(inspectorDebug ? 'Inspeccionando simulación…' : null)
-    },
-    onDebugWanted: (level) => {
-      if (debug || inspectorDebug) engine?.setForcedWanted(level)
-    },
   })
+
+  function command(action: Command) {
+    if (mode !== 'playing' || !session) return
+    const previous = session.overlay
+    session.command(action)
+    if (previous !== 'world' && session.overlay === 'world') input.capture()
+  }
 
   function setQuality(quality: Quality) {
     if (!video) return
@@ -95,60 +86,40 @@ async function startGame() {
     ui.setMode(mode)
     input.setActive(true)
     input.capture()
-    audio.setPaused(false)
-    void audio.unlock().then(() => audio.cue('ui')).catch(() => {})
+    audio.unlock()
+    audio.pause(false)
   }
 
   function pause() {
     if (mode !== 'playing') return
     mode = 'paused'
+    session?.closeOverlay()
     input.setActive(false)
+    audio.pause(true)
     ui.setMode(mode)
-    audio.setPaused(true)
-    audio.cue('ui')
   }
 
   try {
-    const scene = new Scene()
+    const worldScene = new Scene()
+    scene = worldScene
     const camera = new PerspectiveCamera(58, 1, 0.08, 650)
     const intro = new PerspectiveCamera(54, 1, 0.08, 650)
     const display = createRenderer(canvas)
     video = display
-    const district = buildDistrict(scene, gameConfig.seed)
-    const atmosphere = createAtmosphere(scene, gameConfig.initialHour)
-    const [physics, quality, audioPreference] = await Promise.all([
-      createPhysics(district.colliders, { streamingRadius: 112, initialFocus: district.spawn }),
+    const district = buildDistrict(worldScene, gameConfig.seed)
+    const atmosphere = createAtmosphere(worldScene, hour)
+    const [worldPhysics, quality] = await Promise.all([
+      createPhysics(district.colliders),
       loadQuality(),
-      loadAudioPreference(),
     ])
-    player = createPlayer(scene, camera, physics, district.spawn)
-    const simulation = createSimulationEngine(
-      scene,
-      physics,
-      player,
-      district,
-      gameConfig.seed,
-      gameConfig.initialHour,
-      {
-        onAudioCue: (cue) => audio.cue(cue),
-        onNotice: (text, duration) => {
-          noticeText = text ? text : null
-          noticeTimer = duration
-        },
-      },
-    )
-    engine = simulation
-    const shadows = createContactShadows(scene, 14)
-    const overlay = createDebugOverlay(scene)
-
+    physics = worldPhysics
+    if (disposed) { physics.dispose(); return }
+    player = createPlayer(worldScene, camera, physics, district.spawn)
+    session = createSession(worldScene, camera, physics, district.colliders, player, audio, (context) => input.setContext(context))
     ui.setWorld(district.map)
     const activeQuality = quality ?? gameConfig.defaultQuality
     display.setQuality(activeQuality)
     ui.setQuality(activeQuality)
-    const sound = audioPreference ?? { volume: 0.35, muted: false }
-    audio.setVolume(sound.volume)
-    audio.setMuted(sound.muted)
-    ui.setVolume(sound.volume, sound.muted)
 
     const resize = () => {
       const width = Math.max(1, canvas.clientWidth)
@@ -158,159 +129,43 @@ async function startGame() {
       camera.updateProjectionMatrix()
       intro.updateProjectionMatrix()
     }
-    const resizeObserver = new ResizeObserver(resize)
+    resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(canvas)
     resize()
 
     const introFocus = new Vector3(-12, 7.2, -32)
-    const focusVector = new Vector3()
-    const shadowSources: ContactShadowSource[] = []
-    const combinedRoutesScratch: (typeof simulation.traffic.routes)[number][] = []
-    let audioTimer = 0
-    let overlayTimer = 0
-    let inspectorTimer = 0
-
-    function step(dt: number) {
-      if (noticeTimer > 0) {
-        noticeTimer -= dt
-        if (noticeTimer <= 0) noticeText = null
-      }
-      simulation.step(dt, input.read(), debug || inspectorDebug)
-      input.setPhoneOpen(simulation.overlayOpen)
-    }
-
     function frame(now: number) {
       const dt = Math.max(0, (now - lastTime) / 1000)
-      const visualDt = Math.min(dt, 0.1)
       lastTime = now
-      if (mode !== 'paused') elapsed += visualDt
-      if (mode === 'playing') alpha = loop.advance(dt, step)
+      if (mode !== 'paused') elapsed += Math.min(dt, 0.1)
+      const simulationStart = debug ? performance.now() : 0
+      if (mode === 'playing') {
+        alpha = loop.advance(dt, (step) => {
+          session!.step(step, input.read())
+          hour = (hour + step * 24 / gameConfig.secondsPerDay) % 24
+        })
+      }
+      const simulationMs = debug ? performance.now() - simulationStart : 0
 
       const startView = mode === 'start'
       if (startView) {
         intro.position.set(-3.3 + Math.sin(elapsed * 0.16) * 0.65, 6.3, 41)
         intro.lookAt(introFocus)
       }
-      simulation.render(alpha, mode === 'playing' ? visualDt : 0, elapsed)
-
-      const position = simulation.focusPosition
-      const heading = simulation.focusHeading
-      const hour = simulation.hour
-      const focus = startView
-        ? intro.position
-        : focusVector.set(position.x, position.y, position.z)
-      atmosphere.update(hour, focus, elapsed)
-      district.update(elapsed, hour, focus)
-
-      shadowSources.length = 0
-      if (!simulation.driving) shadowSources.push({ x: player.position.x, y: player.position.y, z: player.position.z, radiusX: 0.65, radiusZ: 0.55 })
-      for (const entry of simulation.vehicles.all) {
-        const carPos = entry.car.position
-        if ((carPos.x - focus.x) ** 2 + (carPos.z - focus.z) ** 2 < 55 ** 2) {
-          shadowSources.push({ x: carPos.x, y: carPos.y, z: carPos.z, radiusX: 1.32, radiusZ: 2.45, heading: entry.car.heading })
-        }
-      }
-      for (const unit of simulation.traffic.vehicles) {
-        if ((unit.x - focus.x) ** 2 + (unit.z - focus.z) ** 2 < 42 ** 2) {
-          shadowSources.push({ x: unit.x, y: 0, z: unit.z, radiusX: 1.15, radiusZ: 2.1, heading: unit.heading })
-        }
-      }
-      for (const unit of simulation.police.units) {
-        if ((unit.x - focus.x) ** 2 + (unit.z - focus.z) ** 2 < 42 ** 2) {
-          shadowSources.push({ x: unit.x, y: 0, z: unit.z, radiusX: 1.15, radiusZ: 2.1, heading: unit.heading })
-        }
-      }
-      shadows.update(shadowSources, hour)
-
-      const { x, y, z } = position
-      const prompt = simulation.getInteractionPrompt()
-      const activeCar = simulation.activeVehicle
-      const phoneState = simulation.getPhoneSnapshot()
-      input.setPhoneOpen(simulation.overlayOpen)
-
-      ui.update({
-        x, z, heading, hour, district: getDistrictAt(x, z),
-        health: simulation.health,
-        cash: simulation.cash,
-        weaponLabel: simulation.weaponLabel,
-        aiming: simulation.aiming,
-        armed: simulation.armed,
-        driving: simulation.driving,
-        canInteract: prompt.canInteract,
-        interactionLabel: prompt.label,
-        touchInteractionLabel: prompt.touchLabel,
-        notice: noticeText,
-        stores: simulation.stores.getMarkers(),
-        speed: (activeCar?.speed ?? 0) * 3.6,
-        wanted: simulation.police.wanted.level,
-        policeStatus: simulation.police.statusLabel,
-        phone: phoneState,
-        trade: simulation.getTradeSnapshot(),
-      })
-
-      audioTimer -= visualDt
-      if (mode === 'playing' && audioTimer <= 0) {
-        audioTimer = 0.042
-        audio.update({
-          x, y, z, heading,
-          speed: activeCar ? activeCar.speed : simulation.walkingSpeed,
-          driving: simulation.driving,
-          moving: simulation.walkingSpeed > 0.35,
-          throttle: simulation.throttle,
-          braking: activeCar?.braking ?? false,
-          coastDistance: district.map.water ? Math.abs(x - (district.map.water.x - district.map.water.width / 2)) : 120,
-          police: simulation.police.wanted.level ? simulation.police.units : [],
-          traffic: simulation.traffic.vehicles,
-        })
-      }
-
-      overlay.visible = geometryDebug
-      overlayTimer -= visualDt
-      if (geometryDebug && overlayTimer <= 0) {
-        overlayTimer = 0.25
-        combinedRoutesScratch.length = 0
-        for (const r of simulation.traffic.routes) combinedRoutesScratch.push(r)
-        for (const r of simulation.police.routes) combinedRoutesScratch.push(r)
-        overlay.update(
-          district.colliders,
-          combinedRoutesScratch,
-          position,
-          simulation.pedestrianGraph,
-          simulation.npcPopulation.getDebugCones(position),
-        )
-      }
+      const animationDt = mode === 'playing' ? Math.min(dt, 0.1) : 0
+      player.render(alpha, animationDt)
+      session!.render(alpha, animationDt)
+      atmosphere.update(hour, startView ? intro.position : player.position, elapsed)
+      district.update(elapsed, hour)
+      const { x, y, z } = player.position
+      ui.update({ x, z, heading: player.heading, hour })
+      gameplayUI.update(session!, hour)
 
       const renderStart = debug ? performance.now() : 0
-      display.render(scene, startView ? intro : camera, now, mode === 'playing')
+      display.render(worldScene, startView ? intro : camera)
       if (debug) {
-        const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics.activeStaticColliders, simulation.entities.size)
-        const timing = display.getFrameTiming()
-        const sectors = district.stats()
-        if (reading) ui.setDebug([
-          reading,
-          `${timing.frameMs?.toFixed(1) ?? '—'} ms cuadro · ${timing.pixelRatio.toFixed(2)}× píxeles`,
-          `${sectors.loaded}/${sectors.total} sectores · ${sectors.detailed} detallados`,
-          `${simulation.traffic.count} tráfico · ${simulation.npcPopulation.count} NPC · ${simulation.police.units.length} patrullas · ${simulation.police.statusLabel}`,
-          `Posición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`,
-        ].join('\n'))
-      } else if (inspectorDebug) {
-        inspectorTimer -= visualDt
-        if (inspectorTimer <= 0) {
-          inspectorTimer = 0.2
-          const nearNpcs = simulation.npcPopulation.agents
-            .filter((agent) => (agent.x - x) ** 2 + (agent.z - z) ** 2 <= 45 * 45)
-            .slice(0, 6)
-            .map((agent) => agent.brain)
-          ui.setDebug(formatSimulationInspector({
-            entities: simulation.entities,
-            events: simulation.eventBus,
-            timings: simulation.timings,
-            wantedLevel: simulation.police.wanted.level,
-            wantedState: simulation.police.wanted.state,
-            lastKnown: simulation.police.wanted.lastKnown,
-            npcs: nearNpcs,
-          }))
-        }
+        const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics!.world.colliders.len(), 1 + session!.population.people.length + session!.police.units.length, simulationMs)
+        if (reading) ui.setDebug(`${reading}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
       }
       frameId = requestAnimationFrame(safeFrame)
     }
@@ -318,27 +173,13 @@ async function startGame() {
     function safeFrame(now: number) {
       if (disposed) return
       try { frame(now) } catch (error) {
-        mode = 'error'; input.setActive(false); audio.setPaused(true)
+        mode = 'error'
+        input.setActive(false)
+        audio.pause(true)
         console.error('Viceblock detuvo la simulación', error)
-        ui.setMode(mode, 'La simulación se ha detenido. Recarga para reintentar.')
+        ui.setMode(mode, 'La simulación se ha detenido. Vuelve a cargar la página para reintentar.')
       }
     }
-
-    window.addEventListener('pagehide', (event) => {
-      if (event.persisted) { pause(); return }
-      if (disposed) return
-      disposed = true
-      cancelAnimationFrame(frameId)
-      resizeObserver.disconnect()
-      input.dispose()
-      overlay.dispose()
-      atmosphere.dispose()
-      simulation.dispose()
-      player.dispose()
-      district.dispose()
-      physics.dispose()
-      display.dispose()
-    })
 
     mode = 'start'
     lastTime = performance.now()
@@ -351,6 +192,37 @@ async function startGame() {
       ? 'No se pudo cargar el distrito. Vuelve a cargar la página para reintentar.'
       : 'Viceblock necesita WebGL 2. Activa la aceleración gráfica y vuelve a cargar.')
   }
+
+  window.addEventListener('pagehide', (event) => {
+    if (event.persisted) { pause(); return }
+    if (disposed) return
+    disposed = true
+    cancelAnimationFrame(frameId)
+    resizeObserver?.disconnect()
+    input.dispose()
+    gameplayUI.dispose()
+    audio.dispose()
+    session?.dispose()
+    player?.dispose()
+    physics?.dispose()
+    const geometries = new Set<BufferGeometry>()
+    const materials = new Set<Material>()
+    const textures = new Set<Texture>()
+    scene?.traverse((object) => {
+      if (!(object instanceof Mesh)) return
+      if (object instanceof InstancedMesh) object.dispose()
+      geometries.add(object.geometry)
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) materials.add(material)
+    })
+    for (const material of materials) {
+      for (const value of Object.values(material)) if (value instanceof Texture) textures.add(value)
+      material.dispose()
+    }
+    textures.forEach((texture) => texture.dispose())
+    geometries.forEach((geometry) => geometry.dispose())
+    if (scene?.environment instanceof Texture) scene.environment.dispose()
+    video?.renderer.dispose()
+  })
 }
 
 void startGame()

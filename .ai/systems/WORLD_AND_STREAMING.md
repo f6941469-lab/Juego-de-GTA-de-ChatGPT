@@ -1,6 +1,6 @@
 ---
 document_id: SYSTEM-WORLD-STREAMING
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "96ef8fc-dirty (Phase 4 working tree)"
 verification_scope: "typecheck + vitest (43/43) + vite build (Phase 4)"
@@ -17,6 +17,9 @@ related_files:
   - src/world/generation/coast.ts
   - src/world/generation/vegetation.ts
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Sistema: Mundo, Generación Procedural y Streaming (`WORLD_AND_STREAMING.md`)
 

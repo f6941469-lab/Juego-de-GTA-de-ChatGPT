@@ -2,18 +2,13 @@ import * as THREE from 'three';
 import { createAvatar } from '../characters/avatar';
 import { createCharacterCollider } from '../physics/physics';
 import type { Physics, Point3 } from '../physics/physics';
-import { createFollowCamera, type VehicleCamera } from './follow-camera';
+import { createFollowCamera } from './follow-camera';
 
 export interface MovementInput {
   x: number;
   z: number;
   run: boolean;
   jump: boolean;
-  handbrake?: boolean;
-}
-
-interface VehicleRide extends VehicleCamera {
-  position: THREE.Vector3;
 }
 
 const WALK_SPEED = 4.4;
@@ -41,9 +36,11 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   let previousJump = false;
   let grounded = false;
   let resolvedSpeed = 0;
-  let ride: VehicleRide | undefined;
-  let aimingPose = false;
-  let equippedWeapon: 'unarmed' | 'pistol' | 'carbine' = 'unarmed';
+  let pendingMovement = { x: 0, y: 0, z: 0 };
+  let pendingGrounded = false;
+  let pendingMoveY = 0;
+  let aiming = false;
+  let armed = false;
   let recoil = 0;
 
   // Wrap only differences so interpolation always follows the shortest arc.
@@ -51,33 +48,22 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     return THREE.MathUtils.euclideanModulo(to - from + Math.PI, Math.PI * 2) - Math.PI;
   }
 
-  function standAt(feet: Point3, direction: number) {
-    ride = undefined;
-    character.warp(feet);
-    character.setEnabled(true);
-    position.set(feet.x, feet.y, feet.z);
+  function reset() {
+    character.warp(initialFeet);
+    position.set(initialFeet.x, initialFeet.y, initialFeet.z);
     previousPosition.copy(position);
     horizontalVelocity.set(0, 0);
-    heading = previousHeading = direction;
+    heading = previousHeading = 0;
     resolvedSpeed = verticalSpeed = groundTime = bufferedJump = 0;
+    armed = aiming = false;
+    recoil = 0;
     grounded = previousJump = false;
     avatar.reset();
-    aimingPose = false;
-    equippedWeapon = 'unarmed';
-    recoil = 0;
-    follow.reset(position, direction);
+    follow.reset(position);
     render(1, 0);
   }
 
-  function reset() {
-    standAt(initialFeet, 0);
-  }
-
-  let pendingMove = { movement: { x: 0, y: 0, z: 0 }, grounded: false };
-  let pendingMoveY = 0;
-
   function prepareStep(dt: number, input: MovementInput) {
-    if (ride) return;
     previousPosition.copy(position);
     previousHeading = heading;
     if (input.jump && !previousJump) bufferedJump = JUMP_BUFFER;
@@ -92,7 +78,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     }
 
     const magnitude = Math.max(1, Math.hypot(input.x, input.z));
-    const speed = (aimingPose ? 2.4 : input.run ? RUN_SPEED : WALK_SPEED) / magnitude;
+    const speed = (aiming ? 2.4 : input.run ? RUN_SPEED : WALK_SPEED) / magnitude;
     const sin = Math.sin(follow.yaw);
     const cos = Math.cos(follow.yaw);
     const targetX = (input.x * cos + input.z * sin) * speed;
@@ -101,56 +87,52 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     horizontalVelocity.x = THREE.MathUtils.damp(horizontalVelocity.x, targetX, acceleration, dt);
     horizontalVelocity.y = THREE.MathUtils.damp(horizontalVelocity.y, targetZ, acceleration, dt);
 
-    if (aimingPose || Math.hypot(targetX, targetZ) > 0.05) {
-      const targetHeading = aimingPose ? follow.yaw : Math.atan2(targetX, -targetZ);
+    if (aiming || Math.hypot(targetX, targetZ) > 0.05) {
+      const targetHeading = aiming ? follow.yaw : Math.atan2(targetX, -targetZ);
       heading += turnDelta(heading, targetHeading) * (1 - Math.exp(-16 * dt));
     }
 
     // Maintain a downward probe while grounded and let Rapier resolve curbs and walls.
     verticalSpeed = Math.max(-30, verticalSpeed + physics.world.gravity.y * dt);
-    pendingMoveY = verticalSpeed * dt;
-    pendingMove = character.prepareMove(dt, {
+    const moveY = verticalSpeed * dt;
+    const result = character.move(dt, {
       x: horizontalVelocity.x * dt,
-      y: pendingMoveY,
+      y: moveY,
       z: horizontalVelocity.y * dt,
     });
+    pendingMovement = result.movement;
+    pendingGrounded = result.grounded;
+    pendingMoveY = moveY;
   }
 
   function finishStep(dt: number) {
-    if (ride) return;
     const feet = character.readFeet();
     position.set(feet.x, feet.y, feet.z);
-    resolvedSpeed = Math.hypot(pendingMove.movement.x, pendingMove.movement.z) / dt;
+    resolvedSpeed = Math.hypot(pendingMovement.x, pendingMovement.z) / dt;
 
-    grounded = pendingMove.grounded && verticalSpeed <= 0;
+    grounded = pendingGrounded && verticalSpeed <= 0;
     if (grounded) {
       groundTime = COYOTE_TIME;
       verticalSpeed = 0;
     } else {
       groundTime = Math.max(0, groundTime - dt);
-      if (verticalSpeed > 0 && pendingMove.movement.y < pendingMoveY - 0.004) verticalSpeed = 0;
+      if (verticalSpeed > 0 && pendingMovement.y < pendingMoveY - 0.004) verticalSpeed = 0;
     }
 
     if (position.y < FALL_RESET_HEIGHT) reset();
   }
 
   function step(dt: number, input: MovementInput) {
-    if (ride) return;
     prepareStep(dt, input);
     physics.step(dt);
     finishStep(dt);
   }
 
   function render(alpha: number, dt: number) {
-    recoil = THREE.MathUtils.damp(recoil, 0, 17, dt);
-    if (ride) {
-      avatar.mesh.visible = false;
-      follow.update(ride.position, dt, ride);
-      return;
-    }
     const blend = THREE.MathUtils.clamp(alpha, 0, 1);
     interpolated.lerpVectors(previousPosition, position, blend);
-    const cameraDistance = follow.update(interpolated, dt, undefined, aimingPose, recoil);
+    recoil = THREE.MathUtils.damp(recoil, 0, 17, dt);
+    const cameraDistance = follow.update(interpolated, dt, aiming, recoil);
     avatar.mesh.position.copy(interpolated);
     avatar.mesh.rotation.y = -(previousHeading + turnDelta(previousHeading, heading) * blend);
     avatar.mesh.visible = cameraDistance > 0.75;
@@ -159,8 +141,9 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
       sprint: THREE.MathUtils.clamp((resolvedSpeed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0, 1),
       verticalSpeed,
       grounded,
-      aiming: aimingPose,
-      weapon: equippedWeapon,
+      action: aiming ? 'aim' : 'relaxed',
+      armed,
+      recoil,
     }, dt);
   }
 
@@ -168,34 +151,19 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
 
   return {
     position,
+    collider: character.collider,
+    get aimHeading() { return follow.yaw; },
     get heading() {
       return heading;
     },
-    get aimYaw() {
-      return follow.yaw;
-    },
-    get grounded() {
-      return grounded;
-    },
-    setAimPose(aiming: boolean, weapon: 'unarmed' | 'pistol' | 'carbine') {
-      aimingPose = aiming && weapon !== 'unarmed';
-      equippedWeapon = weapon;
-    },
-    kick() { recoil = 0.13; },
+    step,
     prepareStep,
     finishStep,
-    step,
+    setWeapon(equipped: boolean, aim: boolean) { armed = equipped; aiming = equipped && aim; },
+    kick() { recoil = 0.13; },
     look: follow.look,
     render,
     reset,
-    canReach: character.canReach,
-    enterVehicle(vehicle: VehicleRide) {
-      ride = vehicle;
-      character.setEnabled(false);
-      avatar.mesh.visible = false;
-      follow.reset(vehicle.position, vehicle.heading, vehicle);
-    },
-    exitVehicle: standAt,
     dispose() {
       character.dispose();
       avatar.dispose();

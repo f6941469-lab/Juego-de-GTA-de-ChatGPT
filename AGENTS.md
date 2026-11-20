@@ -1,7 +1,7 @@
 # AGENTS.md — Viceblock
 
 ## 1. Identidad y restricciones fundamentales
-- **Proyecto:** Viceblock (`0.2.0`) — videojuego 3D de mundo abierto urbano en navegador (estética cúbica/prismática en Costa Palmera).
+- **Proyecto:** Viceblock (`0.3.0`, Mercado Palma) — videojuego 3D de mundo abierto urbano en navegador (estética cúbica/prismática en Costa Palmera).
 - **Stack real:** TypeScript (`strict`, `ES2022`), Vite, Three.js (WebGL 2), Rapier3D WASM (`@dimforge/rapier3d-compat`), Web Audio API procedural e IndexedDB.
 - **Restricción tecnológica:** Prohibido introducir motores comerciales generalistas (Unity, Unreal, Godot). Tecnología propia basada en navegador y recursos procedurales/originales.
 - **Idioma del proyecto:** Interfaz, documentación y mensajes de commit en español. Identificadores de código en inglés.
@@ -17,6 +17,7 @@ El código fuente es la autoridad sobre el comportamiento implementado; distingu
 
 ## 3. Convenciones técnicas esenciales
 - **Reglas completas:** Ver [.ai/RULES.md](.ai/RULES.md).
+- **Versión activa:** El usuario autorizó sustituir el sistema anterior por la entrega Mercado Palma de `5660edc`. Usa `src/simulation/session.ts`; la documentación de fases anteriores está archivada y no define el runtime actual.
 - **Arquitectura:** Mantén la lógica de simulación fuera de `src/ui/`. Rapier integra la física con paso fijo (`1/60 s`) y Three.js interpola las poses (`alpha`).
 - **Ejes y unidades:** `1 unidad ≈ 1 metro`, `+Y` arriba, rumbo `0 rad = -Z` (norte), giro positivo hacia `+X`. Minimapa usa `X` y `Z`. Tiempos en segundos, ángulos en radianes.
 - **Determinismo y GPU:** Conserva generación determinista basada en semilla (`makeRandom`) cuando proceda; reutiliza geometrías y materiales (`InstancedMesh`) en elementos repetidos.

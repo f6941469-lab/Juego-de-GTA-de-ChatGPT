@@ -1,5 +1,0 @@
-.trade-panel { position: absolute; top: 50%; right: 1rem; transform: translateY(-50%); width: min(27rem, calc(100% - 2rem)); max-height: calc(100% - 2rem); overflow: auto; background: #173630f5; color: #f7e7c8; border: 1px solid #84b99e; border-radius: .7rem; padding: 1.2rem; pointer-events: auto; z-index: 3; box-shadow: 0 1rem 4rem #101c2b80; }
-.trade-panel h2 { font: 1.6rem var(--display); margin: 0 0 .7rem; }
-.trade-panel p { font: 600 1rem/1.4 var(--label); color: #c6d3b7; }
-.trade-panel button { display: block; width: 100%; margin-top: .65rem; padding: .85rem; text-align: left; background: #25483e; color: inherit; border: 1px solid #5e8270; border-radius: .4rem; font: 600 1.05rem/1.4 var(--label); }
-.trade-panel button[data-selected="true"] { border-color: #e1d5a3; background: #3c5c46; }

@@ -1,6 +1,6 @@
 ---
 document_id: SYSTEM-POLICE-WANTED
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "3a830a4-dirty (Phase 6 working tree)"
 verification_scope: "typecheck + vitest (49/49) + vite build + Chromium WebGL 2 (Phase 6)"
@@ -11,6 +11,9 @@ related_files:
   - src/ai/police/wanted.ts
   - src/physics/spatial-index.ts
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Sistema: Policía y Niveles de Búsqueda (`POLICE_AND_WANTED.md`)
 

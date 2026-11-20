@@ -1,5 +1,3 @@
-> Documento histórico de la entrega `work@5660edc`, basada en `2ee553f`. La integración en `main` usa `src/simulation/engine.ts` y los sistemas de `.ai/systems/`; los módulos de prototipo descritos aquí fueron sustituidos por esos contratos, no ejecutados en paralelo.
-
 # Contratos de la escena Mercado Palma
 
 ## Tiempo y física

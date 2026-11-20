@@ -1,6 +1,6 @@
 ---
 document_id: SYSTEM-AUDIO
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "96ef8fc-dirty (Phase 4 working tree)"
 verification_scope: "typecheck + vitest (43/43) + vite build (Phase 4)"
@@ -9,6 +9,9 @@ related_files:
   - src/audio/audio.ts
   - src/audio/synths/signals.ts
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Sistema: Audio Procedural (`AUDIO.md`)
 

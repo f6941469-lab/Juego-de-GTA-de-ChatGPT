@@ -1,6 +1,6 @@
 ---
 document_id: SYSTEM-PHYSICS-COLLISIONS
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "173aa01-dirty (Phase 7 working tree)"
 verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 (Phase 7)"
@@ -10,6 +10,9 @@ related_files:
   - src/physics/spatial-index.ts
   - src/physics/vehicle-obstacles.ts
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Sistema: Física y Colisiones (`PHYSICS_AND_COLLISIONS.md`)
 

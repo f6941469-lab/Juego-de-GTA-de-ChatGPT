@@ -32,28 +32,28 @@ function advance(player: Player, frames: number, input = idle) {
 }
 
 describe('third-person character', () => {
-  it('keeps the camera stable when a pedestrian capsule crosses the boom', async () => {
-    const physics = await createPhysics([floor]);
-    const other = createCharacterCollider(physics, { x: 0, y: 0, z: 2 }); physics.step(fixedStep);
-    const camera = new PerspectiveCamera(58, 1.6, 0.08, 650);
-    const player = createPlayer(new Scene(), camera, physics, { x: 0, y: 0, z: 0 });
-    try { expect(camera.position.z).toBeGreaterThan(4.5); }
-    finally { player.dispose(); other.dispose(); physics.dispose(); }
-  })
-  it('restores normal camera zoom and unarmed pose on reset', async () => {
-    await withPlayer([], (player, camera) => {
-      player.setAimPose(true, 'pistol'); player.render(1, 1); expect(camera.fov).toBeLessThan(50);
-      player.reset(); player.render(1, 1); expect(camera.fov).toBe(58);
-    });
+  it('keeps camera distance when a pedestrian crosses the boom', async () => {
+    const physics = await createPhysics([floor])
+    const pedestrian = createCharacterCollider(physics, { x: 0, y: 0, z: 2 })
+    physics.step(fixedStep)
+    const camera = new PerspectiveCamera(60, 16 / 9, 0.1, 650)
+    const player = createPlayer(new Scene(), camera, physics, { x: 0, y: 0, z: 0 })
+    try { expect(camera.position.z).toBeGreaterThan(4.5) }
+    finally { player.dispose(); pedestrian.dispose(); physics.dispose() }
   })
   it('moves forward, covers more ground while running and returns to spawn on reset', async () => {
-    await withPlayer([], (player) => {
+    await withPlayer([], (player, camera) => {
       advance(player, 60, forward)
       const walkingDistance = -player.position.z
       expect(walkingDistance).toBeGreaterThan(2)
       expect(player.position.x).toBeCloseTo(0)
 
+      player.setWeapon(true, true)
+      player.render(1, 1)
+      expect(camera.fov).toBeLessThan(50)
       player.reset()
+      player.render(1, 1)
+      expect(camera.fov).toBe(58)
       advance(player, 1)
       expect(player.position.z).toBeCloseTo(0)
       advance(player, 60, { ...forward, run: true })

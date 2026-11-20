@@ -1,3 +1,9 @@
+# Limitaciones activas — Mercado Palma 0.3.0
+
+Consultar [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) y [CURRENT_STATE.md](CURRENT_STATE.md). No hay conducción del jugador, otros distritos, persecuciones policiales en coche ni replay de video en esta entrega. El tráfico recorre un circuito local y la policía actúa a pie. La fluidez en GPU física y la escucha humana del audio siguen pendientes.
+
+## Registro histórico del sistema sustituido
+
 ---
 document_id: CORE-KNOWN-ISSUES
 status: active

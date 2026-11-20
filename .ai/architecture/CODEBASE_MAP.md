@@ -1,10 +1,13 @@
 ---
 document_id: ARCH-CODEBASE-MAP
-status: active
+status: archived
 last_updated: 2026-11-20
 verified_against: "173aa01-dirty (Phase 7)"
 verification_scope: "typecheck-tests-build-phase7"
 ---
+
+
+> ARCHIVO HISTÓRICO DEL SISTEMA ANTERIOR (hasta `d565cdc`). Desde 0.3.0 estos contratos no describen el código activo. Consulta [.ai/CURRENT_STATE.md](../CURRENT_STATE.md) y `.ai/SIMULATION.md` para la versión Mercado Palma.
 
 # Mapa del Código Fuente (`CODEBASE_MAP.md`)
 

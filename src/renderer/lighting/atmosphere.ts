@@ -116,13 +116,5 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
   }
 
   update(initialHour, new Vector3());
-  return {
-    update,
-    dispose() {
-      scene.remove(sky, sun, sun.target, ambient);
-      sky.geometry.dispose();
-      skyMaterial.dispose();
-      sun.shadow.map?.dispose();
-    },
-  };
+  return { update };
 }

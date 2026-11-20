@@ -1,44 +1,56 @@
-# Viceblock
+# Viceblock 0.3.0 · Mercado Palma
 
-## Mercado Palma · integración en main
+Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, cuatro civiles con rutinas, tres coches autónomos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. El alcance es local y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
-La partida comienza frente a Mercado Palma, junto a Club Neón. Entra por la abertura central y acércate al mostrador: **E** abre la compra si estás desarmado. Dispones de $120; agua, comida y munición van a **Mochila** en el teléfono (**↑**). Flechas/Enter/Esc navegan los paneles. **2** equipa la pistola, **1** la guarda; botón derecho + izquierdo apunta y dispara, **R** recarga. La conducción, el resto de tiendas, los barrios y los sistemas de policía y tráfico de main se conservan.
+## Sustitución del sistema anterior
 
+Esta versión usa íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y la tienda de Mara. El motor de simulación, interfaz y mapa de la integración anterior fueron sustituidos por esta entrega por petición del usuario. La conducción, los distritos adicionales y la policía avanzada anteriores quedan fuera de la versión activa; su código permanece en el historial de Git.
 
-Viceblock es un juego 3D de exploración urbana para navegador. Recorre barrios costeros de arquitectura art déco a pie o en coche, observa el ciclo de día y noche, y prueba el desafío de búsqueda de cinco estrellas. Los modelos, materiales, distritos y sonidos se generan con código.
+Para comprobar que ejecutas esta versión, la portada debe indicar **MERCADO PALMA · VERSIÓN 0.3.0** y la pestaña **Viceblock 0.3.0 — Mercado Palma**. Tras actualizar, detén el servidor anterior y ejecuta los comandos desde la carpeta recién descargada. Si sirves `dist/`, reconstruye primero con `npm run build`; una compilación anterior no se actualiza al descargar solo el código.
 
-## Jugar
+## Ejecutar el juego
 
-Usa Node.js 24 LTS y un navegador con WebGL 2. Desde la raíz del repositorio ejecuta:
+Usa Node.js 24 LTS. Las versiones admitidas se registran en `package.json`. El entorno de desarrollo en la nube trae Node.js 24 y npm 11. Para jugar necesitas un navegador compatible con WebGL 2.
+
+Ejecuta estos comandos desde la raíz del repositorio.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Abre la dirección de Vite y selecciona **Explorar distrito**. El sonido se activa al entrar y puedes regularlo desde Ajustes.
+Abre la dirección que indica Vite y selecciona **Explorar distrito** para entrar al distrito.
 
 | Control | Acción |
 | --- | --- |
-| WASD o flechas | Moverse a pie. En coche, acelerar, girar, frenar y retroceder |
-| Ratón | Girar la cámara. Haz clic en el juego para capturar el puntero o arrastra sobre el escenario |
-| Mayús | Correr a pie |
-| Espacio | Saltar a pie o usar el freno de mano |
-| E | Entrar cerca del coche o salir cuando esté detenido y haya espacio |
-| H | Bocina |
-| B | Iniciar o intensificar el desafío de búsqueda |
-| Esc | Pausa y ajustes |
-| F3 / F4 | Estadísticas / geometría de depuración |
-| Mayús + 0–5 | Cambiar estrellas con F3 activo |
+| W, A, S, D | Moverse |
+| Ratón | Girar la cámara. Haz clic en el juego para capturar el puntero |
+| Mayús | Correr |
+| Espacio | Saltar |
+| E | Hablar con Mara / comprar cerca del mostrador |
+| 1 | Equipar o guardar pistola |
+| Botón derecho / izquierdo | Apuntar / disparar |
+| R | Recargar |
+| Flecha arriba | Abrir teléfono; guarda la pistola |
+| Flechas, Enter, Escape | Navegar, seleccionar y volver en teléfono o tienda |
+| Esc | Salir de la captura del puntero y pausar |
+| F3 | Mostrar u ocultar los datos de depuración |
 
-La cruceta y los botones táctiles aparecen en pantallas con puntero grueso. El navegador recuerda la calidad gráfica, el volumen y el silencio. Los perfiles ajustan sombras y resolución, y el juego adapta la resolución al ritmo de dibujo.
+En una pantalla táctil, usa las flechas para moverte y arrastra sobre la escena para girar la cámara. Desde la pausa puedes cambiar la calidad gráfica y ajustar la hora. El navegador recuerda el perfil gráfico. Empieza con el perfil Bajo si el movimiento se siente entrecortado.
 
-## Verificar y compilar
+La entrada central del mercado está abierta. Acércate al mostrador de Mara y pulsa E con el arma guardada. Las compras van a la mochila del teléfono; selecciona un producto para usarlo. Mantener la mira sobre Mara durante tres segundos provoca un asalto. Los testigos pueden avisar a la policía, que busca a partir de lo observado. Los escaparates laterales reciben impactos y pierden su colisión al romperse.
+
+El teléfono muestra testimonios de incidentes percibidos por vecinos. La grabación de video figura como no disponible: todavía no hay replay. No se guardan partidas; reiniciar desde pausa, ser detenido o perder toda la salud comienza una nueva escena. Los coches aún no se pueden conducir.
+
+## Comprobar y compilar
 
 ```sh
+npm run typecheck
 npm test
 npm run build
 npm run preview
 ```
 
-La compilación se guarda en `dist/` y se puede servir en cualquier alojamiento estático. [Estado del proyecto](PROJECT_STATE.md) · [Arquitectura](ARCHITECTURE.md) · [Hoja de ruta](ROADMAP.md)
+`npm run preview` sirve la compilación de `dist/`. Usa también un navegador para comprobar los controles, las colisiones y la escena con WebGL 2.
+
+Consulta [el estado actual](PROJECT_STATE.md), [la arquitectura](ARCHITECTURE.md) y [la hoja de ruta](ROADMAP.md) antes de extender el juego.

@@ -1,18 +1,27 @@
-# Continuación — Mercado Palma integrado en main
+# Continuación — reemplazo completo por Mercado Palma 0.3.0
 
-Base main `d0c70d9`, entrega work `5660edc`. El usuario pidió explícitamente publicar en main. El merge conserva los contratos avanzados de main e integra Mercado Palma/comercio/inventario/correcciones; los prototipos equivalentes permanecen en el historial de work y no duplican la simulación activa.
+El usuario pidió explícitamente sustituir el sistema anterior por el de la primera captura, después de ver que la integración conservaba otra presentación. Mantener como activo el código de work@5660edc: `main.ts` usa Session; no restaurar SimulationEngine/HUD/distritos antiguos. El cambio se publica como commit normal sobre main, conservando d565cdc y la implementación anterior en Git.
 
-Verificación: `npm run typecheck`, `npm test` (61 pruebas), `npm run build`, `git diff --check`. Navegador reproducible:
+## Ejecutar y reconocer la versión correcta
+
+Detener el servidor anterior y ejecutar desde la carpeta recién descargada:
+
+```sh
+npm ci
+npm run dev
+```
+
+La portada debe indicar **MERCADO PALMA · VERSIÓN 0.3.0**. Si se sirve una compilación anterior de dist/, ejecutar `npm run build` y volver a iniciar `npm run preview`. No atribuir una captura de otra compilación al código actual sin comprobar ese identificador.
+
+## Verificación
+
+Tipos, 20 pruebas y compilación aprobados. El código operativo coincide con la entrega visual original salvo etiqueta de versión. Navegador reproducible:
 
 ```sh
 npm run preview -- --port 4173
-VICEBLOCK_PLAYWRIGHT=/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright VICEBLOCK_CHROMIUM=/usr/bin/chromium node tests/browser-smoke.mjs
+VICEBLOCK_PLAYWRIGHT=/opt/codex/runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright VICEBLOCK_CHROMIUM=/usr/bin/chromium VICEBLOCK_ARTIFACT_DIR=/tmp/viceblock-030 node tests/browser-smoke.mjs
 ```
 
-El flujo integrado pasó en Chromium 156/SwiftShader sin excepciones, tanto en escritorio como en móvil 390×844. El script guarda reporte y capturas en `/tmp/viceblock-main-smoke`; usa SwiftShader y no sirve para certificar rendimiento de GPU real.
+El smoke comprueba versión/ausencia del HUD antiguo, teléfono, compras, disparo/recarga, reinicio, vista de calle de la captura original, noche, controles táctiles y liberación pagehide. Playwright se instala como herramienta externa, no como dependencia del juego. Medir GPU física y validar audio por escucha sigue pendiente.
 
-Controles: inicio frente al mercado; W entra, E abre compra cerca del mostrador si estás desarmado; ↑ abre teléfono, Mochila usa inventario; 2 pistola, 1 guardar, ratón derecho+izquierdo disparar, R recargar. Escape vuelve en paneles y pausa fuera. Conducción y sistemas previos permanecen.
-
-Las suites previas que asumían saldo cero ahora comprueban el incremento real del asalto. La prueba de conducción cierra explícitamente el teléfono y se ubica en el bulevar antes de abordar Rayo GT; un panel abierto bloquea correctamente el movimiento. La reacción a una grabación se verifica por memoria del evento observado, no por un umbral arbitrario después de su decaimiento.
-
-Próximo trabajo: medición en GPU física, validación prolongada de comportamientos y replay independiente de video. No considerar las afirmaciones históricas de fases anteriores como prueba de estos escenarios.
+Última comprobación gráfica: Chromium 156/SwiftShader en producción, 0 excepciones. Portada identificada como 0.3.0 y captura de calle comparada visualmente con la primera referencia. No se afirma identidad de píxeles entre frames con entidades en movimiento.
