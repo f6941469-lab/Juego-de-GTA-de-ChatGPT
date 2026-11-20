@@ -1,8 +1,14 @@
-type Action = 'interact' | 'horn' | 'challenge'
+type Action = 'interact' | 'horn' | 'challenge' | 'reload' | 'cycleWeapon'
 
-const actionKeys: Readonly<Record<string, Action>> = { KeyE: 'interact', KeyH: 'horn', KeyB: 'challenge' }
+const actionKeys: Readonly<Record<string, Action>> = {
+  KeyE: 'interact',
+  KeyH: 'horn',
+  KeyB: 'challenge',
+  KeyR: 'reload',
+  KeyQ: 'cycleWeapon',
+}
 
-type Control = 'forward' | 'back' | 'left' | 'right' | 'run' | 'jump'
+type Control = 'forward' | 'back' | 'left' | 'right' | 'run' | 'jump' | 'aim' | 'fire'
 
 const keys: Readonly<Record<string, Control>> = {
   KeyW: 'forward', ArrowUp: 'forward',
@@ -11,6 +17,8 @@ const keys: Readonly<Record<string, Control>> = {
   KeyD: 'right', ArrowRight: 'right',
   ShiftLeft: 'run', ShiftRight: 'run',
   Space: 'jump',
+  KeyF: 'aim',
+  KeyG: 'fire',
 }
 
 interface InputActions {
@@ -27,6 +35,10 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
   const heldPointers = new Map<number, Control>()
   let active = false
   let jumpQueued = false
+  let fireQueued = false
+  let weaponSlot: 0 | 1 | 2 | undefined
+  let mouseAim = false
+  let mouseFire = false
   const queuedActions = new Set<Action>()
   let hadLock = false
   let drag: { pointerId: number; x: number; y: number } | null = null
@@ -35,6 +47,10 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     heldKeys.clear()
     heldPointers.clear()
     jumpQueued = false
+    fireQueued = false
+    weaponSlot = undefined
+    mouseAim = false
+    mouseFire = false
     queuedActions.clear()
     drag = null
   }
@@ -78,6 +94,11 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       if (!event.repeat) actions.onDebugWanted(Number(event.code.at(-1)))
       return
     }
+    if (!event.shiftKey && (event.code === 'Digit1' || event.code === 'Digit2' || event.code === 'Digit3')) {
+      event.preventDefault()
+      if (!event.repeat) weaponSlot = (Number(event.code.at(-1)) - 1) as 0 | 1 | 2
+      return
+    }
     const action = actionKeys[event.code]
     if (action) {
       event.preventDefault()
@@ -89,6 +110,7 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     event.preventDefault()
     heldKeys.add(event.code)
     if (control === 'jump' && !event.repeat) jumpQueued = true
+    if (control === 'fire' && !event.repeat) fireQueued = true
   })
 
   window.addEventListener('keyup', (event) => heldKeys.delete(event.code))
@@ -101,11 +123,31 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       actions.onLook(event.movementX, event.movementY)
     }
   })
+  canvas.addEventListener('contextmenu', (event) => {
+    if (active) event.preventDefault()
+  })
   canvas.addEventListener('pointerdown', (event) => {
-    if (!active || event.button !== 0 || drag) return
-    drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
-    canvas.setPointerCapture(event.pointerId)
-    if (event.pointerType === 'mouse') lockPointer()
+    if (!active) return
+    if (event.button === 2) {
+      event.preventDefault()
+      mouseAim = true
+      return
+    }
+    if (event.button !== 0) return
+    if (document.pointerLockElement === canvas || mouseAim || heldKeys.has('KeyF')) {
+      mouseFire = true
+      fireQueued = true
+      return
+    }
+    if (!drag) {
+      drag = { pointerId: event.pointerId, x: event.clientX, y: event.clientY }
+      canvas.setPointerCapture(event.pointerId)
+      if (event.pointerType === 'mouse') lockPointer()
+    }
+  })
+  canvas.addEventListener('pointerup', (event) => {
+    if (event.button === 2) mouseAim = false
+    if (event.button === 0) mouseFire = false
   })
   canvas.addEventListener('pointermove', (event) => {
     if (!active || !drag || drag.pointerId !== event.pointerId) return
@@ -127,13 +169,20 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       button.setPointerCapture(event.pointerId)
       heldPointers.set(event.pointerId, control)
       if (control === 'jump') jumpQueued = true
+      if (control === 'fire') fireQueued = true
     })
     button.addEventListener('lostpointercapture', (event) => heldPointers.delete(event.pointerId))
   }
 
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-action]')) {
     button.addEventListener('click', () => {
-      if (active) queuedActions.add(button.dataset.action as Action)
+      if (!active) return
+      const act = button.dataset.action
+      if (act === 'fire') {
+        fireQueued = true
+      } else if (act) {
+        queuedActions.add(act as Action)
+      }
     })
   }
 
@@ -165,8 +214,15 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
         interact: queuedActions.has('interact'),
         horn: queuedActions.has('horn'),
         challenge: queuedActions.has('challenge'),
+        aim: mouseAim || isHeld('aim'),
+        fire: fireQueued || mouseFire || isHeld('fire'),
+        reload: queuedActions.has('reload'),
+        cycleWeapon: queuedActions.has('cycleWeapon'),
+        weaponSlot,
       }
       jumpQueued = false
+      fireQueued = false
+      weaponSlot = undefined
       queuedActions.clear()
       return input
     },

@@ -124,4 +124,20 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 - **Sistemas afectados:** `simulation/engine.ts`, `ai/npc/npc-{visuals,population}.ts`, `ai/perception.ts`, `ai/traffic/traffic*.ts`, `vehicles/vehicle*.ts`, `world/generation/buildings.ts`, `world/{district,stores}.ts`, `main.ts`.
 - **Referencias:** [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [VEHICLES.md](systems/VEHICLES.md), [WORLD_AND_STREAMING.md](systems/WORLD_AND_STREAMING.md).
 
+### `ADR-0010` — Balística por `SpatialBoxGrid`, testigos 911 interrumpibles y asalto progresivo sin omnisciencia (Fase 3)
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Faltaban armas jugables, percepción real de amenazas armadas, asaltos complejos con cooperación/botín y combate recíproco policial sin que la policía reaccionara mágicamente ante delitos aislados.
+- **Decisión:**
+  1. Implementar `createWeaponSystem` (`src/player/weapons.ts`) con 3 ranuras (`unarmed`, `pistol`, `carbine`), trazadores instanciados (`InstancedMesh`) y raycast balístico detenido por edificios en `SpatialBoxGrid.raycast` (`minY: 1.15, maxY: 1.8`).
+  2. Emitir eventos perceptibles `weapon_drawn`, `weapon_aimed`, `shot_fired`, `npc_injured`, `witness_detected` y `robbery_finished` en `WorldEventBus`, interrumpiendo llamadas 911 si el testigo es intimidado o derribado antes de `2.1 s`.
+  3. Sustituir el robo instantáneo por `beginHeist` / `stepHeist` en `stores.ts` con cooperación del dependiente (`intimidateStoreClerk`), aceleración bajo apuntado/tiros y pago de botín (`cash`) parcial o completo.
+  4. Añadir fuego recíproco policial en `police.ts` (`wanted.level >= 2`, `< 25 m`, `clearLine` real) respetando cobertura sólida.
+- **Motivación:** Conseguir delitos emergentes coherentes donde el sigilo, la cobertura arquitectónica y la intimidación tengan impacto real en la respuesta de ciudadanos y patrullas.
+- **Alternativas consideradas:** Usar solo sensores de proximidad sin `SpatialBoxGrid` (las balas y la policía atravesarían paredes); activar estrellas automáticamente al disparar sin testigos.
+- **Consecuencias positivas:** Balística y combate policial deterministas, bajo coste gráfico (`1` `InstancedMesh` de trazadores) y asaltos con riesgo/recompensa reales.
+- **Consecuencias negativas:** Requiere cobertura de tests específica ante futuros ajustes de alcance o tiempos de llamada (`tests/combat-and-heists.test.ts`).
+- **Sistemas afectados:** `player/{weapons,player}.ts`, `characters/avatar.ts`, `core/input.ts`, `world/stores.ts`, `ai/npc/npc-population.ts`, `ai/police/police.ts`, `simulation/engine.ts`, `audio/audio.ts`, `ui/ui.ts`.
+- **Referencias:** [PLAYER_AND_CAMERA.md](systems/PLAYER_AND_CAMERA.md), [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [POLICE_AND_WANTED.md](systems/POLICE_AND_WANTED.md).
+
 

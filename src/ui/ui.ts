@@ -22,6 +22,10 @@ interface HudState extends PlayerMapPosition {
   hour: number;
   district?: string;
   health?: number;
+  cash?: number;
+  weaponLabel?: string;
+  aiming?: boolean;
+  armed?: boolean;
   driving?: boolean;
   canInteract?: boolean;
   interactionLabel?: string;
@@ -71,16 +75,22 @@ export function createUI(actions: UIActions) {
   const stars = [...wantedLevel.children];
   const wantedStatus = requiredElement("wanted-status");
   const healthMeter = requiredElement<HTMLProgressElement>("health-meter");
+  const cashDisplay = requiredElement("cash-display");
+  const weaponDisplay = requiredElement("weapon-display");
+  const aimReticle = requiredElement("aim-reticle");
   const speedDisplay = requiredElement("speed-display");
   const speedOutput = requiredElement<HTMLOutputElement>("speed-output");
   const prompt = requiredElement("interaction-prompt");
   const promptLabel = requiredElement("interaction-label");
   const touchInteract = requiredElement("touch-interact");
   const touchHorn = requiredElement("touch-horn");
+  const touchWeapon = requiredElement("touch-weapon");
+  const touchFire = requiredElement("touch-fire");
   const touchRun = hud.querySelector<HTMLElement>('[data-move="run"]');
   const touchJump = hud.querySelector<HTMLElement>('[data-move="jump"]');
   const spaceHint = requiredElement("space-hint");
   const hornHint = requiredElement("horn-hint");
+  const combatHint = requiredElement("combat-hint");
   const entryClock = requiredElement<HTMLTimeElement>("entry-time");
   const hudDistrict = requiredElement("hud-district");
   const hudNotice = requiredElement("hud-notice");
@@ -91,6 +101,8 @@ export function createUI(actions: UIActions) {
   let hour = gameConfig.initialHour;
   let displayedTime = "";
   let displayedDistrict = "";
+  let displayedCash = -1;
+  let displayedWeapon = "";
   let panel: PanelMode = "settings";
   let displayedDriving: boolean | undefined;
   let displayedWanted = -1;
@@ -215,10 +227,24 @@ export function createUI(actions: UIActions) {
       displayedDriving = driving;
       speedDisplay.hidden = !driving;
       touchHorn.hidden = hornHint.hidden = !driving;
+      touchWeapon.hidden = combatHint.hidden = driving;
       if (touchRun) touchRun.hidden = driving;
       if (touchJump) touchJump.textContent = driving ? "Freno de mano" : "Saltar";
       spaceHint.textContent = driving ? "Freno de mano" : "Saltar";
     }
+    touchFire.hidden = driving || !state.armed;
+    aimReticle.hidden = driving || !state.aiming;
+    const cash = Math.max(0, Math.round(state.cash ?? 0));
+    if (displayedCash !== cash) {
+      displayedCash = cash;
+      cashDisplay.textContent = `$${cash.toLocaleString("es")}`;
+    }
+    const weaponText = state.weaponLabel ?? "Desarmado";
+    if (displayedWeapon !== weaponText) {
+      displayedWeapon = weaponText;
+      weaponDisplay.textContent = weaponText;
+    }
+
     const nextPromptLabel = state.interactionLabel ?? (driving ? "Salir del coche" : "Entrar al coche");
     if (promptLabel.textContent !== nextPromptLabel) promptLabel.textContent = nextPromptLabel;
     const nextTouchLabel = state.touchInteractionLabel ?? (driving ? "Salir" : "Entrar");

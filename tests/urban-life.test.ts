@@ -17,6 +17,11 @@ const idleControls = {
   interact: false,
   horn: false,
   challenge: false,
+  aim: false,
+  fire: false,
+  reload: false,
+  cycleWeapon: false,
+  weaponSlot: undefined as 0 | 1 | 2 | undefined,
 };
 const idleMove: MovementInput = { x: 0, z: 0, run: false, jump: false };
 

@@ -5,6 +5,8 @@ export interface AvatarPose {
   sprint: number;
   verticalSpeed: number;
   grounded: boolean;
+  aiming?: boolean;
+  weapon?: 'unarmed' | 'pistol' | 'carbine';
 }
 
 export function createAvatar(scene: THREE.Scene) {
@@ -31,6 +33,8 @@ export function createAvatar(scene: THREE.Scene) {
   const pantsLight = color(0x4a4b55);
   const shoe = color(0xeedfc9);
   const sole = color(0x867676);
+  const gunMetal = color(0x20252f, 0.45);
+  const gunAccent = color(0x525d6b, 0.35);
 
   function block(
     parent: THREE.Object3D,
@@ -82,6 +86,8 @@ export function createAvatar(scene: THREE.Scene) {
 
   const arms: Array<{ side: number; shoulder: THREE.Group; elbow: THREE.Group }> = [];
   const legs: Array<{ side: number; thigh: THREE.Group; knee: THREE.Group; ankle: THREE.Group }> = [];
+  let weaponMount: THREE.Group | undefined;
+  let carbineBarrel: THREE.Mesh | undefined;
   for (const side of [-1, 1]) {
     block(head, hair, side * 0.177, 0.25, 0.024, 0.034, 0.091, 0.20);
     block(head, skin, side * 0.18, 0.164, 0.012, 0.05, 0.081, 0.083);
@@ -95,6 +101,11 @@ export function createAvatar(scene: THREE.Scene) {
     if (side > 0) {
       block(elbow, pants, 0, -0.166, 0, 0.131, 0.048, 0.154);
       block(elbow, cream, 0, -0.166, 0.08, 0.047, 0.031, 0.011);
+      weaponMount = pivot(elbow, 0, -0.23, -0.02);
+      block(weaponMount, gunMetal, 0, -0.02, -0.03, 0.06, 0.11, 0.075, true);
+      block(weaponMount, gunAccent, 0, 0.03, -0.13, 0.055, 0.065, 0.22, true);
+      carbineBarrel = block(weaponMount, gunMetal, 0, 0.03, -0.32, 0.045, 0.05, 0.24, true);
+      weaponMount.visible = false;
     }
     arms.push({ side, shoulder, elbow });
 
@@ -113,11 +124,27 @@ export function createAvatar(scene: THREE.Scene) {
   let phase = 0;
   let effort = 0;
   let airborne = 0;
+  let aimBlend = 0;
 
-  function animate({ effort: targetEffort, sprint, verticalSpeed, grounded }: AvatarPose, dt: number) {
+  function animate({
+    effort: targetEffort,
+    sprint,
+    verticalSpeed,
+    grounded,
+    aiming = false,
+    weapon = 'unarmed',
+  }: AvatarPose, dt: number) {
     effort = THREE.MathUtils.damp(effort, targetEffort, 13, dt);
     airborne = THREE.MathUtils.damp(airborne, grounded ? 0 : 1, 17, dt);
+    const hasGun = weapon !== 'unarmed';
+    aimBlend = THREE.MathUtils.damp(aimBlend, hasGun && aiming ? 1 : 0, 18, dt);
     phase += dt * (8.4 + sprint * 4.8);
+
+    if (weaponMount) {
+      weaponMount.visible = hasGun;
+      weaponMount.rotation.x = aimBlend * -1.45;
+      if (carbineBarrel) carbineBarrel.visible = weapon === 'carbine';
+    }
 
     const stride = Math.sin(phase) * effort * (1 - airborne);
     const bob = Math.cos(phase * 2) * effort * (1 - airborne);
@@ -129,9 +156,18 @@ export function createAvatar(scene: THREE.Scene) {
     head.rotation.z = -torso.rotation.z * 0.5;
 
     for (const { side, shoulder, elbow } of arms) {
-      shoulder.rotation.x = -stride * side * (0.43 + sprint * 0.4) + airborne * 0.55;
-      shoulder.rotation.z = side * (0.11 + airborne * 0.18);
-      elbow.rotation.x = 0.12 + effort * (0.14 + sprint * 0.54) + airborne * 0.18;
+      const normalShoulder = -stride * side * (0.43 + sprint * 0.4) + airborne * 0.55;
+      const normalElbow = 0.12 + effort * (0.14 + sprint * 0.54) + airborne * 0.18;
+      if (side > 0 && hasGun) {
+        const armedShoulder = Math.max(normalShoulder, 0.12) * (1 - aimBlend) + 1.48 * aimBlend;
+        shoulder.rotation.x = armedShoulder;
+        shoulder.rotation.z = side * (0.11 + airborne * 0.18) * (1 - aimBlend);
+        elbow.rotation.x = normalElbow * (1 - aimBlend) + 0.08 * aimBlend;
+      } else {
+        shoulder.rotation.x = normalShoulder;
+        shoulder.rotation.z = side * (0.11 + airborne * 0.18);
+        elbow.rotation.x = normalElbow;
+      }
     }
     for (const { side, thigh, knee, ankle } of legs) {
       const swing = stride * side;
@@ -146,7 +182,8 @@ export function createAvatar(scene: THREE.Scene) {
     phase = 0;
     effort = 0;
     airborne = 0;
-    animate({ effort: 0, sprint: 0, verticalSpeed: 0, grounded: true }, 0);
+    aimBlend = 0;
+    animate({ effort: 0, sprint: 0, verticalSpeed: 0, grounded: true, aiming: false, weapon: 'unarmed' }, 0);
   }
 
   reset();

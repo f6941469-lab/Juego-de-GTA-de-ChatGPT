@@ -66,6 +66,19 @@
 .health-display progress::-webkit-progress-value { border-radius: .25rem; background: var(--accent); }
 .speed-display { display: flex; justify-content: space-between; align-items: baseline; gap: .4rem; margin-top: .55rem; color: var(--muted); }
 .speed-display output { color: var(--paper); font: 1.18rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.cash-display { margin-top: .45rem; color: #7ef2a6; font: 700 .95rem/1 var(--mono); letter-spacing: .04em; }
+.weapon-display { margin-top: .28rem; color: var(--paper); font: 600 .78rem/1.15 var(--label); letter-spacing: .06em; }
+.aim-reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgb(16 18 25 / 65%);
+}
 
 .interaction-prompt {
   left: 50%;

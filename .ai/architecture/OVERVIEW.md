@@ -2,8 +2,8 @@
 document_id: ARCH-OVERVIEW
 status: active
 last_updated: 2026-11-20
-verified_against: "e2288b5"
-verification_scope: "typecheck-tests-build-phase2"
+verified_against: "45aefd3-dirty (Phase 3)"
+verification_scope: "typecheck-tests-build-phase3"
 ---
 
 # Visión General de Arquitectura (`OVERVIEW.md`)
@@ -22,11 +22,11 @@ flowchart TD
     subgraph SIM ["Simulación 60 Hz"]
         ENT["src/simulation/entities.ts (EntityRegistry + LOD Tiers)"]
         PHY["src/physics/ (Rapier WASM + SpatialBoxGrid + step centralizado)"]
-        PLR["src/player/ (Movimiento + FollowCamera)"]
+        PLR["src/player/ (Movimiento + Weapons + FollowCamera)"]
         VEH["src/vehicles/ (vehicle-manager + Rayo GT + robados)"]
         TRF["src/ai/traffic/ + navigation/ (road-graph + pedestrian-graph)"]
-        NPC["src/ai/perception.ts + ai/npc/ (Población instanciada + Utility/FSM)"]
-        POL["src/ai/police/ (Patrullas + Wanted)"]
+        NPC["src/ai/perception.ts + ai/npc/ (Población instanciada + Testigos + Utility/FSM)"]
+        POL["src/ai/police/ (Patrullas + Combate LOS + Wanted)"]
     end
 
     subgraph WORLD ["Mundo Procedural"]

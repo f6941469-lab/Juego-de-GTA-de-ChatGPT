@@ -176,7 +176,13 @@ export function createPolice(scene: Scene, graph: RoadGraph, obstacleBoxes: read
     unit.z = next.z
   }
 
-  function step(dt: number, target: PoliceTarget) {
+  let fireCooldown = 0.8
+
+  function step(
+    dt: number,
+    target: PoliceTarget,
+    combat?: { onFire?: (shooter: Location, hitPlayer: boolean, damage: number) => void },
+  ) {
     clock += dt
     untilPlan -= dt
     let observed: Location | undefined
@@ -202,6 +208,17 @@ export function createPolice(scene: Scene, graph: RoadGraph, obstacleBoxes: read
     for (const unit of units) {
       const queue = units.some((other) => other !== unit && viewing(unit, other, 5.8, 0.63))
       steer(unit, dt, queue)
+    }
+    fireCooldown = Math.max(0, fireCooldown - dt)
+    if (combat?.onFire && wanted.level >= 2 && wanted.state === 'Persecución' && fireCooldown <= 0) {
+      const shooter = units.find((unit) => distance(unit, target) < 25 && clearLine(unit, target, boxes))
+      if (shooter) {
+        fireCooldown = Math.max(0.85, 1.55 - wanted.level * 0.14)
+        const hitChance = Math.max(0.16, 0.48 + wanted.level * 0.05 - target.speed * 0.018)
+        const pseudo = (Math.sin(clock * 12.9898 + shooter.x * 0.37) * 43758.5453) % 1
+        const roll = pseudo < 0 ? pseudo + 1 : pseudo
+        combat.onFire(shooter, roll < hitChance, 8 + wanted.level * 1.5)
+      }
     }
     const close = wanted.state === 'Persecución' && target.speed < 3.5
       && units.some((unit) => distance(unit, target) < 4.1 && clearLine(unit, target, boxes))
@@ -233,6 +250,7 @@ export function createPolice(scene: Scene, graph: RoadGraph, obstacleBoxes: read
     reset() {
       for (const unit of units.splice(0)) remove(unit)
       clock = untilPlan = detention = 0
+      fireCooldown = 0.8
       caught = false
       wanted.reset()
     },

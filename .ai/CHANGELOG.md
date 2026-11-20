@@ -2,15 +2,21 @@
 document_id: CORE-CHANGELOG
 status: active
 last_updated: 2026-11-20
-verified_against: "e2288b5"
-verification_scope: "typecheck + vitest (37/37) + vite build + Chromium WebGL 2 F3/F5 live test"
+verified_against: "45aefd3-dirty (Phase 3)"
+verification_scope: "typecheck + vitest (40/40) + vite build + Chromium WebGL 2 live test"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
-## 2026-11-20 · Fase 2 — Vida urbana: población NPC instanciada, conductores reales, robo multi-vehículo e interiores (working tree sobre `e2288b5`)
+## 2026-11-20 · Fase 3 — Armas, balística, testigos 911, asaltos completos y combate policial (working tree sobre `45aefd3`)
+- **Resumen:** Sistema completo de armas (`unarmed`, `pistol`, `carbine`) con munición/recarga, apuntado y disparo en teclado/ratón/táctil, trazadores instanciados y raycast detenido por muros en `SpatialBoxGrid`, malla armada en el avatar, cues procedurales (`shot`, `reload`, `empty`, `cash`), amenazas perceptibles (`weapon_drawn`, `weapon_aimed`, `shot_fired`, `npc_injured`, `witness_detected`, `robbery_finished`), testigos no omniscientes interrumpibles antes de completar su llamada al 911 (`2.1 s`), asaltos progresivos de tienda con cooperación/intimidación del dependiente y pago de botín (`$`), combate cuerpo a cuerpo NPC y fuego policial recíproco desde 2 estrellas respetando cobertura.
+- **Sistemas afectados:** Jugador/Armas/Avatar (`player/weapons.ts`, `player/player.ts`, `characters/avatar.ts`), Entrada (`core/input.ts`), Mundo/Asaltos (`world/stores.ts`), NPC/Policía (`ai/npc/npc-population.ts`, `ai/police/police.ts`), Simulación (`simulation/engine.ts`), Audio/UI (`audio/audio.ts`, `ui/ui.ts`, `ui/hud.css`, `index.html`, `main.ts`) y pruebas (`tests/combat-and-heists.test.ts`, `tests/urban-life.test.ts`).
+- **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`15` archivos, `40/40` verdes), `npm run build` (`62` módulos) y prueba viva en Chromium headless WebGL 2 (`#cash-display: "$0"`, `Digit2` -> `Pistola 9mm · 12/48`, `F3`, `0` excepciones JS y `0` errores de consola).
+- **Riesgos pendientes:** Destructibilidad de entorno/cristales en Fase 4; persisten `VB-002` (streaming físico), `VB-003`, `VB-004`, `VB-005` y `VB-015` (`ArrowUp`).
+
+## 2026-11-20 · Fase 2 — Vida urbana: población NPC instanciada, conductores reales, robo multi-vehículo e interiores · Commit `45aefd3`
 - **Resumen:** Población de la ciudad con ciudadanos instanciados (7 `InstancedMesh`, hasta 72 NPCs) sobre `PedestrianGraph` por distrito y horario, dependientes reales (`merchant`) dentro de los 9 comercios ya transitables físicamente en planta baja, conductores visibles en `traffic.ts` con robo de vehículos (`hijackNearest` + `VehicleManager` multi-vehículo + ex-conductor NPC en calle), altura ocular de percepción `1.15 m` y extracción de `SimulationEngine` desde `main.ts`.
 - **Sistemas afectados:** Simulación (`simulation/engine.ts`), NPC/Percepción (`ai/npc/npc-visuals.ts`, `ai/npc/npc-population.ts`, `ai/perception.ts`), Tráfico/Vehículos (`ai/traffic/traffic*.ts`, `vehicles/vehicle.ts`, `vehicles/vehicle-manager.ts`), Mundo (`world/generation/buildings.ts`, `world/generation/layout.ts`, `world/district.ts`, `world/stores.ts`), Eventos (`core/events.ts`), `main.ts` y pruebas (`tests/urban-life.test.ts`).
 - **Verificaciones:** `npm run typecheck` (`0` errores), `npm test` (`14` archivos, `37/37` verdes), `npm run build` (`61` módulos) y prueba en Chromium headless WebGL 2 (`Costa Palmera`, `F3`: `17 entidades · 514 colisionadores · 3 tráfico · 11 NPC · 1 patrullas`, `0` excepciones JS).

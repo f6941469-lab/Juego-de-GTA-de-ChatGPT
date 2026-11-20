@@ -169,6 +169,13 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
     };
   }
 
+  let activeHeist: {
+    entry: StoreRuntime;
+    progress: number;
+    duration: number;
+    intimidated: boolean;
+  } | null = null;
+
   function rob(position: { x: number; y: number; z: number }): RobberyResult | null {
     const nearby = findNearby(position);
     if (!nearby || !nearby.available) return null;
@@ -177,6 +184,77 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
     entry.cooldown = ROBBERY_COOLDOWN;
     dirtyColors = true;
     return { store: entry.spec, loot: entry.spec.loot };
+  }
+
+  function findStoreContaining(position: { x: number; y: number; z: number }): StoreInteriorLayout | null {
+    if (Math.abs(position.y) > 1.35) return null;
+    for (const entry of entries) {
+      if (
+        Math.abs(position.x - entry.spec.x) <= entry.layout.halfX
+        && Math.abs(position.z - entry.spec.z) <= entry.layout.halfZ
+      ) {
+        return entry.layout;
+      }
+    }
+    return null;
+  }
+
+  function beginHeist(
+    position: { x: number; y: number; z: number },
+    armed = false,
+  ): StoreInteriorLayout | null {
+    if (activeHeist) return null;
+    const nearby = findNearby(position);
+    if (!nearby || !nearby.available) return null;
+    const entry = entries.find((item) => item.spec.id === nearby.store.id);
+    if (!entry) return null;
+    activeHeist = {
+      entry,
+      progress: 0,
+      duration: armed ? 2.6 : 4.5,
+      intimidated: armed,
+    };
+    return entry.layout;
+  }
+
+  function stepHeist(
+    dt: number,
+    playerPos: { x: number; z: number },
+    options: { aimingWeapon: boolean; recentShot: boolean },
+  ):
+    | { status: 'in_progress'; store: StoreSpec; progress: number }
+    | { status: 'completed'; store: StoreSpec; loot: number }
+    | { status: 'cancelled'; store: StoreSpec; loot: number }
+    | null {
+    if (!activeHeist || !(dt > 0)) return null;
+    const { entry } = activeHeist;
+    const inside = Math.abs(playerPos.x - entry.spec.x) <= entry.layout.halfX + 2.5
+      && Math.abs(playerPos.z - entry.spec.z) <= entry.layout.halfZ + 2.5;
+    const nearDoor = Math.hypot(playerPos.x - entry.spec.doorX, playerPos.z - entry.spec.doorZ) <= 3.6;
+
+    if (!inside && !nearDoor) {
+      const partialLoot = activeHeist.progress >= 0.45
+        ? Math.round((entry.spec.loot * activeHeist.progress * 0.55) / 10) * 10
+        : 0;
+      entry.cooldown = activeHeist.progress >= 0.45 ? 45 : 12;
+      dirtyColors = true;
+      activeHeist = null;
+      return { status: 'cancelled', store: entry.spec, loot: partialLoot };
+    }
+
+    if (options.aimingWeapon || options.recentShot) activeHeist.intimidated = true;
+    const speedFactor = options.aimingWeapon ? 1.45 : 1.0;
+    const shotBoost = options.recentShot ? 0.14 : 0;
+    activeHeist.progress = Math.min(1, activeHeist.progress + (dt / activeHeist.duration) * speedFactor + shotBoost);
+
+    if (activeHeist.progress >= 1) {
+      entry.cooldown = ROBBERY_COOLDOWN;
+      dirtyColors = true;
+      activeHeist = null;
+      return { status: 'completed', store: entry.spec, loot: entry.spec.loot };
+    }
+
+    return { status: 'in_progress', store: entry.spec, progress: activeHeist.progress };
   }
 
   function step(dt: number): void {
@@ -204,6 +282,7 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
   }
 
   function reset(): void {
+    activeHeist = null;
     for (const entry of entries) entry.cooldown = 0;
     dirtyColors = true;
   }
@@ -211,8 +290,16 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
   updateVisuals(0);
 
   return {
+    get activeHeist() {
+      return activeHeist
+        ? { store: activeHeist.entry.spec, progress: activeHeist.progress, intimidated: activeHeist.intimidated }
+        : null;
+    },
     findNearby,
+    findStoreContaining,
     rob,
+    beginHeist,
+    stepHeist,
     step,
     render: updateVisuals,
     getMarkers,

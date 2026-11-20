@@ -44,6 +44,7 @@ export interface NpcAgent extends NpcVisualAgent {
   routeIndex: number;
   pauseTimer: number;
   callTimer: number;
+  witnessNotified: boolean;
   reportCooldown: number;
   hitCooldown: number;
   recoverTimer: number;
@@ -69,6 +70,7 @@ export interface NpcPopulationStepContext {
   policeNearby: boolean;
   vehicles: readonly MovingObstacle[];
   onReportCrime?: (location: { x: number; z: number }, severity: number) => void;
+  onHitPlayer?: (damage: number) => void;
 }
 
 interface PopulationConfig {
@@ -145,6 +147,7 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
       routeIndex: 0,
       pauseTimer: 0,
       callTimer: 0,
+      witnessNotified: false,
       reportCooldown: 0,
       hitCooldown: 0,
       recoverTimer: 0,
@@ -262,7 +265,7 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
   }
 
   function step(ctx: NpcPopulationStepContext): void {
-    const { dt, focus, hour, eventBus, entities, spatial, policeNearby, vehicles, onReportCrime } = ctx;
+    const { dt, focus, hour, eventBus, entities, spatial, policeNearby, vehicles, onReportCrime, onHitPlayer } = ctx;
     if (!(dt > 0)) return;
     tickCount += 1;
 
@@ -381,9 +384,22 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
       }
 
       if (agent.brain.intent === 'call_help' && agent.reportCooldown <= 0) {
+        if (!agent.witnessNotified) {
+          agent.witnessNotified = true;
+          eventBus.emit({
+            type: 'witness_detected',
+            sourceId: agent.id,
+            position: { x: agent.x, y: 1.1, z: agent.z },
+            intensity: 0.7,
+            radius: 24,
+            severity: 1,
+            visual: true,
+          });
+        }
         agent.callTimer += dt;
         if (agent.callTimer >= 2.1) {
           agent.callTimer = 0;
+          agent.witnessNotified = false;
           agent.reportCooldown = 14;
           const reportPos = agent.brain.focusPoint ?? { x: agent.x, z: agent.z };
           eventBus.emit({
@@ -399,6 +415,7 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
         }
       } else {
         agent.callTimer = Math.max(0, agent.callTimer - dt * 0.5);
+        if (agent.callTimer === 0) agent.witnessNotified = false;
       }
 
       // Locomotion
@@ -430,9 +447,15 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
         const dist = Math.hypot(dx, dz);
         const targetYaw = Math.atan2(dx, -dz);
         agent.heading += turnDelta(agent.heading, targetYaw) * Math.min(1, 9 * dt);
-        if (dist > 2.2 && dist < 24) {
+        if (dist > 1.75 && dist < 24) {
           movedX += (dx / dist) * 3.0 * dt;
           movedZ += (dz / dist) * 3.0 * dt;
+        } else if (dist <= 1.85 && agent.hitCooldown <= 0) {
+          const focusDist = Math.hypot(focus.x - agent.x, focus.z - agent.z);
+          if (focusDist <= 1.95) {
+            agent.hitCooldown = 1.45;
+            onHitPlayer?.(8);
+          }
         }
       } else if (agent.brain.intent === 'flee') {
         const threat = agent.brain.focusPoint ?? focus;
@@ -588,6 +611,104 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
     return out;
   }
 
+  function applyDamage(
+    id: string,
+    amount: number,
+    sourcePos: { x: number; z: number },
+    eventBus: WorldEventBus,
+  ): { hit: boolean; knockedDown: boolean; role?: NpcRole } {
+    const agent = agents.find((item) => item.id === id);
+    if (!agent) return { hit: false, knockedDown: false };
+    agent.brain.health = Math.max(0, agent.brain.health - amount);
+    agent.callTimer = 0;
+    agent.witnessNotified = false;
+    agent.brain.focusPoint = { ...sourcePos };
+    agent.brain.alertness = 1;
+    agent.brain.fear = Math.min(1, agent.brain.fear + 0.55);
+    const knockedDown = agent.brain.health <= 34;
+    if (knockedDown) {
+      agent.recoverTimer = agent.brain.health <= 0 ? 18 : 10;
+      agent.brain.state = agent.brain.health <= 0 ? 'disoriented' : 'injured';
+      agent.brain.intent = 'recover';
+      agent.state = agent.brain.state;
+      agent.intent = agent.brain.intent;
+    }
+    eventBus.emit({
+      type: 'npc_injured',
+      sourceId: 'player',
+      targetIds: [agent.id],
+      position: { x: agent.x, y: 0.9, z: agent.z },
+      intensity: 1,
+      radius: 46,
+      severity: 2,
+      visual: true,
+      auditory: true,
+      context: { role: agent.role },
+    });
+    return { hit: true, knockedDown, role: agent.role };
+  }
+
+  function intimidateArea(
+    origin: { x: number; z: number },
+    radius: number,
+    eventBus: WorldEventBus,
+  ): number {
+    let intimidated = 0;
+    const radiusSq = radius * radius;
+    for (const agent of agents) {
+      if (agent.recoverTimer > 0) continue;
+      if ((agent.x - origin.x) ** 2 + (agent.z - origin.z) ** 2 > radiusSq) continue;
+      agent.callTimer = 0;
+      agent.witnessNotified = false;
+      agent.brain.focusPoint = { ...origin };
+      agent.brain.alertness = 1;
+      agent.brain.fear = Math.min(1, Math.max(agent.brain.fear, 0.78));
+      agent.brain.state = agent.kind === 'clerk' ? 'cooperating' : 'panicking';
+      agent.brain.intent = agent.kind === 'clerk' ? 'cooperate' : 'flee';
+      agent.brain.stateElapsed = 0;
+      agent.state = agent.brain.state;
+      agent.intent = agent.brain.intent;
+      intimidated += 1;
+    }
+    if (intimidated > 0 && eventBus.time >= 0) {
+      // Intimidation also interrupts immediate witness reporting in the blast/aim cone.
+    }
+    return intimidated;
+  }
+
+  function intimidateStoreClerk(
+    storeId: string,
+    threatPos: { x: number; z: number },
+    _eventBus: WorldEventBus,
+  ): boolean {
+    const clerk = agents.find((agent) => agent.kind === 'clerk' && agent.home?.storeId === storeId);
+    if (!clerk || clerk.recoverTimer > 0) return false;
+    clerk.callTimer = 0;
+    clerk.witnessNotified = false;
+    clerk.brain.focusPoint = { ...threatPos };
+    clerk.brain.alertness = 1;
+    clerk.brain.fear = Math.max(clerk.brain.fear, 0.65);
+    clerk.brain.state = 'cooperating';
+    clerk.brain.intent = 'cooperate';
+    clerk.brain.stateElapsed = 0;
+    clerk.state = 'cooperating';
+    clerk.intent = 'cooperate';
+    return true;
+  }
+
+  function releaseStoreClerk(storeId: string, threatPos: { x: number; z: number }): void {
+    const clerk = agents.find((agent) => agent.kind === 'clerk' && agent.home?.storeId === storeId);
+    if (!clerk || clerk.recoverTimer > 0) return;
+    clerk.brain.focusPoint = { ...threatPos };
+    clerk.brain.fear = 0.52;
+    clerk.brain.alertness = 0.85;
+    clerk.brain.state = 'calling_help';
+    clerk.brain.intent = 'call_help';
+    clerk.brain.stateElapsed = 0;
+    clerk.state = 'calling_help';
+    clerk.intent = 'call_help';
+  }
+
   function reset(): void {
     agents.length = 0;
     serial = 0;
@@ -609,6 +730,10 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
     step,
     render,
     spawnDisplacedDriver,
+    applyDamage,
+    intimidateArea,
+    intimidateStoreClerk,
+    releaseStoreClerk,
     getDebugCones,
     getCrossingObstacles,
     reset,

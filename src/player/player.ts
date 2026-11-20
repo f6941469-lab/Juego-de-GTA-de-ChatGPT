@@ -135,6 +135,9 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     finishStep(dt);
   }
 
+  let aimingPose = false;
+  let equippedWeapon: 'unarmed' | 'pistol' | 'carbine' = 'unarmed';
+
   function render(alpha: number, dt: number) {
     if (ride) {
       avatar.mesh.visible = false;
@@ -144,6 +147,9 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     const blend = THREE.MathUtils.clamp(alpha, 0, 1);
     interpolated.lerpVectors(previousPosition, position, blend);
     const cameraDistance = follow.update(interpolated, dt);
+    if (aimingPose && equippedWeapon !== 'unarmed') {
+      heading += turnDelta(heading, follow.yaw) * (1 - Math.exp(-20 * dt));
+    }
     avatar.mesh.position.copy(interpolated);
     avatar.mesh.rotation.y = -(previousHeading + turnDelta(previousHeading, heading) * blend);
     avatar.mesh.visible = cameraDistance > 0.75;
@@ -152,6 +158,8 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
       sprint: THREE.MathUtils.clamp((resolvedSpeed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0, 1),
       verticalSpeed,
       grounded,
+      aiming: aimingPose,
+      weapon: equippedWeapon,
     }, dt);
   }
 
@@ -162,8 +170,15 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     get heading() {
       return heading;
     },
+    get aimYaw() {
+      return follow.yaw;
+    },
     get grounded() {
       return grounded;
+    },
+    setAimPose(aiming: boolean, weapon: 'unarmed' | 'pistol' | 'carbine') {
+      aimingPose = aiming;
+      equippedWeapon = weapon;
     },
     prepareStep,
     finishStep,

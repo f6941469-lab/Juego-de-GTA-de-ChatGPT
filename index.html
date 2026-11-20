@@ -63,10 +63,13 @@
           <label for="health-meter">Salud</label>
           <progress id="health-meter" max="100" value="100">100 %</progress>
         </div>
+        <div class="cash-display" id="cash-display">$0</div>
+        <div class="weapon-display" id="weapon-display">Desarmado</div>
         <div class="speed-display" id="speed-display" hidden>
           <output id="speed-output" aria-label="Velocidad" aria-live="off">0</output><span>km/h</span>
         </div>
       </aside>
+      <div class="aim-reticle" id="aim-reticle" aria-hidden="true" hidden></div>
       <figure class="minimap" aria-label="Minimapa de Viceblock">
         <div class="map-caption"><figcaption>Distritos</figcaption><span aria-label="Norte">N ↑</span></div>
         <canvas id="minimap" width="288" height="252" aria-hidden="true"></canvas>
@@ -79,6 +82,7 @@
         <span><kbd>Ratón</kbd> Cámara</span>
         <span><kbd>Espacio</kbd> <span id="space-hint">Saltar</span></span>
         <span id="horn-hint" hidden><kbd>H</kbd> Bocina</span>
+        <span id="combat-hint"><kbd>Q</kbd> Arma · <kbd>Clic der./F</kbd> Apuntar · <kbd>Clic izq./G</kbd> Disparar · <kbd>R</kbd> Recargar</span>
         <span><kbd>B</kbd> Búsqueda</span>
       </div>
       <div class="touch-controls" aria-label="Controles táctiles">
@@ -91,6 +95,8 @@
         <div class="touch-actions">
           <button type="button" data-move="run">Correr</button>
           <button type="button" data-move="jump">Saltar</button>
+          <button type="button" id="touch-weapon" data-action="cycleWeapon">Arma</button>
+          <button type="button" id="touch-fire" data-action="fire" hidden>Disparar</button>
           <button type="button" id="touch-interact" data-action="interact" hidden>Entrar</button>
           <button type="button" id="touch-horn" data-action="horn" hidden>Bocina</button>
           <button type="button" data-action="challenge">Búsqueda</button>
@@ -132,13 +138,16 @@
           <div><dt>Girar la cámara</dt><dd><kbd>Ratón</kbd></dd></div>
           <div><dt>Correr</dt><dd><kbd>Mayús</kbd></dd></div>
           <div><dt>Saltar o usar el freno de mano</dt><dd><kbd>Espacio</kbd></dd></div>
-          <div><dt>Entrar/salir del coche o asaltar tienda</dt><dd><kbd>E</kbd></dd></div>
+          <div><dt>Entrar/salir, robar vehículo o iniciar asalto</dt><dd><kbd>E</kbd></dd></div>
+          <div><dt>Cambiar de arma / Desarmado</dt><dd><kbd>Q</kbd> <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dd></div>
+          <div><dt>Apuntar y disparar</dt><dd><kbd>Clic der. / F</kbd> · <kbd>Clic izq. / G</kbd></dd></div>
+          <div><dt>Recargar</dt><dd><kbd>R</kbd></dd></div>
           <div><dt>Bocina</dt><dd><kbd>H</kbd></dd></div>
           <div><dt>Desafío de búsqueda</dt><dd><kbd>B</kbd></dd></div>
           <div><dt>Pausar</dt><dd><kbd>Esc</kbd></dd></div>
           <div><dt>Estadísticas, geometría e inspector</dt><dd><kbd>F3</kbd> <kbd>F4</kbd> <kbd>F5</kbd></dd></div>
         </dl>
-        <div class="touch-hints">Usa las flechas para moverte o conducir y arrastra sobre la ciudad para mirar. Cerca del coche aparece el botón Entrar. Pulsa Búsqueda para iniciar el desafío.</div>
+        <div class="touch-hints">Usa las flechas para moverte o conducir y arrastra sobre la ciudad para mirar. Cerca del coche o tienda aparece el botón contextual. Pulsa Arma y Disparar a pie.</div>
       </div>
       <div class="dialog-actions" id="pause-actions" hidden>
         <button class="primary-button" id="resume-button" type="button">Continuar<span class="icon-arrow" aria-hidden="true"></span></button>

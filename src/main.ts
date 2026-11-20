@@ -208,7 +208,12 @@ async function startGame() {
       const activeCar = simulation.activeVehicle
 
       ui.update({
-        x, z, heading, hour, district: getDistrictAt(x, z), health: simulation.health,
+        x, z, heading, hour, district: getDistrictAt(x, z),
+        health: simulation.health,
+        cash: simulation.cash,
+        weaponLabel: simulation.weaponLabel,
+        aiming: simulation.aiming,
+        armed: simulation.armed,
         driving: simulation.driving,
         canInteract: prompt.canInteract,
         interactionLabel: prompt.label,

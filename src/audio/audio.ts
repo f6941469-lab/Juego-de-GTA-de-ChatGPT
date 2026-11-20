@@ -23,7 +23,7 @@ export interface AudioFrame {
   traffic: readonly SoundSource[]
 }
 
-type Cue = 'enter' | 'leave' | 'jump' | 'horn' | 'impact' | 'ui'
+type Cue = 'enter' | 'leave' | 'jump' | 'horn' | 'impact' | 'ui' | 'shot' | 'reload' | 'empty' | 'cash'
 
 function clamp(value: number, lower = 0, upper = 1): number {
   return Math.min(upper, Math.max(lower, value))
@@ -217,6 +217,21 @@ export function createGameAudio() {
         break
       case 'ui':
         sweep(context, interfaceBus, now, 'sine', 568, 748, 0.09, 0.19)
+        break
+      case 'shot':
+        burst(context, buffer, effects, now, 1850, 0.095, 0.54)
+        sweep(context, effects, now, 'sawtooth', 260, 58, 0.11, 0.34)
+        break
+      case 'reload':
+        sweep(context, effects, now, 'triangle', 480, 640, 0.07, 0.16)
+        sweep(context, effects, now + 0.15, 'triangle', 660, 920, 0.06, 0.18)
+        break
+      case 'empty':
+        sweep(context, effects, now, 'square', 920, 420, 0.035, 0.1)
+        break
+      case 'cash':
+        sweep(context, interfaceBus, now, 'sine', 880, 1174, 0.07, 0.2)
+        sweep(context, interfaceBus, now + 0.065, 'sine', 1174, 1568, 0.09, 0.22)
         break
     }
   }
