@@ -4,6 +4,7 @@ import "./menu.css";
 import "./hud.css";
 import "./dialog.css";
 import { gameConfig, type Quality } from "../config/game";
+import type { PhoneCommand, PhoneSnapshot } from "../simulation/phone";
 import { createMinimap, type PlayerMapPosition } from "./minimap";
 
 export type GameMode = "loading" | "start" | "playing" | "paused" | "error";
@@ -16,6 +17,7 @@ export interface UIActions {
   onReset(): void;
   onPause?(): void;
   onVolume?(volume: number, muted: boolean): void;
+  onPhoneCommand?(command: PhoneCommand): void;
 }
 
 interface HudState extends PlayerMapPosition {
@@ -34,6 +36,7 @@ interface HudState extends PlayerMapPosition {
   speed?: number;
   wanted?: number;
   policeStatus?: string;
+  phone?: PhoneSnapshot;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {
@@ -95,6 +98,12 @@ export function createUI(actions: UIActions) {
   const hudDistrict = requiredElement("hud-district");
   const hudNotice = requiredElement("hud-notice");
   const hudClock = requiredElement<HTMLTimeElement>("hud-time");
+  const phoneDevice = requiredElement("phone-device");
+  const phoneTime = requiredElement<HTMLTimeElement>("phone-time");
+  const phoneDistrict = requiredElement("phone-district");
+  const phoneBattery = requiredElement("phone-battery");
+  const phoneBanner = requiredElement("phone-banner");
+  const phoneScreen = requiredElement("phone-screen");
   const debug = requiredElement("debug-panel");
   const minimap = createMinimap(requiredElement<HTMLCanvasElement>("minimap"));
   let mode: GameMode = "loading";
@@ -103,9 +112,16 @@ export function createUI(actions: UIActions) {
   let displayedDistrict = "";
   let displayedCash = -1;
   let displayedWeapon = "";
+  let displayedPhoneSig = "";
   let panel: PanelMode = "settings";
   let displayedDriving: boolean | undefined;
   let displayedWanted = -1;
+
+  phoneDevice.addEventListener("click", (event) => {
+    const target = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-phone-cmd]");
+    const cmd = target?.dataset.phoneCmd as PhoneCommand | undefined;
+    if (cmd) actions.onPhoneCommand?.(cmd);
+  });
 
   function showVolume() {
     const label = `${volumeSlider.value} %`;
@@ -270,6 +286,94 @@ export function createUI(actions: UIActions) {
     if (healthMeter.value !== health) {
       healthMeter.value = health;
       healthMeter.textContent = `${health} %`;
+    }
+
+    const phone = state.phone;
+    phoneDevice.hidden = !phone || !phone.open;
+    if (phone && phone.open) {
+      if (phoneTime.textContent !== phone.timeText) phoneTime.textContent = phone.timeText;
+      if (phoneDistrict.textContent !== phone.district) phoneDistrict.textContent = phone.district;
+      const batLabel = `5G · ${phone.battery} %`;
+      if (phoneBattery.textContent !== batLabel) phoneBattery.textContent = batLabel;
+      if (phoneBanner.textContent !== phone.statusBanner) phoneBanner.textContent = phone.statusBanner;
+
+      const clipSig = phone.clips.map((c) => `${c.id}:${c.views}`).join(",");
+      const alertSig = phone.alerts.map((a) => `${a.id}:${a.message}`).join(",");
+      const nextSig = `${phone.screen}|${phone.selectedIndex}|${phone.recording ? 1 : 0}|${Math.floor(phone.recordingSeconds)}|${phone.detectedSubject}|${clipSig}|${alertSig}`;
+      if (displayedPhoneSig !== nextSig) {
+        displayedPhoneSig = nextSig;
+        phoneScreen.replaceChildren();
+        if (phone.screen === "home") {
+          const grid = document.createElement("div");
+          grid.className = "phone-grid";
+          const apps: readonly { cmd: PhoneCommand; label: string }[] = [
+            { cmd: "openCamera", label: phone.recording ? "● Cámara REC" : "Cámara" },
+            { cmd: "openFeed", label: `Social (${phone.clips.length})` },
+            { cmd: "openEmergency", label: "Emerg. 911" },
+            { cmd: "openAlerts", label: `Ciudad (${phone.alerts.length})` },
+          ];
+          apps.forEach((app, idx) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "phone-app-btn";
+            btn.dataset.phoneCmd = app.cmd;
+            btn.dataset.selected = String(phone.selectedIndex === idx);
+            btn.textContent = app.label;
+            grid.appendChild(btn);
+          });
+          phoneScreen.appendChild(grid);
+        } else if (phone.screen === "camera") {
+          const card = document.createElement("div");
+          card.className = "phone-card";
+          const strong = document.createElement("strong");
+          strong.textContent = phone.recording ? `● REC ${phone.recordingSeconds.toFixed(1)} s` : "Visor en directo";
+          const sub = document.createElement("span");
+          sub.textContent = phone.detectedSubject;
+          card.append(strong, sub);
+
+          const actionBtn = document.createElement("button");
+          actionBtn.type = "button";
+          actionBtn.className = phone.recording ? "phone-action-btn recording" : "phone-action-btn";
+          actionBtn.dataset.phoneCmd = "select";
+          actionBtn.dataset.selected = "true";
+          actionBtn.textContent = phone.recording ? "Detener y publicar" : "Iniciar grabación";
+          phoneScreen.append(card, actionBtn);
+        } else if (phone.screen === "feed") {
+          for (const [idx, clip] of phone.clips.entries()) {
+            const card = document.createElement("div");
+            card.className = "phone-card";
+            card.dataset.selected = String(phone.selectedIndex === idx);
+            const strong = document.createElement("strong");
+            strong.textContent = clip.title;
+            const meta = document.createElement("small");
+            meta.textContent = `${clip.category} · ${clip.views.toLocaleString("es")} vistas`;
+            card.append(strong, meta);
+            phoneScreen.appendChild(card);
+          }
+        } else if (phone.screen === "emergency") {
+          const items = ["Llamar al 911 (Patrulla)", "Pedir asistencia (+15 Salud)"];
+          items.forEach((label, idx) => {
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "phone-action-btn";
+            btn.dataset.phoneCmd = "select";
+            btn.dataset.selected = String(phone.selectedIndex === idx);
+            btn.textContent = label;
+            phoneScreen.appendChild(btn);
+          });
+        } else {
+          for (const alert of phone.alerts) {
+            const card = document.createElement("div");
+            card.className = "phone-card";
+            const strong = document.createElement("strong");
+            strong.textContent = alert.timeText;
+            const msg = document.createElement("span");
+            msg.textContent = alert.message;
+            card.append(strong, msg);
+            phoneScreen.appendChild(card);
+          }
+        }
+      }
     }
   }
 

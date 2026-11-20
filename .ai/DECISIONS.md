@@ -140,4 +140,33 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 - **Sistemas afectados:** `player/{weapons,player}.ts`, `characters/avatar.ts`, `core/input.ts`, `world/stores.ts`, `ai/npc/npc-population.ts`, `ai/police/police.ts`, `simulation/engine.ts`, `audio/audio.ts`, `ui/ui.ts`.
 - **Referencias:** [PLAYER_AND_CAMERA.md](systems/PLAYER_AND_CAMERA.md), [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [POLICE_AND_WANTED.md](systems/POLICE_AND_WANTED.md).
 
+### `ADR-0011` — Entorno destructible instanciado sobre Rapier y accidentes viales con eyección (Fase 4)
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Faltaban escaparates fracturables, mobiliario urbano con colisión destructible, efectos acotados de escombros/agua/humo, daño vehicular y accidentes reales con huida de ocupantes.
+- **Decisión:**
+  1. Sustituir los cristales estáticos de planta baja en `buildings.ts` por marcos huecos y delegar las `18` vidrieras fracturables más mobiliario físico (`hydrant`, `bollard`, `crate`, `bench`) en `createDestructibles` (`src/world/destructibles.ts`) con `4` `InstancedMesh` y colisionadores Rapier removibles dinámicamente al romperse.
+  2. Acotar escombros (`maxDebris = 96`) y chorros de hidrante/humo (`maxPlumes = 64`) en anillo fijo con caída y limpieza por TTL.
+  3. Añadir salud/degradación mecánica (`health`, `damage`, `wrecked`, `applyDamage`) a `vehicle.ts` y `traffic.ts` (`damageVehicle`, `resolveVehicleCrash`), emitiendo `'traffic_accident'`, humo instanciado, tinte de daño en `traffic-visuals.ts`, evacuación del conductor (`fromAccident: true`) y aproximación cívica de transeúntes cercanos.
+- **Motivación:** Lograr destrucción reactiva real sin reconstruir sectores estáticos de `streaming.ts` y mantener draw calls constantes en GPU.
+- **Alternativas consideradas:** Reconstruir chunks de `DistrictGeometry` en cada cristal roto (causaría microcortes en el hilo principal); crear cuerpos `Dynamic` permanentes para cientos de fragmentos en Rapier (mayor coste WASM y GC).
+- **Consecuencias positivas:** Cero reconstrucciones de sectores al romper props, apertura física real del camino en Rapier al destruir cajas/hidrantes/bolardos, y eventos reales `'glass_broken'`, `'object_destroyed'` y `'traffic_accident'` integrados en `WorldEventBus`.
+- **Consecuencias negativas:** Los props destructibles se definen deterministamente en `createDestructibles` separados del mapa de sectores estáticos.
+- **Sistemas afectados:** `world/{destructibles,generation/buildings}.ts`, `vehicles/vehicle.ts`, `ai/traffic/traffic*.ts`, `ai/npc/npc-population.ts`, `player/weapons.ts`, `audio/audio.ts`, `simulation/engine.ts`.
+- **Referencias:** [WORLD_AND_STREAMING.md](systems/WORLD_AND_STREAMING.md), [VEHICLES.md](systems/VEHICLES.md), [TRAFFIC_AND_NAVIGATION.md](systems/TRAFFIC_AND_NAVIGATION.md).
 
+### `ADR-0012` — Teléfono móvil diegético, viralización urbana y resolución de `VB-015` (Fase 5)
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Faltaba un teléfono diegético integrado con el mundo simulado y las flechas direccionales (`ArrowUp`/`Down`/`Left`/`Right`) compartían acciones de movimiento en `input.ts` (`VB-015`).
+- **Decisión:**
+  1. Desacoplar las flechas del movimiento (`WASD` exclusivo para caminar/conducir) y asignar `ArrowUp`/`KeyM`/`#touch-phone` para abrir/alternar el teléfono, manteniendo `ArrowUp`/`Down`/`Left`/`Right`, `Enter`, `Backspace` y `Esc` como navegación contextual mientras el dispositivo está abierto (`input.setPhoneOpen`).
+  2. Implementar `createPhoneSystem` (`src/simulation/phone.ts`) en la capa de simulación con cuatro aplicaciones (`camera`, `feed`, `emergency`, `alerts`), cámara capaz de emitir `'recording_started'` (`auditory: true, visual: true, radius: 16`) y publicar clips (`'video_published'`) con crecimiento de reproducciones según gravedad urbana.
+  3. Mantener `src/ui/ui.ts` puramente presentacional: renderiza `PhoneSnapshot` en `#phone-device` mediante DOM seguro (`textContent`/`replaceChildren`) y reenvía comandos a `SimulationEngine.sendPhoneCommand`.
+  4. Confirmar estímulos visuales cercanos (`distance <= 14`) dentro de FOV+LOS directo en `perception.ts` y modelar la reacción NPC ante cámaras apuntando en `npc-brain.ts` (`filmedRecently`).
+- **Motivación:** Mantener toda la lógica temporal/social del teléfono dentro de `SimulationEngine` (verificable en Node/Vitest sin navegador) y eliminar el conflicto de teclas `VB-015`.
+- **Alternativas consideradas:** Gestionar clips y alertas directamente dentro de `src/ui/ui.ts` (rompería la regla de separación simulación/UI e impediría pruebas headless deterministas).
+- **Consecuencias positivas:** Teléfono completamente determinista, integración nativa con `WorldEventBus`, reacciones diferenciadas de NPCs según rol (`citizen`, `criminal`, `merchant`) y cierre limpio de `VB-015`.
+- **Consecuencias negativas:** Los jugadores acostumbrados a flechas para caminar deben usar `WASD` (documentado explícitamente en portada/controles).
+- **Sistemas afectados:** `simulation/{phone,engine}.ts`, `core/input.ts`, `ai/{perception,npc/npc-brain}.ts`, `ui/ui.ts`, `ui/hud.css`, `index.html`, `main.ts`.
+- **Referencias:** [CORE_AND_INPUT.md](systems/CORE_AND_INPUT.md), [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [UI_AND_DEBUG.md](systems/UI_AND_DEBUG.md).

@@ -23,6 +23,12 @@ export const profiles = [
   { name: 'rápido', pace: 13.7, acceleration: 4.1, brake: 7.1, headway: 0.64 },
 ] as const
 
+export interface TrafficDamageResult {
+  car: TrafficVehicle
+  accidentOccurred: boolean
+  ejectedDriver?: NpcIdentity
+}
+
 interface Turn {
   next: RoadLane
   control: RoadPoint
@@ -41,6 +47,10 @@ interface TrafficVehicle extends TrafficVisual {
   decision: number
   stalled: number
   driver: NpcIdentity
+  health: number
+  damage: number
+  wrecked: boolean
+  accidentTimer: number
 }
 
 const maxCars = 23
@@ -128,6 +138,7 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
         decision: 0.05 * random(), stalled: 0, route: plan(lane), reserved: false, clear: 100,
         paint: paints[Math.floor(random() * paints.length)], braking: false,
         occupied: true, driverShirt: driver.appearance.shirt, driver,
+        health: 100, damage: 0, wrecked: false, accidentTimer: 0,
         x, z, previousX: x, previousZ: z, speed: profile.pace * 0.47,
       })
       return
@@ -199,6 +210,12 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
     car.previousX = car.x
     car.previousZ = car.z
     car.previousHeading = car.heading
+    if (car.wrecked) {
+      car.accidentTimer = Math.max(0, car.accidentTimer - dt)
+      car.speed = Math.max(0, car.speed - 12 * dt)
+      car.braking = true
+      return
+    }
     car.decision -= dt
     const atJunction = car.lane.length - car.distance < 15 || !!car.turn
     if (car.decision <= 0 || atJunction) {
@@ -271,7 +288,7 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
 
   function hijackNearest(position: RoadPoint, maxDistance = 3.8): HijackedTrafficVehicle | null {
     const car = findHijackCandidate(position, maxDistance)
-    if (!car) return null
+    if (!car || car.wrecked) return null
     const index = vehicles.indexOf(car)
     if (index < 0) return null
     clearReservation(car)
@@ -287,6 +304,45 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
     }
   }
 
+  function damageVehicle(id: string, amount: number): TrafficDamageResult | null {
+    const car = vehicles.find((item) => item.id === id)
+    if (!car) return null
+    const wasWrecked = car.wrecked
+    car.health = Math.max(0, car.health - amount)
+    car.damage = Math.min(1, (100 - car.health) / 100)
+    if (!wasWrecked && car.health <= 45) {
+      car.wrecked = true
+      car.accidentTimer = 18
+      car.braking = true
+      clearReservation(car)
+      const ejectedDriver = car.occupied ? car.driver : undefined
+      car.occupied = false
+      return { car, accidentOccurred: true, ejectedDriver }
+    }
+    return { car, accidentOccurred: false }
+  }
+
+  function resolveVehicleCrash(
+    x: number,
+    z: number,
+    impactSpeed: number,
+    radius = 2.0,
+  ): TrafficDamageResult | null {
+    if (impactSpeed < 5.5) return null
+    let hitCar: TrafficVehicle | undefined
+    let bestDist = radius + 1.55
+    for (const car of vehicles) {
+      if (car.wrecked && car.accidentTimer > 15) continue
+      const d = Math.hypot(car.x - x, car.z - z)
+      if (d <= bestDist) {
+        bestDist = d
+        hitCar = car
+      }
+    }
+    if (!hitCar) return null
+    return damageVehicle(hitCar.id, Math.max(25, impactSpeed * 5.6))
+  }
+
   return {
     graph,
     get count() { return vehicles.length },
@@ -294,9 +350,11 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
     get routes(): readonly (readonly RoadLane[])[] { return vehicles.map(vehicle => vehicle.route) },
     findHijackCandidate(position: RoadPoint, maxDistance = 3.8) {
       const car = findHijackCandidate(position, maxDistance)
-      return car ? { id: car.id, x: car.x, z: car.z, heading: car.heading } : null
+      return car && !car.wrecked ? { id: car.id, x: car.x, z: car.z, heading: car.heading } : null
     },
     hijackNearest,
+    damageVehicle,
+    resolveVehicleCrash,
     step(dt: number, focus: RoadPoint, obstacles: readonly TrafficObstacle[] = [], hour = 17) {
       if (!(dt > 0)) return
       clock += dt
@@ -304,6 +362,13 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
       populationTimer -= dt
       if (populationTimer <= 0) {
         populationTimer = 0.45
+        for (let i = vehicles.length - 1; i >= 0; i--) {
+          const car = vehicles[i]
+          if (car.wrecked && car.accidentTimer <= 0 && gap(car, focus) > 48) {
+            clearReservation(car)
+            vehicles.splice(i, 1)
+          }
+        }
         populate(focus, hour)
       }
       signals.update(clock, focus)

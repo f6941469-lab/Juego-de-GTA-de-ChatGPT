@@ -54,6 +54,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
   let braking = false
   let impact = 0
   let engineLoad = 0
+  let health = 100
   let driver: Player | undefined
 
   function findExit() {
@@ -79,7 +80,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
   }
 
   function canInteract(player: Player) {
-    return driver ? driver === player && speed <= STOP_SPEED && findExit() !== null : canBoard(player)
+    return driver ? driver === player && (speed <= STOP_SPEED || health <= 0) && findExit() !== null : canBoard(player)
   }
 
   function park() {
@@ -106,7 +107,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
 
   function interact(player: Player) {
     if (driver) {
-      if (driver !== player || speed > STOP_SPEED) return false
+      if (driver !== player || (speed > STOP_SPEED && health > 0)) return false
       const exit = findExit()
       if (!exit) return false
       park()
@@ -134,8 +135,9 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     const velocity = body.linvel()
     const longitudinal = velocity.x * forwardX + velocity.z * forwardZ
     const lateral = velocity.x * rightX + velocity.z * rightZ
-    const throttle = MathUtils.clamp(input.z, -1, 1)
-    const handbrake = !!input.handbrake
+    const wrecked = health <= 0
+    const throttle = wrecked ? 0 : MathUtils.clamp(input.z, -1, 1)
+    const handbrake = !!input.handbrake || wrecked
     const reversing = throttle * longitudinal < -0.22
     braking = handbrake || reversing
     pendingThrottle = throttle
@@ -145,8 +147,10 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
       const deceleration = handbrake ? 17 : reversing ? 15 : 1.25 + Math.abs(longitudinal) * 0.14
       driveSpeed = approach(longitudinal, 0, deceleration * dt)
     } else {
-      const strength = throttle > 0 ? 10 : 6
-      const topSpeed = throttle > 0 ? TOP_FORWARD_SPEED : TOP_REVERSE_SPEED
+      const damageRatio = (100 - health) / 100
+      const maxForward = MathUtils.lerp(TOP_FORWARD_SPEED, 15.5, damageRatio)
+      const strength = throttle > 0 ? 10 * (1 - damageRatio * 0.25) : 6
+      const topSpeed = throttle > 0 ? maxForward : TOP_REVERSE_SPEED
       const power = Math.max(0.18, 1 - Math.abs(longitudinal) / topSpeed)
       driveSpeed = approach(longitudinal, throttle * topSpeed, strength * power * dt)
     }
@@ -206,7 +210,14 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     position.set(spawn.x, spawn.y, spawn.z)
     previous.copy(position)
     heading = previousHeading = initialHeading
+    health = 100
     render(1, 0)
+  }
+
+  function applyDamage(amount: number) {
+    if (amount <= 0 || health <= 0) return { health, wrecked: health <= 0 }
+    health = Math.max(0, health - amount)
+    return { health, wrecked: health <= 0 }
   }
 
   render(1, 0)
@@ -219,9 +230,13 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     get engineLoad() { return engineLoad },
     get braking() { return braking },
     get impact() { return impact },
+    get health() { return health },
+    get damage() { return (100 - health) / 100 },
+    get wrecked() { return health <= 0 },
     canInteract,
     interact,
     boardImmediate,
+    applyDamage,
     prepareStep,
     finishStep,
     step,

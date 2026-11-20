@@ -166,14 +166,14 @@ verification_scope: "static-analysis-only"
 - **Solución propuesta:** Añadir pruebas de integración/DOM y verificación E2E en CI; vigilar actualización upstream de herramientas dev.
 - **Referencias:** `TASK-0001`, `TASK-0009`.
 
-### `VB-015` — Conflicto de tecla `ArrowUp` entre movimiento y futuro teléfono móvil
+### `VB-015` — Conflicto de tecla `ArrowUp` entre movimiento y teléfono móvil
 - **Prioridad:** P2 — Medio
-- **Estado:** Confirmado (Abierto — detectado en diagnóstico Fase 1)
-- **Sistema afectado:** Entrada / UI (Teléfono móvil en Fase 5)
-- **Archivo o símbolo:** `src/core/input.ts` (`keyBindings`: `'ArrowUp': 'forward'`, `'ArrowDown'`, `'ArrowLeft'`, `'ArrowRight'`)
-- **Descripción:** Las flechas de dirección duplican actualmente las acciones `WASD` (`forward`, `backward`, `left`, `right`). El futuro teléfono móvil de Fase 5 se abrirá con `ArrowUp` y navegará su interfaz con las flechas.
-- **Evidencia:** Mapa `keyBindings` en `src/core/input.ts`.
-- **Impacto:** Si se enlaza `ArrowUp` al teléfono sin aislar contexto o definir pulsación corta vs. teclas de conducción, abrir o usar el teléfono aceleraría/movería al personaje o vehículo.
-- **Solución propuesta:** Desacoplar el mapeo de movimiento vs. teléfono (por ejemplo, pulsar `ArrowUp` para abrir/cerrar sin mover y capturar flechas mientras el teléfono esté abierto, o usar `WASD` para conducir/caminar y flechas reservadas al teléfono).
-- **Referencias:** `ROADMAP.md` (Fase 5).
+- **Estado:** Resuelto (en Fase 5 sobre `96ef8fc`)
+- **Sistema afectado:** Entrada / UI (Teléfono móvil)
+- **Archivo o símbolo:** `src/core/input.ts` (`keys`, `phoneOpen`, `phoneCommand`), `index.html` (`#phone-device`)
+- **Descripción:** `WASD` queda asignado exclusivamente a movimiento/conducción, mientras que `↑` (`ArrowUp`) y `M` abren/cierran el teléfono sin mover al personaje ni acelerar el coche; cuando el teléfono está abierto, las flechas, `Enter` y `Backspace` navegan su interfaz.
+- **Evidencia:** `setPhoneOpen`, `phoneCommand` y prueba integrada en `tests/phone-system.test.ts` + navegador Chromium.
+- **Impacto:** Permite usar el teléfono a pie o conduciendo sin interferir con el desplazamiento ni la dirección del vehículo.
+- **Solución propuesta:** Implementado (`ADR-0012`).
+- **Referencias:** `ROADMAP.md` (Fase 5), `ADR-0012`.
 

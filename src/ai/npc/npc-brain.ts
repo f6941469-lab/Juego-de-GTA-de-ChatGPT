@@ -122,6 +122,7 @@ export function stepNpcBrain(
   // Ingest newly perceived events into limited memory
   let newEventSeverity = 0;
   let interestingEvent = false;
+  let filmedRecently = false;
   for (const item of perception.auditoryEvents) {
     recordMemory(brain, {
       eventId: item.event.id,
@@ -144,7 +145,11 @@ export function stepNpcBrain(
       timestamp: simTime,
       severity: item.event.severity,
     });
-    newEventSeverity = Math.max(newEventSeverity, item.event.severity);
+    if (item.event.type === 'recording_started') {
+      filmedRecently = true;
+    } else {
+      newEventSeverity = Math.max(newEventSeverity, item.event.severity);
+    }
     interestingEvent = true;
   }
 
@@ -153,19 +158,25 @@ export function stepNpcBrain(
   } else if (perception.auditoryEvents.length > 0) {
     const loudest = perception.auditoryEvents[0];
     brain.focusPoint = { x: loudest.event.position.x, z: loudest.event.position.z };
+  } else if (filmedRecently && perception.visualEvents.length > 0) {
+    const rec = perception.visualEvents.find((v) => v.event.type === 'recording_started');
+    if (rec) brain.focusPoint = { x: rec.event.position.x, z: rec.event.position.z };
   }
 
   const threat = Math.max(perception.highestThreat, newEventSeverity * 0.3);
   const healthRatio = brain.health / Math.max(1, brain.maxHealth);
   const supportBonus = (context.policeNearby ? 0.25 : 0) + Math.min(0.18, context.witnessesNearby * 0.04);
 
-  const targetFear = clamp01(threat * (0.55 + traits.fearfulness * 0.85) - traits.courage * 0.38 - supportBonus * 0.45 + (1 - healthRatio) * 0.6);
-  const targetAlert = clamp01(Math.max(threat * 0.9, interestingEvent ? 0.45 : 0) + brain.memory.length * 0.05);
+  const filmDiscomfort = filmedRecently && (role === 'nervous_civilian' || role === 'aggressive_civilian' || role === 'merchant') ? 0.28 : 0;
+  const targetFear = clamp01(threat * (0.55 + traits.fearfulness * 0.85) - traits.courage * 0.38 - supportBonus * 0.45 + (1 - healthRatio) * 0.6 + filmDiscomfort * 0.45);
+  const targetAlert = clamp01(Math.max(threat * 0.9, interestingEvent ? 0.45 : 0) + brain.memory.length * 0.05 + (filmedRecently ? 0.28 : 0));
   const targetAnger = clamp01(
-    threat * (0.35 + traits.aggression * 0.85) * (0.65 + traits.courage * 0.35) - targetFear * 0.35,
+    threat * (0.35 + traits.aggression * 0.85) * (0.65 + traits.courage * 0.35) - targetFear * 0.35 + (filmedRecently && role === 'aggressive_civilian' ? 0.35 : 0),
   );
   const targetCuriosity = clamp01(
-    (interestingEvent || brain.memory.length > 0 ? traits.curiosity * (1 - targetFear * 0.85) : traits.curiosity * 0.2),
+    (interestingEvent || brain.memory.length > 0
+      ? Math.min(1, (traits.curiosity + (filmedRecently ? 0.35 : 0)) * (1 - targetFear * 0.85))
+      : traits.curiosity * 0.2),
   );
 
   brain.fear = approach(brain.fear, targetFear, targetFear > brain.fear ? 4.5 : 0.45, dt);

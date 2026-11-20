@@ -1,3 +1,5 @@
+import type { PhoneCommand } from '../simulation/phone'
+
 type Action = 'interact' | 'horn' | 'challenge' | 'reload' | 'cycleWeapon'
 
 const actionKeys: Readonly<Record<string, Action>> = {
@@ -11,10 +13,10 @@ const actionKeys: Readonly<Record<string, Action>> = {
 type Control = 'forward' | 'back' | 'left' | 'right' | 'run' | 'jump' | 'aim' | 'fire'
 
 const keys: Readonly<Record<string, Control>> = {
-  KeyW: 'forward', ArrowUp: 'forward',
-  KeyS: 'back', ArrowDown: 'back',
-  KeyA: 'left', ArrowLeft: 'left',
-  KeyD: 'right', ArrowRight: 'right',
+  KeyW: 'forward',
+  KeyS: 'back',
+  KeyA: 'left',
+  KeyD: 'right',
   ShiftLeft: 'run', ShiftRight: 'run',
   Space: 'jump',
   KeyF: 'aim',
@@ -34,9 +36,11 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
   const heldKeys = new Set<string>()
   const heldPointers = new Map<number, Control>()
   let active = false
+  let phoneOpen = false
   let jumpQueued = false
   let fireQueued = false
   let weaponSlot: 0 | 1 | 2 | undefined
+  let phoneCommand: PhoneCommand | undefined
   let mouseAim = false
   let mouseFire = false
   const queuedActions = new Set<Action>()
@@ -49,6 +53,7 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     jumpQueued = false
     fireQueued = false
     weaponSlot = undefined
+    phoneCommand = undefined
     mouseAim = false
     mouseFire = false
     queuedActions.clear()
@@ -86,7 +91,36 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
     if (!active || event.ctrlKey || event.altKey || event.metaKey) return
     if (event.code === 'Escape') {
       event.preventDefault()
-      actions.onPause()
+      if (phoneOpen && !event.repeat) {
+        phoneCommand = 'toggle'
+      } else {
+        actions.onPause()
+      }
+      return
+    }
+
+    if (event.code === 'KeyM') {
+      event.preventDefault()
+      if (!event.repeat) phoneCommand = 'toggle'
+      return
+    }
+    if (event.code === 'ArrowUp' || event.code === 'ArrowDown' || event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+      event.preventDefault()
+      if (!event.repeat) {
+        if (event.code === 'ArrowUp') phoneCommand = phoneOpen ? 'up' : 'toggle'
+        else if (phoneOpen) {
+          phoneCommand = event.code === 'ArrowDown'
+            ? 'down'
+            : event.code === 'ArrowLeft'
+              ? 'left'
+              : 'right'
+        }
+      }
+      return
+    }
+    if (phoneOpen && (event.code === 'Enter' || event.code === 'Backspace')) {
+      event.preventDefault()
+      if (!event.repeat) phoneCommand = event.code === 'Enter' ? 'select' : 'back'
       return
     }
 
@@ -180,6 +214,8 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
       const act = button.dataset.action
       if (act === 'fire') {
         fireQueued = true
+      } else if (act === 'togglePhone') {
+        phoneCommand = 'toggle'
       } else if (act) {
         queuedActions.add(act as Action)
       }
@@ -201,6 +237,9 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
         if (document.pointerLockElement === canvas) document.exitPointerLock()
       }
     },
+    setPhoneOpen(value: boolean) {
+      phoneOpen = value
+    },
     capture() {
       if (window.matchMedia('(any-pointer: fine)').matches) lockPointer()
     },
@@ -219,10 +258,12 @@ export function createInput(canvas: HTMLCanvasElement, actions: InputActions) {
         reload: queuedActions.has('reload'),
         cycleWeapon: queuedActions.has('cycleWeapon'),
         weaponSlot,
+        phoneCommand,
       }
       jumpQueued = false
       fireQueued = false
       weaponSlot = undefined
+      phoneCommand = undefined
       queuedActions.clear()
       return input
     },

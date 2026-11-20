@@ -83,8 +83,23 @@
         <span><kbd>Espacio</kbd> <span id="space-hint">Saltar</span></span>
         <span id="horn-hint" hidden><kbd>H</kbd> Bocina</span>
         <span id="combat-hint"><kbd>Q</kbd> Arma · <kbd>Clic der./F</kbd> Apuntar · <kbd>Clic izq./G</kbd> Disparar · <kbd>R</kbd> Recargar</span>
+        <span><kbd>↑ / M</kbd> Teléfono</span>
         <span><kbd>B</kbd> Búsqueda</span>
       </div>
+      <aside class="phone-device" id="phone-device" aria-label="Teléfono móvil" hidden>
+        <header class="phone-status-bar">
+          <time id="phone-time">17:15</time>
+          <span id="phone-district">Costa Palmera</span>
+          <span id="phone-battery">5G · 94 %</span>
+        </header>
+        <p class="phone-banner" id="phone-banner">En línea · Red 5G</p>
+        <div class="phone-screen" id="phone-screen"></div>
+        <footer class="phone-nav">
+          <button type="button" data-phone-cmd="back">Atrás</button>
+          <button type="button" data-phone-cmd="select">OK</button>
+          <button type="button" data-phone-cmd="toggle">Cerrar</button>
+        </footer>
+      </aside>
       <div class="touch-controls" aria-label="Controles táctiles">
         <div class="d-pad">
           <button type="button" data-move="forward" aria-label="Adelante">↑</button>
@@ -95,6 +110,7 @@
         <div class="touch-actions">
           <button type="button" data-move="run">Correr</button>
           <button type="button" data-move="jump">Saltar</button>
+          <button type="button" id="touch-phone" data-action="togglePhone">Móvil</button>
           <button type="button" id="touch-weapon" data-action="cycleWeapon">Arma</button>
           <button type="button" id="touch-fire" data-action="fire" hidden>Disparar</button>
           <button type="button" id="touch-interact" data-action="interact" hidden>Entrar</button>
@@ -134,7 +150,8 @@
       </div>
       <div id="controls-content" hidden>
         <dl class="control-list desktop-hints">
-          <div><dt>Moverse o conducir</dt><dd><kbd>WASD</kbd> <kbd>↑ ← ↓ →</kbd></dd></div>
+          <div><dt>Moverse o conducir</dt><dd><kbd>WASD</kbd></dd></div>
+          <div><dt>Abrir/cerrar y usar el móvil</dt><dd><kbd>↑ / M</kbd> · <kbd>← ↓ → Enter</kbd></dd></div>
           <div><dt>Girar la cámara</dt><dd><kbd>Ratón</kbd></dd></div>
           <div><dt>Correr</dt><dd><kbd>Mayús</kbd></dd></div>
           <div><dt>Saltar o usar el freno de mano</dt><dd><kbd>Espacio</kbd></dd></div>
@@ -147,7 +164,7 @@
           <div><dt>Pausar</dt><dd><kbd>Esc</kbd></dd></div>
           <div><dt>Estadísticas, geometría e inspector</dt><dd><kbd>F3</kbd> <kbd>F4</kbd> <kbd>F5</kbd></dd></div>
         </dl>
-        <div class="touch-hints">Usa las flechas para moverte o conducir y arrastra sobre la ciudad para mirar. Cerca del coche o tienda aparece el botón contextual. Pulsa Arma y Disparar a pie.</div>
+        <div class="touch-hints">Usa las flechas para moverte o conducir y arrastra sobre la ciudad para mirar. Pulsa Móvil para abrir la cámara, feed social y 911.</div>
       </div>
       <div class="dialog-actions" id="pause-actions" hidden>
         <button class="primary-button" id="resume-button" type="button">Continuar<span class="icon-arrow" aria-hidden="true"></span></button>

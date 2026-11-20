@@ -1,7 +1,7 @@
 import { Vector3, type Scene } from 'three';
 import { createNpcPopulation, type MovingObstacle } from '../ai/npc/npc-population';
 import { createPolice } from '../ai/police/police';
-import { createTraffic } from '../ai/traffic/traffic';
+import { createTraffic, type TrafficDamageResult } from '../ai/traffic/traffic';
 import { gameConfig } from '../config/game';
 import { WorldEventBus } from '../core/events';
 import type { createInput } from '../core/input';
@@ -12,14 +12,21 @@ import { createVehicleObstacles } from '../physics/vehicle-obstacles';
 import type { createPlayer } from '../player/player';
 import { createWeaponSystem, type BallisticTarget } from '../player/weapons';
 import { createVehicleManager } from '../vehicles/vehicle-manager';
+import { createDestructibles, type DestructibleProp } from '../world/destructibles';
 import type { District } from '../world/district';
+import { getDistrictAt } from '../world/generation/layout';
 import { createStores } from '../world/stores';
 import { EntityRegistry } from './entities';
+import { createPhoneSystem, type PhoneCommand, type PhoneStepContext } from './phone';
 
-type ControlState = ReturnType<ReturnType<typeof createInput>['read']>;
+type RawInput = ReturnType<ReturnType<typeof createInput>['read']>;
+type ControlState = Omit<RawInput, 'weaponSlot' | 'phoneCommand'> & {
+  weaponSlot?: 0 | 1 | 2;
+  phoneCommand?: PhoneCommand;
+};
 
 export interface EngineCallbacks {
-  onAudioCue?: (cue: 'ui' | 'enter' | 'leave' | 'horn' | 'jump' | 'impact' | 'shot' | 'reload' | 'empty' | 'cash') => void;
+  onAudioCue?: (cue: 'ui' | 'enter' | 'leave' | 'horn' | 'jump' | 'impact' | 'shot' | 'reload' | 'empty' | 'cash' | 'glass' | 'debris') => void;
   onNotice?: (text: string, durationSeconds: number) => void;
 }
 
@@ -45,6 +52,8 @@ export function createSimulationEngine(
   const traffic = createTraffic(scene, district.map, seed);
   const police = createPolice(scene, traffic.graph, physics.spatial);
   const stores = createStores(scene, district.map.stores ?? []);
+  const destructibles = createDestructibles(scene, physics, district.map, district.map.stores ?? [], seed);
+  const phone = createPhoneSystem(seed);
   const npcPopulation = createNpcPopulation(scene, {
     graph: pedestrianGraph,
     spatial: physics.spatial,
@@ -66,6 +75,7 @@ export function createSimulationEngine(
   let cash = 0;
   let impactCooldown = 0;
   let recovery = 0;
+  let smokeTimer = 0;
   let walkingSpeed = 0;
   let throttle = 0;
   let forceWanted: number | undefined;
@@ -78,6 +88,78 @@ export function createSimulationEngine(
 
   function currentFocus(): { x: number; y: number; z: number } {
     return vehicles.active ? vehicles.active.car.position : player.position;
+  }
+
+  function emitPropDestruction(prop: DestructibleProp): void {
+    if (prop.kind === 'store_glass') {
+      callbacks.onAudioCue?.('glass');
+      eventBus.emit({
+        type: 'glass_broken',
+        sourceId: 'player',
+        targetIds: [prop.id],
+        position: { x: prop.x, y: prop.y, z: prop.z },
+        intensity: 0.92,
+        radius: 42,
+        severity: 2,
+        visual: true,
+        auditory: true,
+        context: { kind: prop.kind, storeId: prop.storeId ?? '' },
+      });
+      if (prop.storeId) {
+        npcPopulation.intimidateStoreClerk(prop.storeId, { x: prop.x, z: prop.z }, eventBus);
+      }
+      for (const unit of police.units) {
+        const d = Math.hypot(unit.x - prop.x, unit.z - prop.z);
+        if (d < 30 || (d < 44 && physics.spatial.clearLine(unit, prop))) {
+          police.wanted.report(prop, 1);
+          break;
+        }
+      }
+    } else {
+      callbacks.onAudioCue?.('debris');
+      eventBus.emit({
+        type: 'object_destroyed',
+        sourceId: 'player',
+        targetIds: [prop.id],
+        position: { x: prop.x, y: prop.y, z: prop.z },
+        intensity: 0.82,
+        radius: 34,
+        severity: 1,
+        visual: true,
+        auditory: true,
+        context: { kind: prop.kind },
+      });
+    }
+  }
+
+  function emitTrafficAccident(result: TrafficDamageResult, origin: { x: number; z: number }): void {
+    destructibles.spawnSmoke(result.car.x, 1.0, result.car.z, result.car.wrecked);
+    if (!result.accidentOccurred) return;
+    if (result.ejectedDriver) {
+      npcPopulation.spawnDisplacedDriver({
+        x: result.car.x,
+        z: result.car.z,
+        heading: result.car.heading,
+        identity: result.ejectedDriver,
+        threatPos: origin,
+        initialHealth: 66,
+        fromAccident: true,
+      });
+    }
+    eventBus.emit({
+      type: 'traffic_accident',
+      sourceId: 'player',
+      targetIds: [result.car.id],
+      position: { x: result.car.x, y: 0.9, z: result.car.z },
+      intensity: 0.95,
+      radius: 48,
+      severity: 2,
+      visual: true,
+      auditory: true,
+      context: { ejected: Boolean(result.ejectedDriver) },
+    });
+    police.reportImpact(result.car);
+    callbacks.onNotice?.('Accidente vehicular grave', 2.6);
   }
 
   function syncEntities(focusX: number, focusZ: number): void {
@@ -154,6 +236,32 @@ export function createSimulationEngine(
     entities.updateSpatialAndTiers(focusX, focusZ);
   }
 
+  function phoneContext(): PhoneStepContext {
+    const focusNow = currentFocus();
+    const nearbyNpcs = npcPopulation.agents.reduce(
+      (count, agent) => count + ((agent.x - focusNow.x) ** 2 + (agent.z - focusNow.z) ** 2 <= 28 * 28 ? 1 : 0),
+      0,
+    );
+    return {
+      hour,
+      district: getDistrictAt(focusNow.x, focusNow.z),
+      position: focusNow,
+      cash,
+      wanted: police.wanted.level,
+      nearbyNpcs,
+      eventBus,
+      onAudioCue: () => callbacks.onAudioCue?.('ui'),
+      onNotice: (text, duration = 2.6) => callbacks.onNotice?.(text, duration),
+      onEmergency911: (service, location) => {
+        if (service === 'police') {
+          police.wanted.report(location, 1);
+        } else {
+          health = Math.min(100, health + 15);
+        }
+      },
+    };
+  }
+
   function reset(restoreHour = initialHour): void {
     physicalTraffic.reset();
     vehicles.reset(player);
@@ -161,13 +269,15 @@ export function createSimulationEngine(
     weapons.reset();
     police.reset();
     stores.reset();
+    destructibles.reset();
+    phone.reset();
     npcPopulation.reset();
     eventBus.reset();
     previousPlayer.copy(player.position);
     health = 100;
     cash = 0;
     hour = restoreHour;
-    impactCooldown = recovery = walkingSpeed = throttle = 0;
+    impactCooldown = recovery = smokeTimer = walkingSpeed = throttle = 0;
     recentFireThreat = weaponEventCooldown = aimEventCooldown = 0;
     aimingNow = false;
     previousWantedState = police.wanted.state;
@@ -201,9 +311,34 @@ export function createSimulationEngine(
     const evtStart = measure ? performance.now() : 0;
     eventBus.advance(dt);
     stores.step(dt);
+    destructibles.step(dt);
+    const pCtx = phoneContext();
+    if (controls.phoneCommand) {
+      phone.handleCommand(controls.phoneCommand, pCtx);
+    }
+    phone.step(dt, pCtx);
     recentFireThreat = Math.max(0, recentFireThreat - dt * 0.4);
     weaponEventCooldown = Math.max(0, weaponEventCooldown - dt);
     aimEventCooldown = Math.max(0, aimEventCooldown - dt);
+    smokeTimer -= dt;
+    if (smokeTimer <= 0) {
+      smokeTimer = 0.16;
+      for (const entry of vehicles.all) {
+        if (entry.car.damage > 0.35) {
+          const fx = Math.sin(entry.car.heading) * 1.15;
+          const fz = -Math.cos(entry.car.heading) * 1.15;
+          destructibles.spawnSmoke(entry.car.position.x + fx, 0.95, entry.car.position.z + fz, entry.car.wrecked);
+        }
+      }
+      const focusNow = currentFocus();
+      for (const car of traffic.vehicles) {
+        if (car.wrecked && (car.x - focusNow.x) ** 2 + (car.z - focusNow.z) ** 2 < 85 ** 2) {
+          const fx = Math.sin(car.heading) * 1.05;
+          const fz = -Math.cos(car.heading) * 1.05;
+          destructibles.spawnSmoke(car.x + fx, 0.95, car.z + fz, true);
+        }
+      }
+    }
 
     if (controls.interact) {
       const carAction = vehicles.interact(player);
@@ -275,6 +410,7 @@ export function createSimulationEngine(
     for (const car of traffic.vehicles) {
       ballisticTargetScratch.push({ id: car.id, x: car.x, z: car.z, radius: 1.65, kind: 'vehicle' });
     }
+    destructibles.fillBallisticTargets(ballisticTargetScratch);
 
     const shooterHeading = controls.aim ? player.aimYaw : player.heading;
     const shot = weapons.step(
@@ -353,6 +489,7 @@ export function createSimulationEngine(
       if (shot.hitTarget?.kind === 'npc') {
         npcPopulation.applyDamage(shot.hitTarget.id, weapons.spec.damage, player.position, eventBus);
       } else if (shot.hitTarget?.kind === 'vehicle') {
+        const damageRes = traffic.damageVehicle(shot.hitTarget.id, weapons.spec.damage * 1.15);
         eventBus.emit({
           type: 'threat_appeared',
           sourceId: 'player',
@@ -364,6 +501,13 @@ export function createSimulationEngine(
           visual: true,
           auditory: true,
         });
+        if (damageRes) emitTrafficAccident(damageRes, player.position);
+      } else if (shot.hitTarget?.kind === 'prop') {
+        const res = destructibles.damageProp(shot.hitTarget.id, weapons.spec.damage, {
+          x: Math.sin(shooterHeading),
+          z: -Math.cos(shooterHeading),
+        });
+        if (res?.destroyed) emitPropDestruction(res.prop);
       }
       // Nearby patrols within clear sight or close gunfire distance immediately respond
       for (const unit of police.units) {
@@ -600,23 +744,52 @@ export function createSimulationEngine(
 
     impactCooldown -= dt;
     recovery -= dt;
-    if (activeCar && activeCar.impact > 3.1 && impactCooldown <= 0) {
-      health = Math.max(0, health - Math.min(40, activeCar.impact * 2.1));
-      impactCooldown = 0.48;
-      recovery = 12;
-      callbacks.onAudioCue?.('impact');
-      eventBus.emit({
-        type: 'vehicle_collision',
-        sourceId: vehicles.active?.id ?? 'rayo-gt',
-        position: { x: activeCar.position.x, y: 0.7, z: activeCar.position.z },
-        intensity: Math.min(1, activeCar.impact / 10),
-        radius: 45,
-        severity: activeCar.impact > 6 ? 2 : 1,
-        visual: true,
-        auditory: true,
-        context: { impact: Number(activeCar.impact.toFixed(2)) },
-      });
-      if (activeCar.impact > 6) police.reportImpact(activeCar.position);
+    if (activeCar) {
+      const brokenByCar = destructibles.collideVehicle(
+        activeCar.position.x,
+        activeCar.position.z,
+        1.45,
+        activeCar.speed,
+        activeCar.heading,
+      );
+      if (brokenByCar.length > 0) {
+        for (const prop of brokenByCar) emitPropDestruction(prop);
+        activeCar.applyDamage(brokenByCar.length * 4.5);
+      }
+      if (activeCar.impact > 3.1 && impactCooldown <= 0) {
+        health = Math.max(0, health - Math.min(40, activeCar.impact * 2.1));
+        const carDmg = activeCar.applyDamage(Math.min(34, activeCar.impact * 3.1));
+        impactCooldown = 0.48;
+        recovery = 12;
+        callbacks.onAudioCue?.('impact');
+        eventBus.emit({
+          type: 'vehicle_collision',
+          sourceId: vehicles.active?.id ?? 'rayo-gt',
+          position: { x: activeCar.position.x, y: 0.7, z: activeCar.position.z },
+          intensity: Math.min(1, activeCar.impact / 10),
+          radius: 45,
+          severity: activeCar.impact > 6 ? 2 : 1,
+          visual: true,
+          auditory: true,
+          context: { impact: Number(activeCar.impact.toFixed(2)) },
+        });
+        if (carDmg.wrecked) callbacks.onNotice?.('Vehículo inutilizado · Pulsa E para bajar', 3.4);
+        const crash = traffic.resolveVehicleCrash(
+          activeCar.position.x,
+          activeCar.position.z,
+          Math.max(activeCar.impact, activeCar.speed),
+        );
+        if (crash) emitTrafficAccident(crash, activeCar.position);
+        if (activeCar.impact > 6) police.reportImpact(activeCar.position);
+      } else if (activeCar.speed > 7.5 && impactCooldown <= 0) {
+        const crash = traffic.resolveVehicleCrash(activeCar.position.x, activeCar.position.z, activeCar.speed);
+        if (crash) {
+          impactCooldown = 0.48;
+          activeCar.applyDamage(18);
+          callbacks.onAudioCue?.('impact');
+          emitTrafficAccident(crash, activeCar.position);
+        }
+      }
     }
     if (recovery <= 0) health = Math.min(100, health + dt * 4);
     if (health <= 0 || police.takeDetention()) {
@@ -631,6 +804,7 @@ export function createSimulationEngine(
     vehicles.render(alpha, visualDt);
     player.render(alpha, visualDt);
     weapons.render();
+    destructibles.render();
     traffic.render(alpha, elapsed);
     npcPopulation.render(alpha);
     police.render(alpha, visualDt, elapsed, hour);
@@ -667,6 +841,20 @@ export function createSimulationEngine(
 
   syncEntities(player.position.x, player.position.z);
 
+  function getPhoneSnapshot() {
+    const focusNow = currentFocus();
+    return phone.snapshot({
+      hour,
+      district: getDistrictAt(focusNow.x, focusNow.z),
+      cash,
+      wanted: police.wanted.level,
+    });
+  }
+
+  function sendPhoneCommand(command: PhoneCommand) {
+    phone.handleCommand(command, phoneContext());
+  }
+
   return {
     eventBus,
     entities,
@@ -676,6 +864,8 @@ export function createSimulationEngine(
     traffic,
     police,
     stores,
+    destructibles,
+    phone,
     npcPopulation,
     timings,
     get hour() { return hour; },
@@ -692,6 +882,8 @@ export function createSimulationEngine(
     get focusPosition() { return currentFocus(); },
     get focusHeading() { return vehicles.active ? vehicles.active.car.heading : player.heading; },
     setForcedWanted(level: number) { forceWanted = level; },
+    getPhoneSnapshot,
+    sendPhoneCommand,
     step,
     render,
     reset,
@@ -699,6 +891,7 @@ export function createSimulationEngine(
     dispose() {
       physicalTraffic.reset();
       npcPopulation.dispose();
+      destructibles.dispose();
       stores.dispose();
       weapons.dispose();
       police.reset();

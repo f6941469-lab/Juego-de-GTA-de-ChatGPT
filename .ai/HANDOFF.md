@@ -2,26 +2,24 @@
 document_id: CORE-HANDOFF
 status: active
 last_updated: 2026-11-20
-verified_against: "45aefd3-dirty (Phase 3)"
-verification_scope: "typecheck + vitest (40/40) + vite build + Chromium WebGL 2 live test"
+verified_against: "96ef8fc-dirty (Phases 4-5)"
+verification_scope: "typecheck + vitest (45/45) + vite build + Chromium WebGL 2 live test"
 ---
 
 # Transferencia entre Sesiones (`HANDOFF.md`)
 
-- **Última tarea trabajada:** **Fase 3 (Armas, combate y delitos complejos)** de la iniciativa "Ecosistema Urbano Inteligente, Dinámico, Interactivo y Destructible" (tras confirmar y publicar Fase 2 en `45aefd3`).
-- **Objetivo:** Dotar al jugador, NPCs, tiendas y policía de armas, balística detenida por muros, percepción real de amenazas sin omnisciencia, llamadas al 911 interrumpibles por intimidación, asaltos progresivos con botín y tiroteo policial con cobertura.
-- **Estado actual:** Fase 3 implementada, compilada, verificada (`typecheck`, `15` archivos / `40/40` tests, `vite build` `62` módulos y prueba viva en Chromium WebGL 2) y lista para publicar en `main`.
-- **Rama y commit base de referencia:** `main` @ `45aefd3`.
-- **Trabajo completado:**
-  - `src/player/weapons.ts`, `src/player/player.ts`, `src/characters/avatar.ts`, `src/core/input.ts`: 3 ranuras (`unarmed`, `pistol`, `carbine`), apuntado (`Clic der.` / `F`), disparo (`Clic izq.` / `G` / táctil), recarga (`R`), trazadores `InstancedMesh`, raycast detenido por `SpatialBoxGrid` y brazo/arma visibles en el avatar.
-  - `src/ai/npc/npc-population.ts`: detección realista de testigos (`witness_detected`), llamadas al 911 de `2.1 s` interrumpibles por intimidación/disparo, salud/daño (`applyDamage`) y combate cuerpo a cuerpo NPC (`8` HP).
-  - `src/world/stores.ts` y `src/simulation/engine.ts`: asalto progresivo en tienda (`beginHeist` / `stepHeist`), intimidación de dependientes (`cooperating` / alerta diferida), cobro de botín (`cash` + `robbery_finished`), cues procedurales (`shot`, `reload`, `empty`, `cash` en `audio.ts`) y HUD de combate (`#cash-display`, `#weapon-display`, `#aim-reticle`, controles táctiles).
-  - `src/ai/police/police.ts`: fuego recíproco policial (`wanted.level >= 2`, `< 25 m`, `clearLine` real respetando cobertura arquitectónica).
-  - `tests/combat-and-heists.test.ts`: balística con muro bloqueante, testigo no omnisciente interrumpible, asalto completo con botín y combate policial con cobertura.
+- **Última tarea trabajada:** **Fase 5 (Teléfono móvil integrado)** completada sobre la Fase 4 de la iniciativa "Ecosistema Urbano Inteligente, Dinámico, Interactivo y Destructible" (working tree sobre `96ef8fc` de Fase 3).
+- **Objetivo:** Resolver `VB-015` (`ArrowUp`), dotar al jugador de un smartphone diegético desacoplado en simulación (`camera`, `feed`, `emergency` 911, `alerts`) conectado a `WorldEventBus`, viralizar incidentes reales y provocar reacciones NPC ante grabaciones en vivo.
+- **Estado actual:** Fases 4 y 5 implementadas, compiladas y verificadas (`typecheck`, `17` archivos / `45/45` tests, `vite build` `64` módulos y prueba viva en Chromium WebGL 2). Pendiente de autorización expresa del usuario para `commit`/`push` y arranque de la Fase 6.
+- **Rama y commit base de referencia:** `main` @ `96ef8fc`.
+- **Trabajo completado en Fases 4 y 5 (working tree):**
+  - **Fase 4:** `src/world/destructibles.ts`, `buildings.ts`, `weapons.ts`, `vehicle.ts`, `traffic.ts`/`traffic-visuals.ts`, `npc-population.ts`, `audio.ts`, `tests/destructibles-and-accidents.test.ts` (escaparates fracturables, mobiliario Rapier destructible, escombros/agua/humo, daño vehicular y accidentes con huida).
+  - **Fase 5:** `src/simulation/phone.ts` (`createPhoneSystem`, grabaciones `'recording_started'`, clips `'video_published'` con vistas dinámicas, llamadas 911 policial/médica y ticker urbano), `src/core/input.ts` (resolución de `VB-015` reservando `WASD` al movimiento y `ArrowUp`/`KeyM`/`#touch-phone` + navegación contextual al teléfono), `src/ai/perception.ts` + `src/ai/npc/npc-brain.ts` (confirmación visual cercana `<= 14 m` y reacción `filmedRecently` según rol NPC), `src/simulation/engine.ts`, `index.html`, `src/ui/hud.css`, `src/ui/ui.ts`, `src/main.ts` y `tests/phone-system.test.ts`.
 - **Trabajo pendiente:**
-  - **Fase 4 (Entorno dinámico y destructible):** Cristales/vidrieras fracturables, objetos destructibles (`glass_shattered`, `object_destroyed`), daños en vehículos/mobiliario y accidentes con escape.
-  - **Fases 5–7:** Teléfono móvil (`VB-015`), policía avanzada e investigación, y optimización final (`VB-002`–`VB-005`).
-- **Cambios en Git:** Publicación de Fase 3 en curso sobre `45aefd3`.
+  - **Fase 6 (Policía avanzada e investigación criminal):** Respuesta escalonada, perímetros, unidades instanciadas (`VB-005`), cerco en tiendas, evitación de tráfico (`VB-004`) y memoria de descripción del sospechoso/vehículo.
+  - **Fase 7 (Pulido y optimización final):** Streaming físico Rapier (`VB-002`), presupuesto en `streaming.ts` (`VB-003`), reducción GC (`VB-009`), `resolution.ts` (`VB-011`) y `dispose()` completo (`VB-008`).
+- **Cambios en Git:** Cambios locales de Fases 4 y 5 sin confirmar sobre `96ef8fc`.
 - **Bloqueos:** Ninguno técnico.
-- **Próxima acción recomendada:** Solicitar autorización expresa al usuario para iniciar **Fase 4 (Entorno dinámico y destructible)**.
+- **Próxima acción recomendada:** Autorizar `git commit` y `git push` de Fases 4 y 5 y el inicio de la **Fase 6 (Policía avanzada e investigación criminal)**.
 - **Documentos clave para el siguiente agente:** `AGENTS.md` -> `.ai/INDEX.md` -> `.ai/CURRENT_STATE.md` -> `.ai/ROADMAP.md` -> `.ai/architecture/CODEBASE_MAP.md`.
+

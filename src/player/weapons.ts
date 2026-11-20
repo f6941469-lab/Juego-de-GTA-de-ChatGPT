@@ -68,7 +68,9 @@ export interface BallisticTarget {
   x: number;
   z: number;
   radius: number;
-  kind: 'npc' | 'vehicle';
+  halfX?: number;
+  halfZ?: number;
+  kind: 'npc' | 'vehicle' | 'prop';
 }
 
 export interface ShotOutcome {
@@ -110,6 +112,30 @@ function rayCircle2D(
   const thc = Math.sqrt(Math.max(0, radius * radius - distSq));
   const hitDist = proj - thc;
   return hitDist >= 0 ? hitDist : proj + thc;
+}
+
+function rayBox2D(
+  ox: number,
+  oz: number,
+  dx: number,
+  dz: number,
+  cx: number,
+  cz: number,
+  halfX: number,
+  halfZ: number,
+): number | null {
+  const minX = cx - halfX;
+  const maxX = cx + halfX;
+  const minZ = cz - halfZ;
+  const maxZ = cz + halfZ;
+  const tx1 = dx === 0 ? (ox >= minX && ox <= maxX ? -Infinity : Infinity) : (minX - ox) / dx;
+  const tx2 = dx === 0 ? (ox >= minX && ox <= maxX ? Infinity : -Infinity) : (maxX - ox) / dx;
+  const tz1 = dz === 0 ? (oz >= minZ && oz <= maxZ ? -Infinity : Infinity) : (minZ - oz) / dz;
+  const tz2 = dz === 0 ? (oz >= minZ && oz <= maxZ ? Infinity : -Infinity) : (maxZ - oz) / dz;
+  const enter = Math.max(Math.min(tx1, tx2), Math.min(tz1, tz2));
+  const exit = Math.min(Math.max(tx1, tx2), Math.max(tz1, tz2));
+  if (exit < 0 || enter > exit) return null;
+  return Math.max(0, enter);
 }
 
 export function createWeaponSystem(scene: Scene) {
@@ -254,15 +280,26 @@ export function createWeaponSystem(scene: Scene) {
         }
 
         for (const target of targets) {
-          const dist = rayCircle2D(
-            muzzleOrigin.x,
-            muzzleOrigin.z,
-            dirX,
-            dirZ,
-            target.x,
-            target.z,
-            target.radius,
-          );
+          const dist = target.halfX && target.halfZ
+            ? rayBox2D(
+                muzzleOrigin.x,
+                muzzleOrigin.z,
+                dirX,
+                dirZ,
+                target.x,
+                target.z,
+                target.halfX,
+                target.halfZ,
+              )
+            : rayCircle2D(
+                muzzleOrigin.x,
+                muzzleOrigin.z,
+                dirX,
+                dirZ,
+                target.x,
+                target.z,
+                target.radius,
+              );
           if (dist !== null && dist < hitDistance) {
             hitDistance = dist;
             hitTarget = target;

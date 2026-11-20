@@ -211,7 +211,8 @@ export function evaluatePerception(
           const key = `evt:${event.id}`;
           seenKeys.add(key);
           const prev = observer.recognition.get(key) ?? 0;
-          const recognition = Math.min(1, prev + dt / Math.max(0.05, config.recognitionSeconds * 0.8));
+          const stepRec = distance <= 14 ? 1 : dt / Math.max(0.05, config.recognitionSeconds * 0.8);
+          const recognition = Math.min(1, prev + stepRec);
           observer.recognition.set(key, recognition);
           const confirmed = recognition >= 1;
           visualEvents.push({ event, distance, recognition, confirmed });

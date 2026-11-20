@@ -165,8 +165,12 @@ export function addBuilding(
       emit('wall', wall, place(frontF, ceilingY / 2, wingCenter, t, ceilingY, wingSpan), true);
       if (wingSpan > 1.0) {
         const glassW = wingSpan * 0.68;
-        emit('glassLit', '#c9936d', place(frontF + 0.08, 1.32, -wingCenter, t * 0.55, 1.35, glassW));
-        emit('glassLit', '#c9936d', place(frontF + 0.08, 1.32, wingCenter, t * 0.55, 1.35, glassW));
+        emit('trim', '#25313c', place(frontF + 0.03, 1.32, -wingCenter, t * 0.4, 1.35, glassW));
+        emit('trim', '#25313c', place(frontF + 0.03, 1.32, wingCenter, t * 0.4, 1.35, glassW));
+        emit('trim', dark, place(frontF + 0.08, 0.59, -wingCenter, t * 0.65, 0.11, glassW + 0.12));
+        emit('trim', dark, place(frontF + 0.08, 0.59, wingCenter, t * 0.65, 0.11, glassW + 0.12));
+        emit('trim', dark, place(frontF + 0.08, 2.04, -wingCenter, t * 0.65, 0.09, glassW + 0.12));
+        emit('trim', dark, place(frontF + 0.08, 2.04, wingCenter, t * 0.65, 0.09, glassW + 0.12));
       }
     }
     emit('wall', wall, place(frontF, (interiorDoorHeight + ceilingY) / 2, 0, t, ceilingY - interiorDoorHeight, doorWidth), true);

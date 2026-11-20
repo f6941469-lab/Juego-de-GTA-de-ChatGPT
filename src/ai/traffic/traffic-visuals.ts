@@ -12,6 +12,8 @@ export interface TrafficVisual {
   braking: boolean
   occupied?: boolean
   driverShirt?: number
+  damage?: number
+  wrecked?: boolean
 }
 
 const windowColor = new Color('#293e51')
@@ -19,6 +21,8 @@ const wheelsColor = new Color('#171b22')
 const chromeColor = new Color('#8296a3')
 const driverSkinColor = new Color('#bd7855')
 const driverShirtScratch = new Color('#4c6073')
+const wreckTint = new Color('#2b2f36')
+const paintScratch = new Color('#b66d6b')
 const frontDim = new Color('#fff0db').multiplyScalar(0.65)
 const frontLit = new Color('#fff0db')
 const rearDim = new Color('#772939')
@@ -58,15 +62,17 @@ export function createTrafficVisuals(scene: Scene, capacity: number) {
         mesh.setMatrixAt(slot, pose.matrix)
         mesh.setColorAt(slot, color)
       }
-      set(shells, index * 4 + 0, 0, 0.60, 0, 1.72, 0.62, 3.55, car.paint)
+      paintScratch.copy(car.paint)
+      if (car.damage && car.damage > 0) paintScratch.lerp(wreckTint, Math.min(0.75, car.damage * 0.72))
+      set(shells, index * 4 + 0, 0, 0.60, 0, 1.72, 0.62, 3.55, paintScratch)
       set(shells, index * 4 + 1, 0, 1.01, 0.18, 1.47, 0.41, 1.61, windowColor)
-      set(shells, index * 4 + 2, 0, 1.23, 0.21, 1.36, 0.095, 1.5, car.paint)
+      set(shells, index * 4 + 2, 0, 1.23, 0.21, 1.36, 0.095, 1.5, paintScratch)
       set(shells, index * 4 + 3, 0, 0.36, -1.77, 1.54, 0.13, 0.16, chromeColor)
       for (const [sideIndex, side] of [-1, 1].entries()) {
         set(wheels, index * 4 + sideIndex * 2, side * 0.82, 0.29, -1.12, 0.23, 0.55, 0.61, wheelsColor)
         set(wheels, index * 4 + sideIndex * 2 + 1, side * 0.82, 0.29, 1.12, 0.23, 0.55, 0.61, wheelsColor)
-        set(lights, index * 4 + sideIndex * 2, side * 0.58, 0.69, -1.787, 0.25, 0.13, 0.055, night ? frontLit : frontDim)
-        set(lights, index * 4 + sideIndex * 2 + 1, side * 0.6, 0.67, 1.782, 0.22, 0.11, 0.067, car.braking ? rearLit : rearDim)
+        set(lights, index * 4 + sideIndex * 2, side * 0.58, 0.69, -1.787, 0.25, 0.13, 0.055, night && !car.wrecked ? frontLit : frontDim)
+        set(lights, index * 4 + sideIndex * 2 + 1, side * 0.6, 0.67, 1.782, 0.22, 0.11, 0.067, (car.braking || car.wrecked) ? rearLit : rearDim)
       }
       if (car.occupied !== false && driverParts + 2 <= capacity * 2) {
         driverShirtScratch.setHex(car.driverShirt ?? 0x4c6073)

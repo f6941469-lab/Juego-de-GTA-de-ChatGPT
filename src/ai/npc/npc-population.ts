@@ -221,26 +221,38 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
     heading: number;
     identity: NpcIdentity;
     threatPos: { x: number; z: number };
+    initialHealth?: number;
+    fromAccident?: boolean;
   }): NpcAgent {
     const rightX = Math.cos(params.heading);
     const rightZ = Math.sin(params.heading);
-    const spawnX = params.x + rightX * 1.45;
-    const spawnZ = params.z + rightZ * 1.45;
+    const offset = params.fromAccident ? 1.7 : 1.45;
+    const spawnX = params.x + rightX * offset;
+    const spawnZ = params.z + rightZ * offset;
     const awayHeading = Math.atan2(spawnX - params.threatPos.x, -(spawnZ - params.threatPos.z));
     const driver = makeAgent('driver_displaced', {
       ...params.identity,
       id: `driver-displaced-${++serial}`,
     }, spawnX, spawnZ, awayHeading);
+    if (params.initialHealth !== undefined) {
+      driver.brain.health = Math.max(18, Math.min(driver.brain.maxHealth, params.initialHealth));
+    }
     driver.brain.focusPoint = { ...params.threatPos };
-    driver.brain.alertness = 0.9;
-    driver.brain.fear = Math.min(1, params.identity.traits.fearfulness * 0.8 + 0.2);
-    driver.brain.anger = params.identity.traits.aggression * 0.85;
-    driver.brain.state = params.identity.traits.aggression > 0.6 && params.identity.traits.courage > 0.55
-      ? 'aggressive'
-      : 'alarmed';
-    driver.brain.intent = params.identity.traits.aggression > 0.6 && params.identity.traits.courage > 0.55
-      ? 'confront'
-      : 'flee';
+    driver.brain.alertness = 0.92;
+    driver.brain.fear = Math.min(1, params.identity.traits.fearfulness * 0.8 + (params.fromAccident ? 0.3 : 0.2));
+    driver.brain.anger = params.fromAccident ? params.identity.traits.aggression * 0.3 : params.identity.traits.aggression * 0.85;
+    if (params.fromAccident) {
+      driver.brain.state = params.identity.traits.courage > 0.55 ? 'calling_help' : 'scared';
+      driver.brain.intent = params.identity.traits.courage > 0.55 ? 'call_help' : 'flee';
+      if (driver.brain.intent === 'call_help') driver.callTimer = 0.5;
+    } else {
+      driver.brain.state = params.identity.traits.aggression > 0.6 && params.identity.traits.courage > 0.55
+        ? 'aggressive'
+        : 'alarmed';
+      driver.brain.intent = params.identity.traits.aggression > 0.6 && params.identity.traits.courage > 0.55
+        ? 'confront'
+        : 'flee';
+    }
     if (agents.length >= capacity) {
       const oldest = agents.findIndex((item) => item.kind === 'pedestrian');
       if (oldest >= 0) agents.splice(oldest, 1);
@@ -438,8 +450,18 @@ export function createNpcPopulation(scene: Scene, config: PopulationConfig) {
         }
       } else if (agent.brain.intent === 'observe' || agent.brain.intent === 'record' || agent.brain.intent === 'call_help') {
         if (agent.brain.focusPoint) {
-          const targetYaw = Math.atan2(agent.brain.focusPoint.x - agent.x, -(agent.brain.focusPoint.z - agent.z));
+          const dx = agent.brain.focusPoint.x - agent.x;
+          const dz = agent.brain.focusPoint.z - agent.z;
+          const dist = Math.hypot(dx, dz);
+          const targetYaw = Math.atan2(dx, -dz);
           agent.heading += turnDelta(agent.heading, targetYaw) * Math.min(1, 8 * dt);
+          const lastEvent = agent.brain.memory[agent.brain.memory.length - 1];
+          const inspectingAccident = lastEvent?.type === 'traffic_accident'
+            && (agent.role === 'curious_civilian' || agent.role === 'brave_civilian' || agent.role === 'worker');
+          if (inspectingAccident && dist > 4.6 && dist < 16) {
+            movedX += (dx / dist) * 1.45 * dt;
+            movedZ += (dz / dist) * 1.45 * dt;
+          }
         }
       } else if (agent.brain.intent === 'confront' && agent.brain.focusPoint) {
         const dx = agent.brain.focusPoint.x - agent.x;

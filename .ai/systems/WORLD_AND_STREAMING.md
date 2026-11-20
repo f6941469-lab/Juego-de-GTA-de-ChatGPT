@@ -2,12 +2,13 @@
 document_id: SYSTEM-WORLD-STREAMING
 status: active
 last_updated: 2026-11-20
-verified_against: "45aefd3-dirty (Phase 3 working tree)"
-verification_scope: "typecheck + vitest (40/40) + vite build (Phase 3)"
+verified_against: "96ef8fc-dirty (Phase 4 working tree)"
+verification_scope: "typecheck + vitest (43/43) + vite build (Phase 4)"
 related_systems: [PHYSICS_AND_COLLISIONS, RENDERING, TRAFFIC_AND_NAVIGATION, POLICE_AND_WANTED, NPC_AND_PERCEPTION]
 related_files:
   - src/world/district.ts
   - src/world/stores.ts
+  - src/world/destructibles.ts
   - src/world/streaming.ts
   - src/world/generation/layout.ts
   - src/world/generation/geometry.ts
@@ -19,22 +20,22 @@ related_files:
 
 # Sistema: Mundo, Generación Procedural y Streaming (`WORLD_AND_STREAMING.md`)
 
-1. **Propósito:** Construir de forma determinista el mapa conectado de Viceblock (Isla Este, Isla Estrella y Tierra Firme Oeste unidas por puentes sobre Bahía Central), las 9 tiendas funcionales con interior accesible en planta baja y asalto progresivo de caja, sus colisionadores estáticos y el streaming visual por sectores.
-2. **Estado de implementación:** **Implementado con interiores transitables reales en las 9 tiendas (`buildingColliders`, suelo, mostrador, iluminación y escaparate) y asaltos progresivos (`beginHeist`/`stepHeist`)** sobre los 6 distritos conectados por 3 puentes. Streaming físico Rapier pendiente (`VB-002`).
-3. **Responsabilidades:** Definir retícula vial multi-isla y puentes, instanciar edificios (sólidos o con planta baja enterable cuando `interior: true`), parques, muelles, costa, balizas/interiores de tiendas (`InstancedMesh` + `StoreInteriorLayout`), gestionar el ciclo completo de asalto en caja y cargar/descargar sectores visuales `64×64 m`.
-4. **Archivos fuente relevantes:** `src/world/district.ts`, `src/world/stores.ts`, `src/world/streaming.ts`, `src/world/generation/{layout,geometry,buildings,streets,coast,vegetation}.ts`.
-5. **Clases y funciones principales:** `buildDistrict`, `createStores`, `getStoreInteriorLayout`, `createDistrictStreaming`, `DistrictGeometry`, `DistrictResources`, `disposeInstances`, `makeRandom`, `getDistrictAt`, `addBuilding`, `buildingCollider`, `buildingColliders`, `addStreets`, `addCoast`, `addPalm`, `addPlanter`.
-6. **Interfaces públicas:** `District`, `DistrictMap`, `DistrictZone`, `StoreSpec`, `StoreInteriorLayout`, `StoreHeistState`, `StoreHeistUpdate`, `StoreMapMarker`, `MapRectangle`, `BuildingSpec`, `Finish`, `WorldFocus`.
-7. **Dependencias:** `three`, `StaticBox` (`src/physics/physics.ts`).
+1. **Propósito:** Construir de forma determinista el mapa conectado de Viceblock (Isla Este, Isla Estrella y Tierra Firme Oeste unidas por puentes sobre Bahía Central), las 9 tiendas funcionales con interior accesible, escaparate fracturable y asalto progresivo, el mobiliario urbano destructible con física Rapier, sus colisionadores estáticos y el streaming visual por sectores.
+2. **Estado de implementación:** **Implementado con interiores transitables en 9 tiendas, asaltos progresivos y entorno destructible físico/instanciado (`destructibles.ts`, Fase 4)** sobre los 6 distritos conectados por 3 puentes. Streaming físico Rapier pendiente (`VB-002`).
+3. **Responsabilidades:** Definir retícula vial multi-isla y puentes, instanciar edificios (con marcos huecos en tiendas para escaparates rompibles), parques, muelles, costa, gestionar balizas/asaltos (`stores.ts`), simular objetos destructibles + escombros/agua/humo acotados (`destructibles.ts`) y cargar/descargar sectores visuales `64×64 m`.
+4. **Archivos fuente relevantes:** `src/world/district.ts`, `src/world/stores.ts`, `src/world/destructibles.ts`, `src/world/streaming.ts`, `src/world/generation/{layout,geometry,buildings,streets,coast,vegetation}.ts`.
+5. **Clases y funciones principales:** `buildDistrict`, `createStores`, `getStoreInteriorLayout`, `createDestructibles`, `createDistrictStreaming`, `DistrictGeometry`, `DistrictResources`, `disposeInstances`, `makeRandom`, `getDistrictAt`, `addBuilding`, `buildingCollider`, `buildingColliders`, `addStreets`, `addCoast`, `addPalm`, `addPlanter`.
+6. **Interfaces públicas:** `District`, `DistrictMap`, `DistrictZone`, `StoreSpec`, `StoreInteriorLayout`, `StoreHeistState`, `StoreHeistUpdate`, `StoreMapMarker`, `DestructibleProp`, `DestructibleKind`, `DestructionHit`, `MapRectangle`, `BuildingSpec`, `Finish`, `WorldFocus`.
+7. **Dependencias:** `three`, `@dimforge/rapier3d-compat`, `StaticBox` (`src/physics/physics.ts`).
 8. **Sistemas dependientes:** `src/simulation/engine.ts`, `src/main.ts`, `src/physics/physics.ts`, `src/ai/traffic/traffic.ts`, `src/ai/npc/npc-population.ts`, `src/ai/police/police.ts`, `src/ui/minimap.ts`.
-9. **Flujo de funcionamiento:** `buildDistrict(scene, seed)` construye masas de tierra, malecones, puentes y lotes; las 9 tiendas (`interior: true`) generan 4 paredes huecas con vano de puerta abierto (`~2.0–2.6 m` × `2.38 m`), mostrador físico interior y bloque superior desde `y = 2.72 m`. `createStores` calcula `StoreInteriorLayout`, expone `findStoreContaining`, `beginHeist` y `stepHeist(dt, position, { armed, intimidating })` para asaltos progresivos de caja (acelerando si se apunta/intimidación activa, pagando botín parcial al abandonar la zona o completo al 100 % y activando cooldown de cierre).
-10. **Estructuras de datos relevantes:** `districtBounds` (`-480..76` X, `-216..216` Z), `districtZones` (6 distritos), `bridges` (3 puentes), `storeSpecs` (9 tiendas con `width`/`depth`), `specialLots` (7 lotes Este) + `westSpecialBlocks` (4 lotes Oeste), `Sector`.
-11. **Invariantes:** Con igual `seed`, `map`, `spawn`, `colliders` y matrices de `InstancedMesh` son idénticos. Puentes y masas de tierra tienen suelo físico en `y = 0`. Todas las entradas de tienda conectan suavemente la acera con el interior sin colisionadores bloqueando la puerta (`verificado en Rapier`).
-12. **Restricciones:** Terreno plano (`y = 0`); edificios genéricos siguen siendo volúmenes sólidos cerrados (solo los 9 comercios tienen interior enterable).
-13. **Problemas conocidos:** `VB-002` (colisionadores estáticos permanentes sin streaming Rapier, aunque LOS es `O(celdas)`), `VB-003` (reconstrucción síncrona bloqueante de sectores), `VB-006` (aceras a `+0.049 m` sin collider), `VB-008` (`pole`/`trunk`/`crown`/`leaf` sin liberar en `dispose()`), `VB-010` (palmeras costeras/parques y mobiliario sin collider; default seed `61865` vs `240817`).
-14. **Consideraciones de rendimiento:** `DistrictGeometry` y `createStores` usan `InstancedMesh` para acotar draw calls; en mapas mayores conviene avanzar `VB-002` y `VB-003`.
-15. **Métodos de verificación:** `tests/district.test.ts` (3 tests), `tests/world-streaming.test.ts` (2 tests), `tests/stores.test.ts` (1 test), `tests/urban-life.test.ts` (recorrido físico Rapier por puerta hasta mostrador de las 9 tiendas) y `tests/combat-and-heists.test.ts` (asalto progresivo e intimidación).
-16. **Riesgos de modificación:** Alterar `avenues`, `westAvenues` o `crossStreets` exige actualizar coordenadas de `specialLots`, `westSpecialBlocks` y `storeSpecs`.
+9. **Flujo de funcionamiento:** `buildDistrict(scene, seed)` construye masas de tierra, malecones, puentes y lotes; las 9 tiendas (`interior: true`) dejan huecos enmarcados en `buildings.ts` donde `createDestructibles` coloca `18` vidrieras `store_glass` fracturables y mobiliario urbano con colisionador Rapier (`hydrant`, `bollard`, `crate`, `bench`). Al destruirse por bala o vehículo, retiran su colisionador Rapier al instante, lanzan escombros físicos (`maxDebris = 96`) y chorros de agua/humo (`maxPlumes = 64`), emiten `'glass_broken'` o `'object_destroyed'` y alertan al dependiente si corresponde.
+10. **Estructuras de datos relevantes:** `districtBounds` (`-480..76` X, `-216..216` Z), `districtZones` (6 distritos), `bridges` (3 puentes), `storeSpecs` (9 tiendas con `width`/`depth`), `DestructibleProp[]`, `Sector`.
+11. **Invariantes:** Con igual `seed`, `map`, `spawn`, `colliders`, matrices de `InstancedMesh` y props destructibles son idénticos. Al romper un prop físico (`broken === true`), `physics.world.removeCollider` abre realmente el paso. `dispose()` libera mallas, geometrías, materiales y colisionadores.
+12. **Restricciones:** Terreno plano (`y = 0`); edificios genéricos siguen siendo volúmenes sólidos cerrados (solo los 9 comercios tienen interior enterable y vidrieras destructibles).
+13. **Problemas conocidos:** `VB-002` (colisionadores estáticos permanentes sin streaming Rapier, aunque LOS es `O(celdas)`), `VB-003` (reconstrucción síncrona bloqueante de sectores), `VB-006` (aceras a `+0.049 m` sin collider), `VB-008` (`pole`/`trunk`/`crown`/`leaf` sin liberar en `dispose()`), `VB-010` (palmeras costeras/parques sin collider; default seed `61865` vs `240817`).
+14. **Consideraciones de rendimiento:** `destructibles.ts` agrupa todos los escaparates, mobiliario, escombros y efectos de agua/humo en solo `4` `InstancedMesh` con buffers circulares acotados (`96` escombros, `64` columnas).
+15. **Métodos de verificación:** `tests/district.test.ts` (3 tests), `tests/world-streaming.test.ts` (2 tests), `tests/stores.test.ts` (1 test), `tests/urban-life.test.ts`, `tests/combat-and-heists.test.ts` y `tests/destructibles-and-accidents.test.ts` (vidrieras, liberación de colisionadores Rapier, chorro de hidrante y reset/dispose).
+16. **Riesgos de modificación:** Alterar `avenues`, `westAvenues` o `crossStreets` exige actualizar coordenadas de `specialLots`, `westSpecialBlocks`, `storeSpecs` y candidatos de `destructibles.ts`.
 17. **Referencias relacionadas:** [PHYSICS_AND_COLLISIONS.md](PHYSICS_AND_COLLISIONS.md), [TRAFFIC_AND_NAVIGATION.md](TRAFFIC_AND_NAVIGATION.md), [UI_AND_DEBUG.md](UI_AND_DEBUG.md), [NPC_AND_PERCEPTION.md](NPC_AND_PERCEPTION.md).
-18. **Última verificación:** 2026-11-20 (`typecheck`, Vitest 40/40 y build tras Fase 3).
+18. **Última verificación:** 2026-11-20 (`typecheck`, Vitest 43/43 y build tras Fase 4).
 

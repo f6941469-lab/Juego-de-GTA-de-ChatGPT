@@ -2,8 +2,8 @@
 document_id: ARCH-OVERVIEW
 status: active
 last_updated: 2026-11-20
-verified_against: "45aefd3-dirty (Phase 3)"
-verification_scope: "typecheck-tests-build-phase3"
+verified_against: "96ef8fc-dirty (Phase 5)"
+verification_scope: "typecheck-tests-build-phase5"
 ---
 
 # Visión General de Arquitectura (`OVERVIEW.md`)
@@ -14,23 +14,23 @@ verification_scope: "typecheck-tests-build-phase3"
 ```mermaid
 flowchart TD
     MAIN["src/main.ts (Arranque + rAF + Audio + Debug)"]
-    UI["src/ui/ (DOM, HUD, Minimapa)"]
+    UI["src/ui/ (DOM, HUD, Teléfono, Minimapa)"]
     IN["src/core/input.ts + fixed-loop.ts + events.ts (WorldEventBus)"]
     PERS["src/persistence/preferences.ts"]
-    ENG["src/simulation/engine.ts (SimulationEngine)"]
+    ENG["src/simulation/engine.ts (SimulationEngine + PhoneSystem)"]
 
     subgraph SIM ["Simulación 60 Hz"]
         ENT["src/simulation/entities.ts (EntityRegistry + LOD Tiers)"]
         PHY["src/physics/ (Rapier WASM + SpatialBoxGrid + step centralizado)"]
         PLR["src/player/ (Movimiento + Weapons + FollowCamera)"]
-        VEH["src/vehicles/ (vehicle-manager + Rayo GT + robados)"]
-        TRF["src/ai/traffic/ + navigation/ (road-graph + pedestrian-graph)"]
-        NPC["src/ai/perception.ts + ai/npc/ (Población instanciada + Testigos + Utility/FSM)"]
+        VEH["src/vehicles/ (vehicle-manager + daño + Rayo GT + robados)"]
+        TRF["src/ai/traffic/ + navigation/ (road-graph + accidentes + pedestrian-graph)"]
+        NPC["src/ai/perception.ts + ai/npc/ (Población + Testigos + Utility/FSM)"]
         POL["src/ai/police/ (Patrullas + Combate LOS + Wanted)"]
     end
 
     subgraph WORLD ["Mundo Procedural"]
-        DIST["src/world/district.ts + stores.ts (9 tiendas enterables) + streaming.ts"]
+        DIST["src/world/district.ts + stores.ts + destructibles.ts + streaming.ts"]
         GEN["src/world/generation/*"]
     end
 

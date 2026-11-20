@@ -53,6 +53,9 @@ async function startGame() {
       noticeTimer = 0
       audio.cue('ui')
     },
+    onPhoneCommand: (command) => {
+      if (mode === 'playing') engine?.sendPhoneCommand(command)
+    },
   })
   ui.setMode('loading')
 
@@ -163,6 +166,7 @@ async function startGame() {
         if (noticeTimer <= 0) noticeText = null
       }
       simulation.step(dt, input.read(), debug || inspectorDebug)
+      input.setPhoneOpen(simulation.phone.isOpen)
     }
 
     function frame(now: number) {
@@ -206,6 +210,8 @@ async function startGame() {
       const { x, y, z } = position
       const prompt = simulation.getInteractionPrompt()
       const activeCar = simulation.activeVehicle
+      const phoneState = simulation.getPhoneSnapshot()
+      input.setPhoneOpen(phoneState.open)
 
       ui.update({
         x, z, heading, hour, district: getDistrictAt(x, z),
@@ -223,6 +229,7 @@ async function startGame() {
         speed: (activeCar?.speed ?? 0) * 3.6,
         wanted: simulation.police.wanted.level,
         policeStatus: simulation.police.wanted.state,
+        phone: phoneState,
       })
 
       audioTimer -= visualDt
