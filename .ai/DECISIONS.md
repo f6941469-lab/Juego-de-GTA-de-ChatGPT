@@ -108,3 +108,20 @@ Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) jun
 - **Sistemas afectados:** `ai/perception.ts`, `ai/npc/profiles.ts`, `ai/npc/npc-brain.ts`, `navigation/pedestrian-graph.ts`, `world/district.ts`.
 - **Referencias:** [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md).
 
+### `ADR-0009` — Multitud NPC en `InstancedMesh`, multi-vehículo con robo de tráfico e interiores locales en Fase 2
+- **Fecha:** 2026-11-20
+- **Estado:** Implementada
+- **Contexto:** Tras completar los cimientos de Fase 1, `main.ts` seguía concentrando la orquestación de simulación y faltaban peatones reales, conductores dentro del tráfico e interiores accesibles en las tiendas.
+- **Decisión:**
+  1. Extraer la orquestación fija de mundo a `createSimulationEngine` (`src/simulation/engine.ts`).
+  2. Renderizar hasta 72 NPCs mediante 7 `InstancedMesh` compartidos (`npc-visuals.ts`) simulados por tiers (`npc-population.ts`) y elevar la altura ocular de `PerceptionSystem` a `minY = 1.15 m` para ver por encima de mostradores (`1.04 m`) sin atravesar muros.
+  3. Añadir conductores deterministas en `traffic.ts` + `traffic-visuals.ts`, robo cercano (`hijackNearest`) y un pool físico multi-vehículo (`createVehicleManager` en `src/vehicles/vehicle-manager.ts`, máx. 4 coches).
+  4. Convertir las 9 tiendas en edificios con planta baja hueca (`buildingColliders` en `buildings.ts`, `StoreInteriorLayout` en `stores.ts`) accesibles caminando desde la acera hasta el mostrador.
+- **Motivación:** Lograr vida urbana auténtica, sistémica y verificable físicamente con Rapier manteniendo draw calls mínimos en GPU.
+- **Alternativas consideradas:** Clonar `createAvatar()` por cada NPC (~1.500 mallas individuales inaceptables en WebGL); teletransportar a escenas interiores separadas (rompe continuidad espacial y percepción puerta-calle).
+- **Consecuencias positivas:** ~7 draw calls para toda la multitud NPC, 9 tiendas enterables verificadas físicamente y transición continua al robar coches del tráfico.
+- **Consecuencias negativas:** Los mostradores interior/puerta requieren mantener `minY >= 1.1` en consultas LOS humanas.
+- **Sistemas afectados:** `simulation/engine.ts`, `ai/npc/npc-{visuals,population}.ts`, `ai/perception.ts`, `ai/traffic/traffic*.ts`, `vehicles/vehicle*.ts`, `world/generation/buildings.ts`, `world/{district,stores}.ts`, `main.ts`.
+- **Referencias:** [NPC_AND_PERCEPTION.md](systems/NPC_AND_PERCEPTION.md), [VEHICLES.md](systems/VEHICLES.md), [WORLD_AND_STREAMING.md](systems/WORLD_AND_STREAMING.md).
+
+

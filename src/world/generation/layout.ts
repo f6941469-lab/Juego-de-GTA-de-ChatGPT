@@ -27,6 +27,8 @@ export interface StoreSpec {
   facing: 'west' | 'east' | 'north' | 'south';
   loot: number;
   sign: string;
+  width?: number;
+  depth?: number;
 }
 
 export interface DistrictMap {
@@ -127,6 +129,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'east',
     loot: 2400,
     sign: 'JOYERIA',
+    width: 8.25,
+    depth: 10,
   },
   {
     id: 'licoreria-brisa',
@@ -139,6 +143,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'east',
     loot: 850,
     sign: 'BRISA',
+    width: 6.7,
+    depth: 9,
   },
   {
     id: 'mercado-marea',
@@ -151,6 +157,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'south',
     loot: 1250,
     sign: 'MERCADO',
+    width: 18.5,
+    depth: 8.75,
   },
   {
     id: 'taller-costa',
@@ -163,18 +171,22 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'east',
     loot: 950,
     sign: 'TALLER COSTA',
+    width: 20.4,
+    depth: 10.7,
   },
   {
     id: 'cafe-estrella',
     name: 'Cafetería Estrella',
     district: 'Isla Estrella',
-    x: -239,
+    x: -238,
     z: -11,
     doorX: -230.6,
     doorZ: -11,
     facing: 'east',
     loot: 1450,
     sign: 'CAFE',
+    width: 12,
+    depth: 12,
   },
   {
     id: 'relojeria-alba',
@@ -187,6 +199,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'west',
     loot: 3200,
     sign: 'RELOJ',
+    width: 24,
+    depth: 14,
   },
   {
     id: 'bodega-palmera',
@@ -199,6 +213,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'west',
     loot: 700,
     sign: 'BODEGA',
+    width: 23,
+    depth: 13,
   },
   {
     id: 'farmacia-palmera',
@@ -211,6 +227,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'east',
     loot: 1100,
     sign: 'FARMACIA',
+    width: 23,
+    depth: 12,
   },
   {
     id: 'bazar-puerto',
@@ -223,6 +241,8 @@ export const storeSpecs: StoreSpec[] = [
     facing: 'east',
     loot: 1350,
     sign: 'BAZAR',
+    width: 20,
+    depth: 12,
   },
 ];
 

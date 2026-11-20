@@ -20,7 +20,8 @@ export type WorldEventType =
   | 'reinforcements_requested'
   | 'pursuit_started'
   | 'pursuit_ended'
-  | 'horn_honked';
+  | 'horn_honked'
+  | 'vehicle_hijacked';
 
 export interface EventPoint3 {
   x: number;

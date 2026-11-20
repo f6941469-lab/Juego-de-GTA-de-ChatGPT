@@ -29,8 +29,48 @@ export interface RobberyResult {
   loot: number;
 }
 
+export interface StoreInteriorLayout {
+  store: StoreSpec;
+  entranceX: number;
+  entranceZ: number;
+  interiorX: number;
+  interiorZ: number;
+  counterFrontX: number;
+  counterFrontZ: number;
+  clerkX: number;
+  clerkZ: number;
+  clerkHeading: number;
+  halfX: number;
+  halfZ: number;
+}
+
+export function getStoreInteriorLayout(spec: StoreSpec): StoreInteriorLayout {
+  const nx = spec.facing === 'east' ? 1 : spec.facing === 'west' ? -1 : 0;
+  const nz = spec.facing === 'south' ? 1 : spec.facing === 'north' ? -1 : 0;
+  const width = spec.width ?? 10;
+  const depth = spec.depth ?? 10;
+  const sideOnX = spec.facing === 'east' || spec.facing === 'west';
+  const depthSpan = sideOnX ? width : depth;
+
+  return {
+    store: spec,
+    entranceX: spec.doorX,
+    entranceZ: spec.doorZ,
+    interiorX: spec.x + nx * (depthSpan * 0.14),
+    interiorZ: spec.z + nz * (depthSpan * 0.14),
+    counterFrontX: spec.x + nx * (depthSpan * 0.04),
+    counterFrontZ: spec.z + nz * (depthSpan * 0.04),
+    clerkX: spec.x - nx * (depthSpan * 0.31),
+    clerkZ: spec.z - nz * (depthSpan * 0.31),
+    clerkHeading: Math.atan2(nx, -nz),
+    halfX: Math.max(2.5, width / 2 - 0.35),
+    halfZ: Math.max(2.5, depth / 2 - 0.35),
+  };
+}
+
 interface StoreRuntime {
   spec: StoreSpec;
+  layout: StoreInteriorLayout;
   cooldown: number;
 }
 
@@ -40,7 +80,11 @@ const READY_COLOR = new Color('#ffe168');
 const BUSY_COLOR = new Color('#586274');
 
 export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
-  const entries: StoreRuntime[] = specs.map((spec) => ({ spec, cooldown: 0 }));
+  const entries: StoreRuntime[] = specs.map((spec) => ({
+    spec,
+    layout: getStoreInteriorLayout(spec),
+    cooldown: 0,
+  }));
   const count = entries.length;
 
   const ringGeometry = new CylinderGeometry(0.95, 1.05, 0.08, 16, 1, true);
@@ -104,9 +148,16 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
     let closest: StoreRuntime | undefined;
     let bestDistance = INTERACT_RADIUS;
     for (const entry of entries) {
-      const distance = Math.hypot(position.x - entry.spec.doorX, position.z - entry.spec.doorZ);
-      if (distance <= bestDistance) {
-        bestDistance = distance;
+      const inside = Math.abs(position.x - entry.spec.x) <= entry.layout.halfX
+        && Math.abs(position.z - entry.spec.z) <= entry.layout.halfZ;
+      const doorDistance = Math.hypot(position.x - entry.spec.doorX, position.z - entry.spec.doorZ);
+      const counterDistance = Math.hypot(
+        position.x - entry.layout.counterFrontX,
+        position.z - entry.layout.counterFrontZ,
+      );
+      const effectiveDistance = inside ? Math.min(counterDistance, doorDistance, 1.5) : doorDistance;
+      if (effectiveDistance <= bestDistance) {
+        bestDistance = effectiveDistance;
         closest = entry;
       }
     }
@@ -148,6 +199,10 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
     }));
   }
 
+  function getInteriors(): StoreInteriorLayout[] {
+    return entries.map((entry) => entry.layout);
+  }
+
   function reset(): void {
     for (const entry of entries) entry.cooldown = 0;
     dirtyColors = true;
@@ -161,6 +216,7 @@ export function createStores(scene: Scene, specs: readonly StoreSpec[]) {
     step,
     render: updateVisuals,
     getMarkers,
+    getInteriors,
     reset,
     dispose() {
       rings.removeFromParent();

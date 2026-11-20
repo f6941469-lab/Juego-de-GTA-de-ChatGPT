@@ -20,15 +20,99 @@ export interface BuildingSpec {
   style: 'ribbon' | 'deco' | 'tower' | 'porch';
   entrance: 'west' | 'east' | 'north' | 'south';
   sign?: string;
+  interior?: boolean;
 }
 
 const storyHeight = 2.65;
 const foundation = 0.07;
+const interiorWallThickness = 0.36;
+const interiorDoorHeight = 2.38;
+
+function interiorFrame(spec: BuildingSpec) {
+  const sideOnX = spec.entrance === 'west' || spec.entrance === 'east';
+  const nx = spec.entrance === 'east' ? 1 : spec.entrance === 'west' ? -1 : 0;
+  const nz = spec.entrance === 'south' ? 1 : spec.entrance === 'north' ? -1 : 0;
+  const frontSpan = sideOnX ? spec.depth : spec.width;
+  const depthSpan = sideOnX ? spec.width : spec.depth;
+  const doorWidth = Math.min(2.6, Math.max(1.85, frontSpan * 0.36));
+  const wingSpan = Math.max(0, (frontSpan - doorWidth) / 2);
+  const ceilingY = foundation + storyHeight;
+  const counterWidth = Math.max(1.6, Math.min(3.4, frontSpan - 2.4));
+
+  const place = (
+    cxForward: number,
+    cy: number,
+    cu: number,
+    sizeForward: number,
+    sizeY: number,
+    sizeU: number,
+  ): StaticBox => ({
+    x: sideOnX ? spec.x + nx * cxForward : spec.x + cu,
+    y: cy,
+    z: sideOnX ? spec.z + cu : spec.z + nz * cxForward,
+    halfX: (sideOnX ? sizeForward : sizeU) / 2,
+    halfY: sizeY / 2,
+    halfZ: (sideOnX ? sizeU : sizeForward) / 2,
+  });
+
+  return {
+    sideOnX,
+    nx,
+    nz,
+    frontSpan,
+    depthSpan,
+    doorWidth,
+    wingSpan,
+    ceilingY,
+    counterWidth,
+    place,
+  };
+}
 
 export function buildingCollider(spec: BuildingSpec): StaticBox {
   const { x, z, width, depth, floors } = spec;
   const halfY = (floors * storyHeight + foundation) / 2;
   return { x, y: halfY, z, halfX: width / 2, halfY, halfZ: depth / 2 };
+}
+
+export function buildingColliders(spec: BuildingSpec): StaticBox[] {
+  if (!spec.interior) return [buildingCollider(spec)];
+
+  const {
+    frontSpan,
+    depthSpan,
+    doorWidth,
+    wingSpan,
+    ceilingY,
+    counterWidth,
+    place,
+  } = interiorFrame(spec);
+  const t = interiorWallThickness;
+  const frontF = depthSpan / 2 - t / 2;
+  const boxes: StaticBox[] = [];
+
+  if (wingSpan > 0.05) {
+    const wingCenter = doorWidth / 2 + wingSpan / 2;
+    boxes.push(place(frontF, ceilingY / 2, -wingCenter, t, ceilingY, wingSpan));
+    boxes.push(place(frontF, ceilingY / 2, wingCenter, t, ceilingY, wingSpan));
+  }
+  boxes.push(
+    place(frontF, (interiorDoorHeight + ceilingY) / 2, 0, t, ceilingY - interiorDoorHeight, doorWidth),
+  );
+  boxes.push(place(-frontF, ceilingY / 2, 0, t, ceilingY, frontSpan));
+
+  const sideLength = Math.max(0.4, depthSpan - 2 * t);
+  const sideU = frontSpan / 2 - t / 2;
+  boxes.push(place(0, ceilingY / 2, -sideU, sideLength, ceilingY, t));
+  boxes.push(place(0, ceilingY / 2, sideU, sideLength, ceilingY, t));
+
+  const roof = spec.floors * storyHeight + foundation;
+  const upperEnd = Math.max(ceilingY + 0.28, roof);
+  boxes.push(place(0, (ceilingY + upperEnd) / 2, 0, depthSpan, upperEnd - ceilingY, frontSpan));
+
+  // Physical service counter inside the shop
+  boxes.push(place(-depthSpan * 0.16, 0.52, 0, 0.85, 1.04, counterWidth));
+  return boxes;
 }
 
 export function addBuilding(
@@ -38,12 +122,12 @@ export function addBuilding(
   detailed: boolean,
 ): void {
   const { x, z, width, depth, floors, style } = spec;
-  const { wall, band, accent } = palettes[spec.palette % palettes.length];
+  const { wall, band, accent, dark, glow } = palettes[spec.palette % palettes.length];
   const height = floors * storyHeight;
   const roof = height + foundation;
 
-  geometry.box('wall', wall, x, height / 2 + foundation, z, width, height, depth, detailed);
   if (!detailed) {
+    geometry.box('wall', wall, x, height / 2 + foundation, z, width, height, depth, false);
     geometry.box('trim', band, x, roof - 0.07, z, width + 0.36, 0.28, depth + 0.36);
     if (style === 'tower' || style === 'deco') {
       const crown = style === 'tower' ? 2.9 : 0.85;
@@ -51,7 +135,66 @@ export function addBuilding(
     }
     return;
   }
-  geometry.box('wall', band, x, 0.22, z, width + 0.11, 0.40, depth + 0.11);
+
+  if (spec.interior) {
+    const {
+      sideOnX,
+      frontSpan,
+      depthSpan,
+      doorWidth,
+      wingSpan,
+      ceilingY,
+      counterWidth,
+      place,
+    } = interiorFrame(spec);
+    const t = interiorWallThickness;
+    const frontF = depthSpan / 2 - t / 2;
+    const emit = (finish: Finish, color: string, box: StaticBox, castShadow = false) => {
+      geometry.box(finish, color, box.x, box.y, box.z, box.halfX * 2, box.halfY * 2, box.halfZ * 2, castShadow);
+    };
+
+    // Floor tile & ceiling slab
+    emit('pavement', '#d7cbb5', place(0, 0.03, 0, depthSpan - 0.12, 0.06, frontSpan - 0.12));
+    emit('trim', '#f2eadc', place(0, ceilingY - 0.05, 0, depthSpan - 0.12, 0.10, frontSpan - 0.12));
+    emit(glow, '#fff2cf', place(0, ceilingY - 0.12, 0, Math.min(2.4, depthSpan * 0.35), 0.04, Math.min(2.4, frontSpan * 0.35)));
+
+    // Ground floor hollow walls
+    if (wingSpan > 0.05) {
+      const wingCenter = doorWidth / 2 + wingSpan / 2;
+      emit('wall', wall, place(frontF, ceilingY / 2, -wingCenter, t, ceilingY, wingSpan), true);
+      emit('wall', wall, place(frontF, ceilingY / 2, wingCenter, t, ceilingY, wingSpan), true);
+      if (wingSpan > 1.0) {
+        const glassW = wingSpan * 0.68;
+        emit('glassLit', '#c9936d', place(frontF + 0.08, 1.32, -wingCenter, t * 0.55, 1.35, glassW));
+        emit('glassLit', '#c9936d', place(frontF + 0.08, 1.32, wingCenter, t * 0.55, 1.35, glassW));
+      }
+    }
+    emit('wall', wall, place(frontF, (interiorDoorHeight + ceilingY) / 2, 0, t, ceilingY - interiorDoorHeight, doorWidth), true);
+    emit(glow, band, place(frontF + 0.12, interiorDoorHeight + 0.06, 0, 0.08, 0.09, doorWidth + 0.2));
+    emit('wall', wall, place(-frontF, ceilingY / 2, 0, t, ceilingY, frontSpan), true);
+    const sideLength = Math.max(0.4, depthSpan - 2 * t);
+    const sideU = frontSpan / 2 - t / 2;
+    emit('wall', wall, place(0, ceilingY / 2, -sideU, sideLength, ceilingY, t), true);
+    emit('wall', wall, place(0, ceilingY / 2, sideU, sideLength, ceilingY, t), true);
+
+    // Counter, cash register & back display shelves
+    emit('trim', dark, place(-depthSpan * 0.16, 0.48, 0, 0.82, 0.96, counterWidth), true);
+    emit('trim', band, place(-depthSpan * 0.16, 0.99, 0, 0.92, 0.08, counterWidth + 0.08));
+    emit('goldLight', '#ffe29c', place(-depthSpan * 0.16 + 0.08, 1.15, counterWidth * 0.22, 0.34, 0.24, 0.38));
+    emit('trim', accent, place(-depthSpan / 2 + t + 0.28, 1.15, 0, 0.48, 2.1, Math.min(frontSpan - 1.4, 4.2)));
+    const shelfGoods = sideOnX ? Math.min(2.2, depthSpan * 0.32) : Math.min(2.2, frontSpan * 0.32);
+    emit('trim', band, place(-depthSpan * 0.12, 1.05, -sideU + t + 0.22, shelfGoods, 1.9, 0.36));
+
+    // Solid volume for upper floors (story >= 1)
+    if (floors > 1) {
+      const upperHeight = roof - ceilingY;
+      geometry.box('wall', wall, x, ceilingY + upperHeight / 2, z, width, upperHeight, depth, true);
+    }
+  } else {
+    geometry.box('wall', wall, x, height / 2 + foundation, z, width, height, depth, true);
+    geometry.box('wall', band, x, 0.22, z, width + 0.11, 0.40, depth + 0.11);
+  }
+
   geometry.box('trim', band, x, roof - 0.07, z, width + 0.36, 0.28, depth + 0.36, true);
   geometry.box('trim', accent, x, roof + 0.19, z, width + 0.08, 0.28, depth + 0.08);
 
@@ -100,7 +243,8 @@ function decorateFacade(
   const pitch = (span - 0.68) / bays;
   const windowWidth = spec.style === 'ribbon' ? pitch * 0.84 : pitch * 0.67;
 
-  for (let story = 0; story < spec.floors; story += 1) {
+  const startStory = spec.interior ? 1 : 0;
+  for (let story = startStory; story < spec.floors; story += 1) {
     const lowerEdge = foundation + story * storyHeight;
     const centerY = lowerEdge + (story === 0 ? 1.29 : 1.48);
     const windowHeight = story === 0 ? 1.46 : (spec.style === 'tower' ? 1.36 : 1.13);

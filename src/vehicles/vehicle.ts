@@ -1,11 +1,11 @@
 import RAPIER from '@dimforge/rapier3d-compat'
-import { MathUtils, Vector3, type Scene } from 'three'
+import { MathUtils, Vector3, type ColorRepresentation, type Scene } from 'three'
 import { createCameraClearance, createExitClearance, type Physics, type Point3 } from '../physics/physics'
 import type { createPlayer, MovementInput } from '../player/player'
 import { createVehicleModel, vehicleDimensions } from './vehicle-model'
 
 type Player = ReturnType<typeof createPlayer>
-type VehicleSpawn = Point3 & { heading?: number }
+export type VehicleSpawn = Point3 & { heading?: number; paint?: ColorRepresentation; label?: string }
 
 const STOP_SPEED = 1.1
 const TOP_FORWARD_SPEED = 25
@@ -24,7 +24,8 @@ function approach(value: number, target: number, change: number) {
 
 export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpawn) {
   const { world } = physics
-  const model = createVehicleModel()
+  const model = createVehicleModel(spawn.paint)
+  if (spawn.label) model.mesh.name = spawn.label
   scene.add(model.mesh)
   const initialHeading = spawn.heading ?? 0
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed()
@@ -89,6 +90,20 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     braking = false
   }
 
+  function boardImmediate(player: Player, initialSpeed = 0) {
+    body.setBodyType(RAPIER.RigidBodyType.Dynamic, true)
+    body.setEnabledRotations(false, true, false, true)
+    if (initialSpeed > 0.1) {
+      body.setLinvel({
+        x: Math.sin(heading) * initialSpeed,
+        y: 0,
+        z: -Math.cos(heading) * initialSpeed,
+      }, true)
+    }
+    driver = player
+    player.enterVehicle(cameraTarget)
+  }
+
   function interact(player: Player) {
     if (driver) {
       if (driver !== player || speed > STOP_SPEED) return false
@@ -99,10 +114,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
       driver = undefined
     } else {
       if (!canBoard(player)) return false
-      body.setBodyType(RAPIER.RigidBodyType.Dynamic, true)
-      body.setEnabledRotations(false, true, false, true)
-      driver = player
-      player.enterVehicle(cameraTarget)
+      boardImmediate(player)
     }
     return true
   }
@@ -200,6 +212,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
   render(1, 0)
   return {
     position,
+    label: spawn.label ?? 'Rayo GT',
     get active() { return driver !== undefined },
     get heading() { return heading },
     get speed() { return speed },
@@ -208,6 +221,7 @@ export function createVehicle(scene: Scene, physics: Physics, spawn: VehicleSpaw
     get impact() { return impact },
     canInteract,
     interact,
+    boardImmediate,
     prepareStep,
     finishStep,
     step,

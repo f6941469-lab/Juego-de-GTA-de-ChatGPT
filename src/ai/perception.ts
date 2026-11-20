@@ -126,7 +126,7 @@ export function evaluatePerception(
     const clear = spatial.clearLine(
       { x: observer.x, z: observer.z },
       { x: target.position.x, z: target.position.z },
-      { minY: 0.4, maxY: 2.0 },
+      { minY: 1.15, maxY: 2.0 },
     );
     if (!clear) continue;
 
@@ -205,7 +205,7 @@ export function evaluatePerception(
         const clear = spatial.clearLine(
           { x: observer.x, z: observer.z },
           { x: event.position.x, z: event.position.z },
-          { minY: 0.4, maxY: 2.0 },
+          { minY: 1.15, maxY: 2.0 },
         );
         if (clear) {
           const key = `evt:${event.id}`;

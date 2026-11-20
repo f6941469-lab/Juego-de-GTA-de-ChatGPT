@@ -1,6 +1,6 @@
 import type { Scene } from 'three';
 import type { StaticBox } from '../physics/physics';
-import { addBuilding, buildingCollider } from './generation/buildings';
+import { addBuilding, buildingColliders } from './generation/buildings';
 import type { BuildingSpec } from './generation/buildings';
 import { addCoast } from './generation/coast';
 import { DistrictGeometry, DistrictResources, disposeInstances } from './generation/geometry';
@@ -38,20 +38,20 @@ export interface District {
 }
 
 const specialLots = new Map<string, BuildingSpec>([
-  ['-1:2:0', { x: -107, z: -17.4, width: 18.5, depth: 8.75, floors: 2, palette: 5, style: 'ribbon', entrance: 'south', sign: 'MERCADO' }],
-  ['-2:-1:0', { x: -143, z: -132.0, width: 20.4, depth: 10.7, floors: 2, palette: 4, style: 'porch', entrance: 'east', sign: 'TALLER COSTA' }],
-  ['4:6:0', { x: 38, z: 123.4, width: 6.7, depth: 9, floors: 3, palette: 1, style: 'deco', entrance: 'east', sign: 'BRISA' }],
+  ['-1:2:0', { x: -107, z: -17.4, width: 18.5, depth: 8.75, floors: 2, palette: 5, style: 'ribbon', entrance: 'south', sign: 'MERCADO', interior: true }],
+  ['-2:-1:0', { x: -143, z: -132.0, width: 20.4, depth: 10.7, floors: 2, palette: 4, style: 'porch', entrance: 'east', sign: 'TALLER COSTA', interior: true }],
+  ['4:6:0', { x: 38, z: 123.4, width: 6.7, depth: 9, floors: 3, palette: 1, style: 'deco', entrance: 'east', sign: 'BRISA', interior: true }],
   ['2:3:0', { x: -12.15, z: 20.8, width: 8, depth: 12.9, floors: 5, palette: 1, style: 'deco', entrance: 'east', sign: 'HOTEL MIRAMAR' }],
   ['3:3:0', { x: 15.15, z: 21.0, width: 11.9, depth: 12.8, floors: 3, palette: 2, style: 'ribbon', entrance: 'west', sign: 'CLUB NEON' }],
   ['3:1:0', { x: 15, z: -51.2, width: 12.5, depth: 10.1, floors: 12, palette: 0, style: 'tower', entrance: 'west', sign: 'TORRE ALBA' }],
-  ['2:2:0', { x: -12.1, z: -16.2, width: 8.25, depth: 10, floors: 3, palette: 3, style: 'deco', entrance: 'east', sign: 'JOYERIA' }],
+  ['2:2:0', { x: -12.1, z: -16.2, width: 8.25, depth: 10, floors: 3, palette: 3, style: 'deco', entrance: 'east', sign: 'JOYERIA', interior: true }],
 ]);
 
 const westSpecialBlocks = new Map<string, BuildingSpec>([
-  ['3:2', { x: -343.5, z: -124.5, width: 24, depth: 14, floors: 6, palette: 0, style: 'tower', entrance: 'west', sign: 'RELOJ' }],
-  ['3:6', { x: -343.5, z: 26, width: 23, depth: 13, floors: 2, palette: 5, style: 'ribbon', entrance: 'west', sign: 'BODEGA' }],
-  ['1:5', { x: -432, z: -10.75, width: 23, depth: 12, floors: 2, palette: 1, style: 'deco', entrance: 'east', sign: 'FARMACIA' }],
-  ['4:10', { x: -302, z: 169, width: 20, depth: 12, floors: 2, palette: 4, style: 'porch', entrance: 'east', sign: 'BAZAR' }],
+  ['3:2', { x: -343.5, z: -124.5, width: 24, depth: 14, floors: 6, palette: 0, style: 'tower', entrance: 'west', sign: 'RELOJ', interior: true }],
+  ['3:6', { x: -343.5, z: 26, width: 23, depth: 13, floors: 2, palette: 5, style: 'ribbon', entrance: 'west', sign: 'BODEGA', interior: true }],
+  ['1:5', { x: -432, z: -10.75, width: 23, depth: 12, floors: 2, palette: 1, style: 'deco', entrance: 'east', sign: 'FARMACIA', interior: true }],
+  ['4:10', { x: -302, z: 169, width: 20, depth: 12, floors: 2, palette: 4, style: 'porch', entrance: 'east', sign: 'BAZAR', interior: true }],
 ]);
 
 const landmarkPins = [
@@ -304,7 +304,7 @@ function makeCityBlocks(register: RegisterSectorFeature, colliders: StaticBox[],
           entrance: column > 2 ? 'west' : 'east',
         };
         const variation = Math.floor(random() * 0x100000000);
-        colliders.push(buildingCollider(specification));
+        colliders.push(...buildingColliders(specification));
         register(specification.x, specification.z, (sector, detailed) =>
           addBuilding(sector, specification, makeRandom(variation), detailed));
       }
@@ -335,7 +335,7 @@ function makeWestBlocks(register: RegisterSectorFeature, colliders: StaticBox[],
       const special = westSpecialBlocks.get(`${column}:${row}`);
       if (special) {
         const variation = Math.floor(random() * 0x100000000);
-        colliders.push(buildingCollider(special));
+        colliders.push(...buildingColliders(special));
         register(special.x, special.z, (sector, detailed) =>
           addBuilding(sector, special, makeRandom(variation), detailed));
         continue;
@@ -364,7 +364,7 @@ function makeWestBlocks(register: RegisterSectorFeature, colliders: StaticBox[],
           entrance: column % 2 === 0 ? 'east' : 'west',
         };
         const variation = Math.floor(random() * 0x100000000);
-        colliders.push(buildingCollider(specification));
+        colliders.push(...buildingColliders(specification));
         register(specification.x, specification.z, (sector, detailed) =>
           addBuilding(sector, specification, makeRandom(variation), detailed));
       }
@@ -375,13 +375,13 @@ function makeWestBlocks(register: RegisterSectorFeature, colliders: StaticBox[],
 function makeCentralIslandBlocks(register: RegisterSectorFeature, colliders: StaticBox[], seed: number): void {
   const random = makeRandom(seed ^ 0x7712b9);
   const lots: BuildingSpec[] = [
-    { x: -238, z: -11, width: 12, depth: 12, floors: 2, palette: 1, style: 'deco', entrance: 'east', sign: 'CAFE' },
+    { x: -238, z: -11, width: 12, depth: 12, floors: 2, palette: 1, style: 'deco', entrance: 'east', sign: 'CAFE', interior: true },
     { x: -211, z: -11, width: 12, depth: 11, floors: 2, palette: 0, style: 'porch', entrance: 'west' },
     { x: -211, z: 23, width: 12, depth: 11, floors: 2, palette: 3, style: 'deco', entrance: 'west' },
   ];
   for (const spec of lots) {
     const variation = Math.floor(random() * 0x100000000);
-    colliders.push(buildingCollider(spec));
+    colliders.push(...buildingColliders(spec));
     register(spec.x, spec.z, (sector, detailed) =>
       addBuilding(sector, spec, makeRandom(variation), detailed));
   }

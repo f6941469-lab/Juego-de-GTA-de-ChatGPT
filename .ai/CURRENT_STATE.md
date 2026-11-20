@@ -2,35 +2,35 @@
 document_id: CORE-CURRENT-STATE
 status: active
 last_updated: 2026-11-20
-verified_against: "ef1f5d115168a40a89b767658274cc28ac17b8de-dirty (working tree on ef1f5d115168a40a89b767658274cc28ac17b8de)"
-verification_scope: "typecheck + vitest (35/35) + vite build + Chromium WebGL 2 SwiftShader F5 smoke test"
+verified_against: "e2288b5-dirty (working tree on e2288b5)"
+verification_scope: "typecheck + vitest (37/37) + vite build + Chromium WebGL 2 SwiftShader F3/F5 live test"
 ---
 
 # Estado Operativo Actual (`CURRENT_STATE.md`)
 
-- **Rama actual:** `main` (sobre commit `ef1f5d115168a40a89b767658274cc28ac17b8de`, con cambios locales de la Fase 1 sin confirmar).
-- **Estado general:** Completada la **Fase 1 (Fundamentos de simulación)** del ecosistema urbano inteligente sobre el mapa conectado de 6 distritos y 9 tiendas. El motor cuenta ahora con paso físico único (`physics.step`), índice espacial `SpatialBoxGrid`, `WorldEventBus`, `EntityRegistry` por tiers LOD, `PerceptionSystem`, perfiles + `NpcBrain` (Utilidad/FSM), `PedestrianGraph` (A* MinHeap + evitación local) e inspector `F5`.
+- **Rama actual:** `main` (sobre commit `e2288b5` de Fase 1, con cambios locales de Fase 2 sin confirmar).
+- **Estado general:** Completada la **Fase 2 (Vida urbana)** del ecosistema urbano inteligente. La ciudad cuenta ahora con **peatones instanciados animados** (`npc-visuals.ts`, `npc-population.ts`) navegando por horario y distrito sobre `PedestrianGraph`, **conductores reales visibles en el tráfico** con **robo de vehículos y coexistencia multi-vehículo** (`vehicle-manager.ts`), **9 tiendas con interiores físicos transitables y dependientes tras el mostrador** (`buildings.ts`, `stores.ts`) y orquestación desacoplada en **`SimulationEngine`** (`src/simulation/engine.ts`).
 
 ## Estado de los sistemas (verificado en código y compilación)
 
 | Categoría | Sistemas |
 | :--- | :--- |
-| **Operativos** | Loop fijo `60 Hz`, `physics.step(dt)` único (`VB-001` resuelto), `SpatialBoxGrid` (`VB-002` LOS `O(celdas)`), `WorldEventBus` (`events.ts`), `EntityRegistry` por cubetas `32 m` (`entities.ts`), `PerceptionSystem` (`perception.ts`), perfiles + `NpcBrain` (`profiles.ts`, `npc-brain.ts`), `PedestrianGraph` conectado por aceras/cruces/puentes/tiendas (`pedestrian-graph.ts`), jugador (`grounded` expuesto), `Rayo GT`, tráfico conectado (`146` nodos viales), policía + búsqueda 5 estrellas usando `SpatialBoxGrid`, mapa multi-isla de 6 distritos y 9 tiendas, renderizado WebGL 2, audio procedural (salto ligado a `player.grounded`), HUD + minimapa, IndexedDB, debug `F3`/`F4` (con grafo peatonal, conos FOV y `dispose()`) + `F5` (`inspector.ts`). |
-| **Parciales / Con fricción** | Sistema de asalto (interacción básica + evento `robbery_started`; sin rehenes/interiores todavía), `VB-002` (streaming físico Rapier pendiente aunque LOS es `O(celdas)`), `VB-004` (evitación policial frente a tráfico), `VB-005` (instanciación de patrullas), `VB-015` (`ArrowUp` atado a `'forward'` antes del futuro teléfono en Fase 5). |
-| **Base lista sin población visible aún** | Los motores de `PerceptionSystem`, `NpcBrain` y `PedestrianGraph` están implementados, integrados y probados unitariamente, listos para poblar peatones instanciados, conductores reales y dependientes en **Fase 2**. |
-| **No implementados** | Multitud de NPCs instanciados y conductores en tráfico (Fase 2), armas/combate/testigos 911/asalto completo (Fase 3), destrucción de entorno y cristales (Fase 4), teléfono móvil integrado (Fase 5), policía sin omniscencia por descripción/perímetros (Fase 6). |
+| **Operativos** | `SimulationEngine` (`engine.ts`), loop fijo `60 Hz`, `physics.step(dt)` único, `SpatialBoxGrid`, `WorldEventBus`, `EntityRegistry`, `PerceptionSystem` (`minY = 1.15 m`), perfiles + `NpcBrain` + **multitud NPC instanciada (`7` `InstancedMesh`, hasta `72` NPCs)**, **dependientes (`merchant`) en 9 tiendas enterables (`buildingColliders`, mostrador, luz interior)**, **`VehicleManager` (hasta `4` vehículos físicos: `Rayo GT` + coches robados al tráfico)**, **conductores visibles y secuestro (`hijackNearest`) con ex-conductor NPC en calle**, `PedestrianGraph` con cedas en pasos de cebra, tráfico conectado (`146` nodos viales), policía 5 estrellas + reportes reales de testigos al 911, mapa multi-isla de 6 distritos, WebGL 2, audio procedural, HUD/minimapa, debug `F3`/`F4` (conos FOV)/`F5`. |
+| **Parciales / Con fricción** | Sistema de asalto (ya ocurre dentro de la tienda frente al mostrador y alerta al dependiente; rehenes/armas/intimidación detallada llegan en Fase 3), `VB-002` (streaming físico Rapier pendiente), `VB-004` (evitación policial frente a tráfico), `VB-005` (instanciación de patrullas), `VB-015` (`ArrowUp` atado a `'forward'` antes del teléfono en Fase 5). |
+| **No implementados** | Armas, apuntado y tiroteos / asalto con rehenes (Fase 3), destrucción física de entorno y cristales (Fase 4), teléfono móvil integrado con grabación/viralización (Fase 5), policía avanzada con perímetros y memoria descriptiva (Fase 6), optimización final Rapier/GC/streaming (Fase 7). |
 
 ## Estado de las verificaciones
 - `npm run typecheck`: **Pasado** (`0` errores).
-- `npm test`: **Pasado** (`13` archivos, `35/35` pruebas verdes; +8 pruebas nuevas de `WorldEventBus`, `EntityRegistry`, `SpatialBoxGrid`, `physics.step`, `PerceptionSystem`, `NpcBrain`, `PedestrianGraph` y puente/tiendas).
-- `npm run build`: **Pasado** (`vite build`, `54` módulos transformados en `dist/`).
-- **Navegador (Chromium headless + ANGLE SwiftShader WebGL 2 sobre `vite preview`):** Pulsación de `play-button` y tecla `F5` mostraron `#debug-inspector` (`hidden: false`, `Inspeccionando simulación…`) con `0` errores JS/consola.
+- `npm test`: **Pasado** (`14` archivos, `37/37` pruebas verdes; incluye pruebas físicas en Rapier entrando por la puerta hasta el mostrador de las 9 tiendas, conductores en tráfico, robo con multi-vehículo `vehicles.all === 2`, ex-conductor NPC y `dispose()` limpio de escena).
+- `npm run build`: **Pasado** (`vite build`, `61` módulos transformados en `dist/`).
+- **Navegador (Chromium headless + ANGLE SwiftShader WebGL 2 sobre `vite preview`):** Inicio en `Costa Palmera`, `F3` mostró `17 entidades · 514 colisionadores · 3 tráfico · 11 NPC · 1 patrullas`, `F5` activó `#debug-panel` con `0` excepciones JS.
 
 ## Prioridades y bloqueos actuales
-1. **Siguiente paso funcional:** Autorizar revisión/commit de la Fase 1 y aprobar el inicio de la **Fase 2: Vida urbana (NPCs instanciados, conductores en tráfico e interiores/dependientes de tiendas)**.
+1. **Siguiente paso funcional:** Revisar/confirmar Fase 2 y aprobar el inicio de la **Fase 3: Armas, combate y delitos complejos** (armas, amenazas perceptibles, testigos reales/911 sin omniscencia y asaltos completos en tiendas).
 2. **Deuda técnica P1/P2 abierta relevante:** `VB-002` (streaming físico Rapier), `VB-003` (presupuesto por frame en `streaming.ts`), `VB-004`/`VB-005` (patrullas), `VB-015` (conflicto `ArrowUp` para Fase 5).
 
 ## Próximos pasos recomendados
-1. Revisar `git diff` y autorizar commit/push de la Fase 1 si procede.
-2. Iniciar Fase 2 instanciando peatones sobre `PedestrianGraph` + `NpcBrain` + `PerceptionSystem`, dotando de conductores reales a `traffic.ts` y abriendo interiores/dependientes de tiendas.
+1. Autorizar `git commit` (y `push` si procede) de la Fase 2.
+2. Iniciar **Fase 3 (Armas, combate y delitos complejos)**.
+
 

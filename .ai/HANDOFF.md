@@ -2,27 +2,26 @@
 document_id: CORE-HANDOFF
 status: active
 last_updated: 2026-11-20
-verified_against: "ef1f5d115168a40a89b767658274cc28ac17b8de (dirty working tree)"
-verification_scope: "typecheck + vitest (35/35) + vite build + Chromium WebGL 2 SwiftShader F5 smoke test"
+verified_against: "e2288b5 (dirty working tree)"
+verification_scope: "typecheck + vitest (37/37) + vite build + Chromium WebGL 2 SwiftShader F3/F5 live test"
 ---
 
 # Transferencia entre Sesiones (`HANDOFF.md`)
 
-- **Última tarea trabajada:** Diagnóstico arquitectónico integral y **Fase 1 (Fundamentos de simulación)** de la iniciativa "Ecosistema Urbano Inteligente, Dinámico, Interactivo y Destructible".
-- **Objetivo:** Resolver las barreras estructurales previas (`VB-001`, LOS `O(celdas)` de `VB-002`) y construir los cimientos reales y testeables de simulación (eventos localizados, registro de entidades LOD, percepción sensorial, perfiles/cerebro NPC, grafo peatonal multi-isla e inspector `F5`) antes de poblar NPCs y conductores en Fase 2.
-- **Estado actual:** Fase 1 implementada, compilada y verificada (`typecheck`, `13` archivos / `35/35` tests, `vite build` y smoke test en Chromium WebGL 2 con tecla `F5`). Pendiente de autorización del usuario para commit/push y para iniciar Fase 2.
-- **Rama y commit base de referencia:** `main` @ `ef1f5d115168a40a89b767658274cc28ac17b8de`.
+- **Última tarea trabajada:** **Fase 2 (Vida urbana)** de la iniciativa "Ecosistema Urbano Inteligente, Dinámico, Interactivo y Destructible" (tras confirmar Fase 1 en `e2288b5`).
+- **Objetivo:** Dar vida autónoma visible a Costa Palmera, Isla Estrella y Tierra Firme Oeste con multitud NPC instanciada, conductores reales y robo de coches, 9 establecimientos con interiores accesibles/dependientes, y extracción de `SimulationEngine`.
+- **Estado actual:** Fase 2 implementada, compilada y verificada (`typecheck`, `14` archivos / `37/37` tests, `vite build` y prueba viva en Chromium WebGL 2 con `F3`/`F5`). Pendiente de autorización del usuario para commit/push y para iniciar Fase 3.
+- **Rama y commit base de referencia:** `main` @ `e2288b5`.
 - **Trabajo completado:**
-  - `src/physics/spatial-index.ts`, `src/physics/physics.ts`, `src/player/player.ts`, `src/vehicles/vehicle.ts`, `src/ai/police/police.ts`: `physics.step(dt)` único (`VB-001`), `SpatialBoxGrid` (`32 m`) usado en policía y percepción, y exposición de `player.grounded`.
-  - `src/core/events.ts`, `src/simulation/entities.ts`: `WorldEventBus` no omnisciente (`TTL = 30 s`, máx. `256` eventos, `queryNear`) y `EntityRegistry` por cubetas `32 m` con cálculo de tier `high`/`medium`/`low`.
-  - `src/ai/perception.ts`, `src/ai/npc/profiles.ts`, `src/ai/npc/npc-brain.ts`: percepción visual (FOV + LOS + reconocimiento `0.35 s`) y auditiva (atenuación por muros `0.42`), 10 roles deterministas y cerebro híbrido Utilidad/FSM (17 estados emocionales, 9 intenciones, memoria 8 entradas / `26 s`).
-  - `src/navigation/pedestrian-graph.ts`, `src/world/district.ts`: grafo peatonal por aceras, cruces, 3 puentes y 9 tiendas con A* MinHeap + `steerPedestrian`, y ajuste menor de `cafe-estrella` (`14 -> 12`) para paso peatonal en Isla Estrella.
-  - `src/debug/inspector.ts`, `overlay.ts`, `stats.ts`, `src/core/input.ts`, `index.html`, `src/main.ts`: atajo `F5`, grafo peatonal/conos FOV + `dispose()` en `F4`, conteo real de entidades en `F3` y emisión de eventos reales desde `main.ts`.
-  - `tests/events-and-entities.test.ts`, `tests/perception-and-npc.test.ts`, `tests/pedestrian-navigation.test.ts`: `+8` pruebas nuevas (`35/35` totales).
+  - `src/ai/npc/npc-visuals.ts` y `src/ai/npc/npc-population.ts`: renderizado instanciado (`7` `InstancedMesh` compartidos, máx. `72` NPCs), dependientes fijos en las 9 tiendas, peatones dinámicos por horario/distrito con evitación/esquiva/colisiones vehiculares, ex-conductores NPC (`spawnDisplacedDriver`) y reportes reales de testigos al 911 tras `2.1 s`.
+  - `src/ai/traffic/traffic.ts`, `traffic-visuals.ts`, `src/vehicles/vehicle.ts`, `vehicle-manager.ts`: conductores deterministas en cabinas (`occupied: true`), robo cercano (`hijackNearest`), herencia de velocidad al abordar (`boardImmediate`), pool físico de hasta `4` vehículos conducibles persistentes y nuevo evento `vehicle_hijacked`.
+  - `src/world/generation/buildings.ts`, `layout.ts`, `district.ts`, `stores.ts`: `buildingColliders` para planta baja hueca enterable en las 9 tiendas (puerta abierta `~2.0–2.6 m`, suelo, luz, mostrador físico y estanterías), `StoreInteriorLayout` y visión ocular `minY = 1.15 m` en `perception.ts`.
+  - `src/simulation/engine.ts` y `src/main.ts`: extracción completa del bucle de simulación física/IA a `createSimulationEngine` y reducción de `main.ts` a shell de arranque/rAF/UI/audio/debug.
+  - `tests/urban-life.test.ts`: recorrido físico en Rapier por puerta hasta mostrador de las 9 tiendas, robo de tráfico multi-vehículo con ex-conductor NPC y limpieza completa (`dispose()`).
 - **Trabajo pendiente:**
-  - **Fase 2 (Vida urbana):** Instanciar peatones sobre `PedestrianGraph`, asignar conductores reales a `traffic.ts` (permitiendo robo de vehículos), convertir tiendas en establecimientos con interior/dependientes y extraer `SimulationEngine` desde `main.ts`.
-  - **Fases 3–7:** Armas/combate/testigos/asalto completo, destructibilidad, teléfono móvil (`VB-015`), policía avanzada y optimización final.
-- **Cambios no confirmados en Git:** Ver `git status` (archivos modificados en `src/**`, `index.html`, `.ai/**` y nuevos archivos de Fase 1 + `tests/`).
-- **Bloqueos:** Ninguno técnico (`node_modules/` disponible localmente mediante `npm ci` sin alterar lockfile).
-- **Próxima acción recomendada:** Revisar el resumen y autorizar commit/push de la Fase 1 y/o el arranque de Fase 2.
+  - **Fase 3 (Armas, combate y delitos complejos):** Armas, apuntado y amenazas perceptibles, testigos/llamadas 911 completas, asalto complejo con rehenes/caja/intimidación y combate/salud.
+  - **Fases 4–7:** Destructibilidad de cristales/objetos, teléfono móvil (`VB-015`), policía avanzada y optimización final.
+- **Cambios no confirmados en Git:** Ver `git status` (cambios de Fase 2 sobre `e2288b5` en `src/**`, `tests/urban-life.test.ts` y `.ai/**`).
+- **Bloqueos:** Ninguno técnico.
+- **Próxima acción recomendada:** Revisar resumen y autorizar commit (y push) de Fase 2 y arranque de Fase 3.
 - **Documentos clave para el siguiente agente:** `AGENTS.md` -> `.ai/INDEX.md` -> `.ai/CURRENT_STATE.md` -> `.ai/systems/NPC_AND_PERCEPTION.md` -> `.ai/ROADMAP.md`.

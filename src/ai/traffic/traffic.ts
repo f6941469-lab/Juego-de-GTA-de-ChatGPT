@@ -1,10 +1,21 @@
 import { Color, MathUtils, type Scene } from 'three'
 import { buildRoadGraph, findRoadRoute, type RoadLane, type RoadPoint } from '../../navigation/road-graph'
 import { makeRandom, type DistrictMap } from '../../world/generation/layout'
+import { createNpcIdentity, type NpcIdentity } from '../npc/profiles'
 import { controlsJunction, createSignals, signalAt } from './signals'
 import { createTrafficVisuals, type TrafficVisual } from './traffic-visuals'
 
 export interface TrafficObstacle extends RoadPoint { radius?: number }
+
+export interface HijackedTrafficVehicle {
+  id: string
+  x: number
+  z: number
+  heading: number
+  paint: Color
+  speed: number
+  driver: NpcIdentity
+}
 
 export const profiles = [
   { name: 'prudente', pace: 7.5, acceleration: 2.4, brake: 5.3, headway: 1.08 },
@@ -29,6 +40,7 @@ interface TrafficVehicle extends TrafficVisual {
   clear: number
   decision: number
   stalled: number
+  driver: NpcIdentity
 }
 
 const maxCars = 23
@@ -109,10 +121,13 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
       if (fromFocus < inner || fromFocus > 130 || vehicles.some(car => Math.hypot(car.x - x, car.z - z) < 8)) continue
       const profile = profiles[Math.floor(random() * profiles.length)]
       const angle = heading(lane.direction.x, lane.direction.z)
+      const carSerial = ++serial
+      const driver = createNpcIdentity(seed ^ 0x3b719d, 'driver', carSerial)
       vehicles.push({
-        id: `street-${++serial}`, lane, distance, profile, heading: angle, previousHeading: angle,
+        id: `street-${carSerial}`, lane, distance, profile, heading: angle, previousHeading: angle,
         decision: 0.05 * random(), stalled: 0, route: plan(lane), reserved: false, clear: 100,
         paint: paints[Math.floor(random() * paints.length)], braking: false,
+        occupied: true, driverShirt: driver.appearance.shirt, driver,
         x, z, previousX: x, previousZ: z, speed: profile.pace * 0.47,
       })
       return
@@ -240,11 +255,48 @@ export function createTraffic(scene: Scene, map: Pick<DistrictMap, 'roads' | 'bo
     signals.update(0, focus)
   }
 
+  function findHijackCandidate(position: RoadPoint, maxDistance = 3.8): TrafficVehicle | undefined {
+    let best: TrafficVehicle | undefined
+    let bestDist = maxDistance
+    for (const car of vehicles) {
+      if (car.speed > 12) continue
+      const dist = Math.hypot(car.x - position.x, car.z - position.z)
+      if (dist <= bestDist) {
+        bestDist = dist
+        best = car
+      }
+    }
+    return best
+  }
+
+  function hijackNearest(position: RoadPoint, maxDistance = 3.8): HijackedTrafficVehicle | null {
+    const car = findHijackCandidate(position, maxDistance)
+    if (!car) return null
+    const index = vehicles.indexOf(car)
+    if (index < 0) return null
+    clearReservation(car)
+    vehicles.splice(index, 1)
+    return {
+      id: car.id,
+      x: car.x,
+      z: car.z,
+      heading: car.heading,
+      paint: car.paint.clone(),
+      speed: car.speed,
+      driver: car.driver,
+    }
+  }
+
   return {
     graph,
     get count() { return vehicles.length },
     get vehicles(): readonly TrafficVehicle[] { return vehicles },
     get routes(): readonly (readonly RoadLane[])[] { return vehicles.map(vehicle => vehicle.route) },
+    findHijackCandidate(position: RoadPoint, maxDistance = 3.8) {
+      const car = findHijackCandidate(position, maxDistance)
+      return car ? { id: car.id, x: car.x, z: car.z, heading: car.heading } : null
+    },
+    hijackNearest,
     step(dt: number, focus: RoadPoint, obstacles: readonly TrafficObstacle[] = [], hour = 17) {
       if (!(dt > 0)) return
       clock += dt
