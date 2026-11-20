@@ -16,14 +16,15 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, clearFractio
   let pitch = desiredPitch;
   let boom = 1;
 
-  function update(position: THREE.Vector3, dt: number) {
+  function update(position: THREE.Vector3, dt: number, aiming = false, recoil = 0) {
     yaw = THREE.MathUtils.damp(yaw, desiredYaw, 18, dt);
     pitch = THREE.MathUtils.damp(pitch, desiredPitch, 18, dt);
     const sin = Math.sin(yaw);
     const cos = Math.cos(yaw);
-    const planar = Math.cos(pitch) * CAMERA_DISTANCE;
+    const distance = aiming ? 3.1 : CAMERA_DISTANCE;
+    const planar = Math.cos(pitch) * distance;
     const shoulder = 0.42;
-    offset.set(-sin * planar + cos * shoulder, Math.sin(pitch) * CAMERA_DISTANCE, cos * planar + sin * shoulder);
+    offset.set(-sin * planar + cos * shoulder, Math.sin(pitch - recoil) * distance, cos * planar + sin * shoulder);
     pivot.copy(position);
     pivot.y += 1.32;
 
@@ -36,12 +37,14 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, clearFractio
       pivot.z + sin * 0.29 * boom - cos * 0.2,
     );
     camera.lookAt(lookTarget);
-    return boom * CAMERA_DISTANCE;
+    const fov = THREE.MathUtils.damp(camera.fov, aiming ? 49 : 58, 12, dt);
+    if (Math.abs(camera.fov - fov) > 0.001) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    return boom * distance;
   }
 
   return {
     get yaw() {
-      return desiredYaw;
+      return yaw;
     },
 
     look(dx: number, dy: number) {
@@ -52,6 +55,8 @@ export function createFollowCamera(camera: THREE.PerspectiveCamera, clearFractio
     update,
 
     reset(position: THREE.Vector3) {
+      camera.fov = 58;
+      camera.updateProjectionMatrix();
       yaw = desiredYaw = 0;
       pitch = desiredPitch = INITIAL_PITCH;
       boom = 1;

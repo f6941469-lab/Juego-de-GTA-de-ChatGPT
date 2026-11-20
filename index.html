@@ -57,10 +57,20 @@
       </figure>
       <div class="hud-hints key-strip desktop-hints" aria-label="Controles principales">
         <span><kbd>WASD</kbd> Moverse</span>
-        <span><kbd>Ratón</kbd> Cámara</span>
-        <span><kbd>Mayús</kbd> Correr</span>
-        <span><kbd>Espacio</kbd> Saltar</span>
+        <span><kbd>E</kbd> Interactuar</span>
+        <span><kbd>1</kbd> Pistola</span>
+        <span><kbd>↑</kbd> Teléfono</span>
       </div>
+      <div id="session-status" class="session-status" aria-label="Estado del jugador"></div>
+      <div id="interaction-prompt" class="interaction-prompt"></div>
+      <div id="game-notice" class="game-notice" role="status" hidden></div>
+      <div id="reticle" class="reticle" aria-hidden="true" hidden></div>
+      <div id="threat-progress" class="threat-progress" hidden></div>
+      <aside id="interaction-panel" class="interaction-panel" role="dialog" aria-labelledby="interaction-title" hidden>
+        <header><small id="interaction-subtitle"></small><h2 id="interaction-title"></h2><button class="panel-close" data-command="back" aria-label="Volver o cerrar">×</button></header>
+        <div id="interaction-body" class="interaction-body"></div>
+        <footer id="interaction-footer"></footer>
+      </aside>
       <div class="touch-controls" aria-label="Controles táctiles">
         <div class="d-pad">
           <button type="button" data-move="forward" aria-label="Adelante">↑</button>
@@ -71,6 +81,12 @@
         <div class="touch-actions">
           <button type="button" data-move="run">Correr</button>
           <button type="button" data-move="jump">Saltar</button>
+          <button type="button" data-command="interact">Hablar</button>
+          <button type="button" data-command="equip">Pistola</button>
+          <button type="button" data-hold="aim">Apuntar</button>
+          <button type="button" data-hold="fire">Disparar</button>
+          <button type="button" data-command="reload">Recargar</button>
+          <button type="button" data-command="phone">Teléfono</button>
         </div>
       </div>
     </section>
@@ -97,17 +113,23 @@
       </div>
       <div id="controls-content" hidden>
         <dl class="control-list desktop-hints">
-          <div><dt>Moverse</dt><dd><kbd>WASD</kbd> <kbd>↑ ← ↓ →</kbd></dd></div>
+          <div><dt>Moverse</dt><dd><kbd>WASD</kbd></dd></div>
           <div><dt>Girar la cámara</dt><dd><kbd>Ratón</kbd></dd></div>
           <div><dt>Correr</dt><dd><kbd>Mayús</kbd></dd></div>
           <div><dt>Saltar</dt><dd><kbd>Espacio</kbd></dd></div>
+          <div><dt>Interactuar</dt><dd><kbd>E</kbd></dd></div>
+          <div><dt>Equipar / guardar pistola</dt><dd><kbd>1</kbd></dd></div>
+          <div><dt>Apuntar / disparar</dt><dd><kbd>Ratón der. / izq.</kbd></dd></div>
+          <div><dt>Recargar</dt><dd><kbd>R</kbd></dd></div>
+          <div><dt>Abrir teléfono</dt><dd><kbd>↑</kbd></dd></div>
+          <div><dt>Navegar teléfono / tienda</dt><dd><kbd>Flechas · Enter · Esc</kbd></dd></div>
           <div><dt>Pausar</dt><dd><kbd>Esc</kbd></dd></div>
         </dl>
         <div class="touch-hints">Usa las flechas para moverte, arrastra sobre la ciudad para mirar y pulsa Correr o Saltar para cambiar de movimiento.</div>
       </div>
       <div class="dialog-actions" id="pause-actions" hidden>
         <button class="primary-button" id="resume-button" type="button">Continuar<span class="icon-arrow" aria-hidden="true"></span></button>
-        <button class="quiet-button" id="reset-button" type="button">Volver al inicio del recorrido</button>
+        <button class="quiet-button" id="reset-button" type="button">Reiniciar escena del mercado</button>
       </div>
     </dialog>
 

@@ -129,7 +129,7 @@ function addSignal(geometry: DistrictGeometry, x: number, z: number, angle: numb
   geometry.add(signalPole, 'trim', true, { x, y: 1.29, z, width: 0.14, height: 2.58, depth: 0.14, color });
   geometry.box('trim', color, x, 2.84, z, 0.26, 0.60, 0.24);
   [0, 1, 2].forEach((index) => {
-    const glowing = index === (direction === 1 ? 0 : 2);
+    const glowing = false; // Active lamps are owned by the traffic clock.
     geometry.add(signalPole, glowing ? (index === 0 ? 'coralLight' : 'aquaLight') : 'trim', false, {
       x, y: 3.02 - index * 0.17, z: z - 0.14 * direction,
       width: 0.10, height: 0.076, depth: 0.10,

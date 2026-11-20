@@ -5,9 +5,12 @@ export interface AvatarPose {
   sprint: number;
   verticalSpeed: number;
   grounded: boolean;
+  action?: 'relaxed' | 'aim' | 'handsUp' | 'phone' | 'hurt';
+  armed?: boolean;
+  recoil?: number;
 }
 
-export function createAvatar(scene: THREE.Scene) {
+export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
   const mesh = new THREE.Group();
   mesh.name = 'Player avatar';
   scene.add(mesh);
@@ -23,8 +26,8 @@ export function createAvatar(scene: THREE.Scene) {
   const skinShadow = color(0xa96048);
   const hair = color(0x211927);
   const hairLight = color(0x322332);
-  const shirt = color(0x247c81);
-  const shirtLight = color(0x318a8b);
+  const shirt = color(shirtColor);
+  const shirtLight = color(new THREE.Color(shirtColor).multiplyScalar(1.15).getHex());
   const piping = color(0xf2a772);
   const cream = color(0xffe2a0);
   const pants = color(0x333848);
@@ -113,10 +116,21 @@ export function createAvatar(scene: THREE.Scene) {
   let phase = 0;
   let effort = 0;
   let airborne = 0;
+  const upperWeights = { aim: 0, handsUp: 0, phone: 0, hurt: 0 };
+  const hand = arms[1].elbow;
+  const pistol = pivot(hand, 0, -0.25, 0);
+  pistol.rotation.x = -Math.PI / 2;
+  block(pistol, pants, 0, 0, -0.09, 0.09, 0.12, 0.28);
+  block(pistol, hair, 0, -0.075, 0, 0.08, 0.16, 0.1);
+  pistol.visible = false;
 
-  function animate({ effort: targetEffort, sprint, verticalSpeed, grounded }: AvatarPose, dt: number) {
+  function animate({ effort: targetEffort, sprint, verticalSpeed, grounded, action = 'relaxed', armed = false, recoil = 0 }: AvatarPose, dt: number) {
     effort = THREE.MathUtils.damp(effort, targetEffort, 13, dt);
     airborne = THREE.MathUtils.damp(airborne, grounded ? 0 : 1, 17, dt);
+    for (const pose of ['aim', 'handsUp', 'phone', 'hurt'] as const) {
+      upperWeights[pose] = THREE.MathUtils.damp(upperWeights[pose], action === pose ? 1 : 0, 12, dt);
+    }
+    pistol.visible = armed;
     phase += dt * (8.4 + sprint * 4.8);
 
     const stride = Math.sin(phase) * effort * (1 - airborne);
@@ -132,6 +146,11 @@ export function createAvatar(scene: THREE.Scene) {
       shoulder.rotation.x = -stride * side * (0.43 + sprint * 0.4) + airborne * 0.55;
       shoulder.rotation.z = side * (0.11 + airborne * 0.18);
       elbow.rotation.x = 0.12 + effort * (0.14 + sprint * 0.54) + airborne * 0.18;
+      const weight = Object.values(upperWeights).reduce((total, value) => total + value, 0);
+      shoulder.rotation.x = shoulder.rotation.x * (1 - weight) + upperWeights.aim * (1.5 + recoil)
+        + upperWeights.handsUp * 2.6 + upperWeights.phone * 0.8 + upperWeights.hurt * 0.4;
+      elbow.rotation.x = elbow.rotation.x * (1 - weight) + upperWeights.phone * 1.4
+        + (weight - upperWeights.phone) * 0.15;
     }
     for (const { side, thigh, knee, ankle } of legs) {
       const swing = stride * side;
@@ -146,16 +165,43 @@ export function createAvatar(scene: THREE.Scene) {
     phase = 0;
     effort = 0;
     airborne = 0;
+    for (const pose of ['aim', 'handsUp', 'phone', 'hurt'] as const) upperWeights[pose] = 0;
     animate({ effort: 0, sprint: 0, verticalSpeed: 0, grounded: true }, 0);
   }
 
   reset();
 
+  // One draw per articulated pivot: repeated static blocks share geometry/material.
+  const palette = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+  materials.push(palette);
+  const groups: THREE.Object3D[] = [];
+  mesh.traverse((object) => { if (object instanceof THREE.Group) groups.push(object); });
+  for (const group of groups) {
+    const parts = group.children.filter((child): child is THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> => child instanceof THREE.Mesh);
+    if (!parts.length) continue;
+    const batch = new THREE.InstancedMesh(geometry, palette, parts.length);
+    for (const [index, part] of parts.entries()) {
+      part.updateMatrix(); batch.setMatrixAt(index, part.matrix); batch.setColorAt(index, part.material.color);
+      part.removeFromParent();
+    }
+    batch.castShadow = batch.receiveShadow = true; batch.computeBoundingSphere(); group.add(batch);
+  }
+
   return {
     mesh,
     animate,
     reset,
+    setOpacity(value: number) {
+      palette.opacity = THREE.MathUtils.clamp(value, 0, 1);
+      const transparent = palette.opacity < 0.999;
+      if (palette.transparent !== transparent) {
+        palette.transparent = transparent;
+        palette.needsUpdate = true;
+      }
+      palette.depthWrite = !palette.transparent;
+    },
     dispose() {
+      mesh.traverse((object) => { if (object instanceof THREE.InstancedMesh) object.dispose(); });
       mesh.removeFromParent();
       geometry.dispose();
       for (const material of materials) material.dispose();

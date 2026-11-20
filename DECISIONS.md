@@ -19,3 +19,15 @@ Las configuraciones Baja, Media, Alta y Ultra ajustan el coste gráfico. La ilum
 ## Los módulos nuevos nacen con una responsabilidad concreta
 
 La arquitectura se organiza por subsistema conforme se incorpora su implementación. Las entidades, los eventos y las abstracciones compartidas se extraerán cuando haya varios consumidores con requisitos comunes.
+
+## La primera integración usa la base existente y un bloque activo
+
+La auditoría de `2ee553f` encontró los sistemas avanzados ausentes. Se conserva Three.js/Rapier y la ciudad determinista; solo el lote `3:3:1` se convierte en interior. Una rejilla local derivada de colisiones y un circuito cinemático permiten verificar comercio, peatones, incidentes y tráfico antes de introducir navegación de toda la ciudad o conducción. No se añadieron dependencias.
+
+## La física tiene un único dueño por tick
+
+Mover una cápsula ya no avanza el mundo. Session prepara todos los cuerpos, ejecuta un solo paso de Rapier y sincroniza las poses. Se conserva el wrapper de jugador para compatibilidad con los escenarios de un personaje y sus pruebas.
+
+## La información policial y social procede de evidencia
+
+Los testigos filtran por alcance, campo visual, oclusión y tiempos; la policía usa avisos y visión directa. La ubicación real no se usa como destino cuando el sospechoso no es observado. Los testimonios conservan el evento original; se presenta la grabación como no disponible hasta contar con replay independiente y acotado.

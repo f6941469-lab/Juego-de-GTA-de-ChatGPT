@@ -32,6 +32,27 @@ export async function createPhysics(boxes: readonly StaticBox[]) {
 
   return {
     world,
+    step(dt: number) {
+      world.timestep = dt;
+      world.step();
+    },
+    addBox(box: StaticBox) {
+      return world.createCollider(RAPIER.ColliderDesc.cuboid(box.halfX, box.halfY, box.halfZ)
+        .setTranslation(box.x, box.y, box.z));
+    },
+    raycast(origin: Point3, direction: Point3, distance: number, ignored: readonly number[] = []) {
+      return world.castRayAndGetNormal(new RAPIER.Ray(origin, direction), distance, true,
+        RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, undefined, undefined,
+        (collider) => !ignored.includes(collider.handle));
+    },
+    canSee(from: Point3, to: Point3, ignored: readonly number[] = []) {
+      const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+      if (distance < 0.01) return true;
+      const hit = this.raycast(from, {
+        x: (to.x - from.x) / distance, y: (to.y - from.y) / distance, z: (to.z - from.z) / distance,
+      }, Math.max(0, distance - 0.05), ignored);
+      return hit === null;
+    },
     dispose() {
       world.free();
     },
@@ -60,8 +81,10 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
   const cameraProbe = new RAPIER.Ball(0.23);
 
   return {
+    collider,
     move(dt: number, delta: Point3) {
-      world.timestep = dt;
+      // Queue every actor before the owner advances the world exactly once.
+      void dt;
       controller.computeColliderMovement(collider, delta, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
       const movement = controller.computedMovement();
       const center = body.translation();
@@ -70,7 +93,6 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
         y: center.y + movement.y,
         z: center.z + movement.z,
       });
-      world.step();
       return { movement, grounded: controller.computedGrounded() };
     },
 
@@ -99,6 +121,9 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
         RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,
         undefined,
         collider,
+        undefined,
+        // Pedestrians must not compress the boom as they walk behind the player.
+        (candidate) => candidate.shapeType() !== RAPIER.ShapeType.Capsule,
       );
       return hit ? Math.max(0, hit.time_of_impact) : 1;
     },

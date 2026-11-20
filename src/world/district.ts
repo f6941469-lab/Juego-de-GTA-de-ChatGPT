@@ -17,6 +17,7 @@ import {
 import type { DistrictMap } from './generation/layout';
 import { addBench, addLamppost, addStreets } from './generation/streets';
 import { addPalm, addPlanter } from './generation/vegetation';
+import { addShop } from './generation/shop';
 
 export interface District {
   colliders: StaticBox[];
@@ -38,6 +39,7 @@ const landmarkPins = [
   { x: 15, z: -51.2, name: 'Torre Alba' },
   { x: 37, z: 23, name: 'Jardín Coral' },
   { x: 54.5, z: 7, name: 'Paseo del Mar' },
+  { x: 15, z: 34.2, name: 'Mercado Palma' },
 ];
 
 export function buildDistrict(scene: Scene, seed = 61865): District {
@@ -57,7 +59,7 @@ export function buildDistrict(scene: Scene, seed = 61865): District {
 
   return {
     colliders,
-    spawn: { x: 0, y: 0, z: 25 },
+    spawn: { x: 15, y: 0, z: 41.5 },
     map: {
       bounds: { ...districtBounds },
       roads: roadRectangles(),
@@ -124,6 +126,10 @@ function makeCityBlocks(geometry: DistrictGeometry, colliders: StaticBox[], seed
 
       const count = back - front >= 19 ? 2 : 1;
       for (let lot = 0; lot < count; lot += 1) {
+        if (column === 3 && row === 3 && lot === 1) {
+          addShop(geometry, colliders);
+          continue;
+        }
         const lotDepth = (back - front) / count;
         const centerZ = front + (lot + 0.5) * lotDepth;
         const isDowntown = row < 2 && column > 0;

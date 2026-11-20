@@ -1,6 +1,6 @@
 import { PerspectiveCamera, Scene } from 'three'
 import { describe, expect, it } from 'vitest'
-import { createPhysics, type StaticBox } from '../src/physics/physics'
+import { createCharacterCollider, createPhysics, type StaticBox } from '../src/physics/physics'
 import { createPlayer } from '../src/player/player'
 
 const floor: StaticBox = { x: 0, y: -0.5, z: 0, halfX: 30, halfY: 0.5, halfZ: 30 }
@@ -32,14 +32,28 @@ function advance(player: Player, frames: number, input = idle) {
 }
 
 describe('third-person character', () => {
+  it('keeps camera distance when a pedestrian crosses the boom', async () => {
+    const physics = await createPhysics([floor])
+    const pedestrian = createCharacterCollider(physics, { x: 0, y: 0, z: 2 })
+    physics.step(fixedStep)
+    const camera = new PerspectiveCamera(60, 16 / 9, 0.1, 650)
+    const player = createPlayer(new Scene(), camera, physics, { x: 0, y: 0, z: 0 })
+    try { expect(camera.position.z).toBeGreaterThan(4.5) }
+    finally { player.dispose(); pedestrian.dispose(); physics.dispose() }
+  })
   it('moves forward, covers more ground while running and returns to spawn on reset', async () => {
-    await withPlayer([], (player) => {
+    await withPlayer([], (player, camera) => {
       advance(player, 60, forward)
       const walkingDistance = -player.position.z
       expect(walkingDistance).toBeGreaterThan(2)
       expect(player.position.x).toBeCloseTo(0)
 
+      player.setWeapon(true, true)
+      player.render(1, 1)
+      expect(camera.fov).toBeLessThan(50)
       player.reset()
+      player.render(1, 1)
+      expect(camera.fov).toBe(58)
       advance(player, 1)
       expect(player.position.z).toBeCloseTo(0)
       advance(player, 60, { ...forward, run: true })
