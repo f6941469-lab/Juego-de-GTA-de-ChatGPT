@@ -1,0 +1,11 @@
+### `ADR-XXXX` — Título descriptivo
+- **Fecha:** YYYY-MM-DD
+- **Estado:** Propuesta | Aprobada | Implementada | Rechazada | Sustituida | Obsoleta
+- **Contexto:**
+- **Decisión:**
+- **Motivación:**
+- **Alternativas consideradas:**
+- **Consecuencias positivas:**
+- **Consecuencias negativas:**
+- **Sistemas afectados:**
+- **Referencias:**

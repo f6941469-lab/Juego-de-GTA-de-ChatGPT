@@ -1,0 +1,13 @@
+### `VB-XXX` — Título conciso
+- **Prioridad:** P0 | P1 | P2 | P3 | P4
+- **Estado:** Confirmado | Riesgo potencial | Pendiente de verificación | Resuelto (vincular tarea/commit)
+- **Sistema afectado:**
+- **Archivo o símbolo:**
+- **Descripción:**
+- **Evidencia:**
+- **Pasos de reproducción:**
+- **Causa confirmada o probable:**
+- **Impacto:**
+- **Solución propuesta:**
+- **Restricciones:**
+- **Referencias:**
