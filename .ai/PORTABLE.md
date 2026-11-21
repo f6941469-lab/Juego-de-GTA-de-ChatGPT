@@ -2,7 +2,7 @@
 
 ## Archivo y compilación
 
-`jugar/index.html` es el entregable autocontenido, incluido en el repositorio para poder descargarlo junto al código. Se puede copiar solo ese archivo a otra carpeta. El `index.html` de la raíz sigue siendo la plantilla de desarrollo y, si se abre localmente, indica la ruta del entregable.
+`jugar/index.html` es el entregable autocontenido, incluido en el repositorio para poder descargarlo junto al código. Se puede copiar solo ese archivo a otra carpeta. El `index.html` de la raíz sigue siendo la plantilla de desarrollo. Al abrirlo localmente muestra la ruta del entregable y habilita **Abrir juego sin conexión**, que navega a `./jugar/index.html`. La condición sobre `data-delivery` permite que el HTML portable arranque directamente.
 
 `npm run build:portable` comprueba tipos y ejecuta `scripts/build-portable.mjs`. Este usa la API de Vite ya instalada: entrada `src/main.ts`, formato IIFE, script clásico ES2022, importaciones dinámicas integradas, fuentes data URL y física WASM de Rapier compat integrada. No instala dependencias ni cambia la simulación. CSS, JS y las cuatro licencias de `public/licencias/` se incorporan al HTML; las licencias son JSON no ejecutable en `#viceblock-licenses`.
 
@@ -33,3 +33,15 @@ El sobre contendrá identificador de formato, versión de esquema, versión del 
 Resultado de esta entrega: tipos, 20 pruebas Vitest, compilación web+portable y comparación reproducible aprobados. El HTML ocupa 2.962.673 bytes; SHA-256 `45fb12823e895506c31a70d9164fa299e9d30e2d22793e70108f021e216f05ee`. Chromium 156.0.8078.79/SwiftShader aprobó los flujos web y portable inline, cada uno en escritorio 960×640 y táctil 390×844, sin excepciones. El modo portable no emitió solicitudes HTTP(S). Audio verificado por estado del contexto, no por escucha humana. Informes en `/tmp/viceblock-031-web/report.json` y `/tmp/viceblock-031-portable/report.json`; el intento directo fallido queda en `/tmp/viceblock-031-file/report.json`.
 
 La apertura local directa en el Chromium administrado del entorno devuelve `ERR_BLOCKED_BY_ADMINISTRATOR`. Se mantiene pendiente validarla en un navegador que permita archivos locales, sin cambiar políticas ni usar flags para eludirlas. No se anuncia soporte móvil físico ni un presupuesto de FPS a partir de pruebas con SwiftShader.
+
+## Comprobación para publicación del 2026-11-21
+
+Se tomó como base `main` en `765bc51`, que ya contiene Mercado Palma 0.3.1 y la sustitución autorizada del sistema anterior. Los avances locales sobre la base 0.2 quedaron guardados en la rama local `work`. Esta entrega sigue el runtime activo de Mercado Palma. El cambio de publicación añade el acceso desde el index raíz y el enlace de descarga ZIP en README.
+
+Tipos, las 20 pruebas Vitest, compilación web y portable y `check:portable` aprobados de nuevo. El HTML actualizado ocupa 2.962.864 bytes y su SHA-256 es `02a91c64e228cf7bddaf816417156207eb53f59fc93f42e1eb418d33ef395238`. La comprobación del acceso local con DOM simulado verifica que el botón queda habilitado, navega a la ruta relativa correcta y deja arrancar la entrega portable.
+
+Chromium 156.0.8078.79 con SwiftShader aprobó de nuevo el smoke portable inline sin red en escritorio 960×640 y táctil 390×844, con cero solicitudes HTTP(S) y cero excepciones. Reporte en `/tmp/viceblock-publicacion-portable/report.json`. Se volvió a intentar la apertura real del archivo y se reprodujo `ERR_BLOCKED_BY_ADMINISTRATOR`, registrado en `/tmp/viceblock-publicacion-file/report.json`. El punto de aceptación por doble clic continúa pendiente.
+
+La prueba web también aprobó los mismos flujos en escritorio y táctil, con cero excepciones. Informe en `/tmp/viceblock-publicacion-web/report.json`. Se inspeccionaron las capturas de portada, calle y teléfono táctil de la entrega portable.
+
+El HTML regenerado con el nuevo acceso se volvió a abrir inline sin red y arrancó la partida. La comprobación final también observó errores de consola y shaders, con cero errores y cero solicitudes HTTP(S). Informe y captura en `/tmp/viceblock-publicacion-portable/final-html.json` y `final-html.png`. El tamaño y SHA-256 coinciden con los registrados arriba.

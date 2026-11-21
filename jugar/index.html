@@ -142,7 +142,10 @@
       if (location.protocol === 'file:' && document.documentElement.dataset.delivery !== 'portable') {
         document.querySelector('#entry-status').hidden = false;
         document.querySelector('#entry-status').textContent = 'Para jugar sin servidor, abre el archivo jugar/index.html. Este index es la plantilla de desarrollo.';
-        document.querySelector('#play-label').textContent = 'Abre jugar/index.html';
+        document.querySelector('#play-label').textContent = 'Abrir juego sin conexión';
+        const button = document.querySelector('#play-button');
+        button.disabled = false;
+        button.addEventListener('click', () => { location.href = './jugar/index.html'; });
       }
     </script>
     <!-- Generado por npm run build:portable. Licencias integradas en viceblock-licenses. -->

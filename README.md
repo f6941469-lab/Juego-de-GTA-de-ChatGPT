@@ -10,6 +10,8 @@ La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.3.1 · SIN 
 
 ## Jugar sin servidor
 
+Descarga el [ZIP de la rama main](https://github.com/f6941469-lab/Juego-de-GTA-de-ChatGPT/archive/refs/heads/main.zip), extráelo y abre `jugar/index.html`. Si abres el `index.html` de la raíz, pulsa **Abrir juego sin conexión** para acceder al archivo preparado.
+
 Abre **[jugar/index.html](jugar/index.html)** en un navegador con WebGL 2. Ese archivo integra JavaScript, estilos, fuentes, física WASM y licencias: puedes copiar únicamente ese HTML y jugar sin conexión, sin Node, npm o servidor. El `index.html` de la raíz es la plantilla para desarrollar; el archivo preparado para jugar está en la carpeta `jugar`.
 
 El contenido integrado se comprueba con red desactivada. La apertura directa mediante `file://` sigue pendiente de validación porque el Chromium administrado de este entorno la bloquea por política. No se requieren cambios de seguridad para el entregable; consulta [la comprobación y sus límites](.ai/PORTABLE.md).

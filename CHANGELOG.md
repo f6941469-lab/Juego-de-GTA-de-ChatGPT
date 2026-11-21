@@ -2,6 +2,8 @@
 
 ## 0.3.1 · Primera entrega portable
 
+- Acceso al juego desde el index raíz al abrirse localmente y enlace de descarga ZIP en README.
+
 - Un único archivo jugable en `jugar/index.html`, con JavaScript, estilos, fuentes, física WASM y licencias integrados; marca visible **SIN CONEXIÓN**.
 - Generación reproducible con Vite existente, comprobación de vigencia y artefacto de CI; sin dependencias nuevas ni cambios de gameplay.
 - Prueba gráfica del contenido integrado con red desactivada, incluyendo compras, arma, teléfono, audio y controles táctiles. Apertura directa file:// pendiente: bloqueada por política del Chromium administrado del entorno.

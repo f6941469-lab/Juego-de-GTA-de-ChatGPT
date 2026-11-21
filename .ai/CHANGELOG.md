@@ -10,6 +10,11 @@ verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
+## 2026-11-21 · Acceso y verificación de la entrega HTML
+
+- Botón **Abrir juego sin conexión** en el index raíz al abrirse localmente, con navegación relativa a `jugar/index.html`; enlace ZIP de main en README.
+- Portable regenerado y verificaciones repetidas sobre la base actual de main, Mercado Palma 0.3.1. Tipos, 20 pruebas, build web/portable, comparación reproducible y smoke inline offline aprobados. El bloqueo administrativo de file:// sigue registrado en [PORTABLE.md](PORTABLE.md).
+
 ## 0.3.1 · Empaquetado portable de Mercado Palma
 
 - Generador `scripts/build-portable.mjs` mediante Vite IIFE en memoria, recursos integrados y validación de script clásico/ausencia de imports o assets separados. Entregable versionado `jugar/index.html`, comprobación byte a byte y artefacto de CI.
