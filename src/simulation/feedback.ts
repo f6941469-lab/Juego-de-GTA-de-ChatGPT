@@ -6,9 +6,9 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
   const geometry = new BoxGeometry();
   const glass = new MeshStandardMaterial({ color: 0x91d4d1, transparent: true, opacity: 0.32, roughness: 0.13, metalness: 0.1, depthWrite: false });
   const particleMaterial = new MeshBasicMaterial({ color: 0xe9d6aa });
-  const windows = shopWindows.map((box) => {
+  const windows = shopWindows.map((box, index) => {
     const mesh = new Mesh(geometry, glass); mesh.position.set(box.x, box.y, box.z); mesh.scale.set(box.halfX * 2, box.halfY * 2, box.halfZ * 2); scene.add(mesh);
-    return { box, mesh, collider: physics.addBox(box), intact: true };
+    return { id: `damage:mercado-palma:window:${index}`, box, mesh, collider: physics.addBox(box), intact: true };
   });
   const particles = Array.from({ length: 36 }, () => {
     const mesh = new Mesh(geometry, particleMaterial); mesh.visible = false; scene.add(mesh);

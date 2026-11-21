@@ -1,6 +1,6 @@
 # Plan de implementación — ciudad viva y entrega en un solo HTML
 
-Base de gameplay: Mercado Palma 0.3.0, commit `038456a`. La primera implementación, 0.3.1, incorpora el empaquetador y el entregable `jugar/index.html`; la apertura directa file:// sigue pendiente por política del navegador del entorno. Las demás fases continúan planificadas. Se conserva la presentación elegida por el usuario y se amplía el runtime de `src/simulation/session.ts`.
+Base de gameplay: Mercado Palma 0.3.0, commit `038456a`. La primera implementación, 0.3.1, incorpora el empaquetador y el entregable `jugar/index.html`; la apertura directa file:// sigue pendiente por política del navegador del entorno. La entrega 0.4.0 inicia la fase 2 con IDs, registro por zonas, historial acotado y navegación peatonal global, además del renderizador WebGPU solicitado. La fase 2 continúa en curso y las fases posteriores siguen planificadas. Se conserva la presentación elegida por el usuario y se amplía el runtime de `src/simulation/session.ts`.
 
 ## Resultado que se entregará al jugador
 

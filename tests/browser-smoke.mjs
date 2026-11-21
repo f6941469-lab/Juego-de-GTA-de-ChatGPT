@@ -9,6 +9,8 @@ const require = createRequire(import.meta.url);
 const { version } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const portable = process.env.VICEBLOCK_PORTABLE === '1';
 const inline = process.env.VICEBLOCK_PORTABLE_INLINE === '1';
+const webgpu = process.env.VICEBLOCK_WEBGPU === '1';
+const forceWebGL = process.env.VICEBLOCK_FORCE_WEBGL === '1';
 assert.ok(!inline || portable, 'La prueba inline requiere VICEBLOCK_PORTABLE=1');
 const portablePath = fileURLToPath(new URL('../jugar/index.html', import.meta.url));
 const portableHTML = portable ? await readFile(portablePath, 'utf8') : undefined;
@@ -19,13 +21,17 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   executablePath: process.env.VICEBLOCK_CHROMIUM || undefined,
   headless: true,
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', ...(webgpu ? ['--enable-unsafe-webgpu'] : [])],
 });
 const errors = [];
 const externalRequests = [];
-const report = { passed: false, browser: browser.version(), renderer: 'SwiftShader (software)', version, delivery: portable ? 'portable' : 'web', opening: inline ? 'inline; file:// NOT verified' : target, offline: portable, externalRequests, errors, checks: [], desktop: {}, mobile: {} };
+const report = { passed: false, browser: browser.version(), renderer: 'SwiftShader (software)', version, delivery: portable ? 'portable' : 'web', opening: inline ? 'inline; file:// NOT verified' : target, offline: portable, externalRequests, errors, backends: [], checks: [], desktop: {}, mobile: {} };
 async function open(page) {
   page.on('pageerror', (error) => errors.push(String(error)));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !message.text().includes('404')) errors.push(message.text());
+  });
+  if (forceWebGL) await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: undefined }));
   page.on('request', (request) => {
     if (portable && /^https?:/.test(request.url())) externalRequests.push(request.url());
   });
@@ -41,6 +47,11 @@ async function open(page) {
   await page.goto(inline ? 'about:blank' : target);
   if (inline) await page.setContent(portableHTML);
   await page.locator('#play-button:enabled').waitFor();
+  const backend = await page.locator('#game-canvas').getAttribute('data-renderer');
+  report.backends.push(backend);
+  assert.ok(backend === 'WebGPU' || backend === 'WebGL 2');
+  if (webgpu) assert.equal(backend, 'WebGPU');
+  if (forceWebGL) assert.equal(backend, 'WebGL 2');
   assert.equal(await page.locator('html').getAttribute('data-build'), `mercado-palma-${version}`);
   if (portable) {
     assert.equal(await page.locator('html').getAttribute('data-delivery'), 'portable');

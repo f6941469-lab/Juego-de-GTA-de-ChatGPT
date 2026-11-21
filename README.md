@@ -1,4 +1,4 @@
-# Viceblock 0.3.1 · Mercado Palma
+# Viceblock 0.4.0 · Mercado Palma
 
 Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, cuatro civiles con rutinas, tres coches autónomos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. El alcance es local y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
@@ -6,19 +6,21 @@ Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Pal
 
 Esta versión usa íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y la tienda de Mara. El motor de simulación, interfaz y mapa de la integración anterior fueron sustituidos por esta entrega por petición del usuario. La conducción, los distritos adicionales y la policía avanzada anteriores quedan fuera de la versión activa; su código permanece en el historial de Git.
 
-La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.3.1 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.3.1**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
+La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.4.0 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.4.0**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
 
 ## Jugar sin servidor
 
 Descarga el [ZIP de la rama main](https://github.com/f6941469-lab/Juego-de-GTA-de-ChatGPT/archive/refs/heads/main.zip), extráelo y abre `jugar/index.html`. Si abres el `index.html` de la raíz, pulsa **Abrir juego sin conexión** para acceder al archivo preparado.
 
-Abre **[jugar/index.html](jugar/index.html)** en un navegador con WebGL 2. Ese archivo integra JavaScript, estilos, fuentes, física WASM y licencias: puedes copiar únicamente ese HTML y jugar sin conexión, sin Node, npm o servidor. El `index.html` de la raíz es la plantilla para desarrollar; el archivo preparado para jugar está en la carpeta `jugar`.
+Abre **[jugar/index.html](jugar/index.html)** en un navegador con WebGPU o WebGL 2. Ese archivo integra JavaScript, estilos, fuentes, física WASM y licencias: puedes copiar únicamente ese HTML y jugar sin conexión, sin Node, npm o servidor. El `index.html` de la raíz es la plantilla para desarrollar; el archivo preparado para jugar está en la carpeta `jugar`.
 
 El contenido integrado se comprueba con red desactivada. La apertura directa mediante `file://` sigue pendiente de validación porque el Chromium administrado de este entorno la bloquea por política. No se requieren cambios de seguridad para el entregable; consulta [la comprobación y sus límites](.ai/PORTABLE.md).
 
 ## Desarrollar o preparar una nueva entrega
 
-Usa Node.js 24 LTS. Las versiones admitidas se registran en `package.json`. El entorno de desarrollo en la nube trae Node.js 24 y npm 11. Para jugar necesitas un navegador compatible con WebGL 2.
+El renderizador selecciona WebGPU cuando puede obtener un dispositivo y utiliza WebGL 2 como compatibilidad. F3 muestra el backend activo, la resolución interna y los contadores de entidades, rutas e historial.
+
+Usa Node.js 24 LTS. Las versiones admitidas se registran en `package.json`. El entorno de desarrollo en la nube trae Node.js 24 y npm 11. Para jugar necesitas un navegador compatible con WebGPU o WebGL 2.
 
 Ejecuta estos comandos desde la raíz del repositorio.
 

@@ -1,5 +1,14 @@
 # Historial de cambios
 
+## 0.4.0 · Navegación global y base WebGPU
+
+- Navegación peatonal sobre el mapa transitable, con buffers reutilizados, cola de prioridad y cuotas de búsquedas por tick.
+- Registro de personas, coches, ocupantes, asientos, mercado y cristales mediante IDs estables y estado por zonas. Historial de poses y daños con límites.
+- Decisiones civiles escalonadas por distancia y urgencia, manteniendo el movimiento físico compartido.
+- WebGPURenderer con compatibilidad WebGL 2, cielo y agua en TSL, y presupuestos de píxeles y sombras por perfil.
+- F3 muestra backend, resolución y contadores de entidades, historial y rutas. La fase 2 continúa con navegación jerárquica/vial y actividades de otras zonas.
+- El adaptador WebGPU de software del entorno falla también con un triángulo independiente. La aceptación de WebGPU y el perfilado físico siguen pendientes.
+
 ## 0.3.1 · Primera entrega portable
 
 - Acceso al juego desde el index raíz al abrirse localmente y enlace de descarga ZIP en README.

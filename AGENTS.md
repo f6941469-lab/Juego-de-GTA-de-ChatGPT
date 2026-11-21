@@ -1,8 +1,8 @@
 # AGENTS.md — Viceblock
 
 ## 1. Identidad y restricciones fundamentales
-- **Proyecto:** Viceblock (`0.3.1`, Mercado Palma) — videojuego 3D de mundo abierto urbano en navegador (estética cúbica/prismática en Costa Palmera).
-- **Stack real:** TypeScript (`strict`, `ES2022`), Vite, Three.js (WebGL 2), Rapier3D WASM (`@dimforge/rapier3d-compat`), Web Audio API procedural e IndexedDB.
+- **Proyecto:** Viceblock (`0.4.0`, Mercado Palma) — videojuego 3D de mundo abierto urbano en navegador (estética cúbica/prismática en Costa Palmera).
+- **Stack real:** TypeScript (`strict`, `ES2022`), Vite, Three.js (WebGPU con compatibilidad WebGL 2, shaders TSL), Rapier3D WASM (`@dimforge/rapier3d-compat`), Web Audio API procedural e IndexedDB.
 - **Restricción tecnológica:** Prohibido introducir motores comerciales generalistas (Unity, Unreal, Godot). Tecnología propia basada en navegador y recursos procedurales/originales.
 - **Idioma del proyecto:** Interfaz, documentación y mensajes de commit en español. Identificadores de código en inglés.
 

@@ -56,7 +56,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     const collider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(0.86, 0.63, 1.83).setTranslation(0, COLLIDER_OFFSET_Y, 0), body);
     const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -pose.heading); body.setRotation(rotation, true);
     const position = new Vector3(pose.x, pose.y, pose.z);
-    return { mesh, body, collider, position, previous: position.clone(), heading: pose.heading, previousHeading: pose.heading, distance, initialDistance: distance, speed: 0, cooldown: 0, driverId: `driver-${index}`, occupiedSeats: 1 };
+    return { id: `vehicle:traffic:${index}`, seatId: `seat:traffic:${index}:driver`, mesh, body, collider, position, previous: position.clone(), heading: pose.heading, previousHeading: pose.heading, distance, initialDistance: distance, speed: 0, cooldown: 0, driverId: `person:driver:${index}`, occupiedSeats: 1 };
   });
   const shape = new RAPIER.Cuboid(0.89, 0.63, 1.86);
   const signalMaterials = [material(0xff4b57, 0xff4b57), material(0xffcc68, 0xffcc68), material(0x69dfb1, 0x69dfb1)];

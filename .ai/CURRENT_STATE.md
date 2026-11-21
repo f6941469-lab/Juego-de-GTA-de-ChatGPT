@@ -1,4 +1,20 @@
-# Estado activo — Mercado Palma 0.3.1
+# Estado activo — Mercado Palma 0.4.0
+
+Entrega del 2026-11-21. Se inicia la fase 2 del plan con navegación peatonal global, registro de entidades y zonas e historial con cuotas. Session sigue siendo dueño del único avance físico. La población, el mercado y el circuito de tráfico conservan su comportamiento de gameplay.
+
+El backend gráfico es WebGPURenderer con shaders TSL y compatibilidad WebGL 2. Los presupuestos activos están en [RENDERING.md](RENDERING.md). Las decisiones civiles se espacian por distancia y urgencia. F3 muestra backend, resolución, entidades, historial y rutas diferidas.
+
+La fase 2 permanece en curso. Quedan navegación jerárquica/vial y reservas, simulación de actividades en otras zonas y actualización localizada de obstáculos. Los hitos de tiendas, robo de coches, conversaciones y replay se mantienen en ROADMAP.md.
+
+## Verificación de 0.4.0
+
+Tipos, 25 pruebas en seis archivos, compilación web/portable y comparación reproducible aprobados. Chromium 156.0.8078.79/SwiftShader aprobó los flujos web y portable inline offline en escritorio y táctil. El backend fue WebGL 2, con cero errores de JavaScript o consola. Informes en `/tmp/viceblock-040-web/` y `/tmp/viceblock-040-portable/`. El HTML tiene 3.252.603 bytes y su hash se registra en PORTABLE.md.
+
+El intento de WebGPU en el adaptador de software falló también con un triángulo independiente. Quedan pendientes la aceptación WebGPU en un dispositivo utilizable, el rendimiento físico y la apertura file://. Los límites y los diagnósticos están en RENDERING.md.
+
+## Registro de entregas anteriores
+
+### Mercado Palma 0.3.1
 
 Fecha: 2026-11-20. El usuario solicitó sustituir todo el sistema anterior por la entrega de la primera captura y después autorizó iniciar el plan de ampliación. La base de gameplay sigue siendo la sustitución de 0.3.0; 0.3.1 añade la entrega portable sin modificar Session.
 

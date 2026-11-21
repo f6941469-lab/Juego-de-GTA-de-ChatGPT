@@ -1,7 +1,7 @@
-# Trabajo pendiente — Mercado Palma 0.3.1
+# Trabajo pendiente — Mercado Palma 0.4.0
 
 - Validar `jugar/index.html` mediante apertura real file:// sin conexión en un navegador que permita archivos locales. El Chromium administrado lo bloquea; no sustituir esta aceptación por la prueba inline. Ver [../PORTABLE.md](../PORTABLE.md).
-- Continuar la fase 2 de [../../ROADMAP.md](../../ROADMAP.md): IDs, estado por zona y navegación de todo el mapa antes de ampliar población; los eventos prepararán también replay y futura narrativa.
+- Completar la fase 2 de [../../ROADMAP.md](../../ROADMAP.md): navegación jerárquica/vial, reservas, actualización local y actividades de otras zonas sobre los IDs, zonas e historial incorporados; los eventos prepararán también replay y futura narrativa.
 
 - Medir fluidez y memoria con GPU física; no usar SwiftShader como benchmark de hardware.
 - Profundizar navegación/colas y ampliar zonas de simulación antes de aumentar población.

@@ -1,8 +1,9 @@
 import type { Point3 } from '../physics/physics';
+import { zoneIdAt } from './world-state';
 
 export type EventKind = 'shot' | 'threat' | 'robbery' | 'glass' | 'collision' | 'report';
 export interface WorldEvent {
-  id: number; kind: EventKind; position: Point3; time: number;
+  id: number; zoneId: string | undefined; kind: EventKind; position: Point3; time: number;
   source: string; identified: boolean; incident?: number;
 }
 export interface Post { id: number; author: string; event: WorldEvent; recording: 'unavailable' }
@@ -11,7 +12,7 @@ export class Journal {
   readonly events: WorldEvent[] = [];
   readonly posts: Post[] = [];
   publish(kind: EventKind, position: Point3, time: number, source = 'player', identified = true, incident?: number) {
-    const event: WorldEvent = { id: this.nextId++, kind, position: { ...position }, time, source, identified, incident };
+    const event: WorldEvent = { id: this.nextId++, zoneId: zoneIdAt(position), kind, position: { ...position }, time, source, identified, incident };
     this.events.push(event);
     if (this.events.length > 96) this.events.shift();
     return event;

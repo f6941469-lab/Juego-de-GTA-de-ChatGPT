@@ -1,4 +1,4 @@
-# Memoria activa — Mercado Palma 0.3.1
+# Memoria activa — Mercado Palma 0.4.0
 
 1. [CURRENT_STATE.md](CURRENT_STATE.md): sistema activo, sustitución autorizada y verificaciones actuales.
 2. [HANDOFF.md](HANDOFF.md): continuación, publicación y ejecución de la versión correcta.
@@ -11,6 +11,8 @@
 9. [PORTABLE.md](PORTABLE.md): empaquetado reproducible, HTML jugable, pruebas sin red y diseño del archivo de partida.
 
 `src/main.ts` usa `createSession` desde `src/simulation/session.ts`; la interfaz es `src/ui/gameplay.ts` y el distrito se genera con `src/world/district.ts`.
+
+10. [RENDERING.md](RENDERING.md) describe el backend WebGPU/WebGL 2, los shaders TSL y los presupuestos activos de la entrega 0.4.0.
 
 ## Historial archivado
 

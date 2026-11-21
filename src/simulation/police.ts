@@ -6,7 +6,7 @@ import type { Navigation } from './navigation';
 
 export function createPolice(scene: Scene, physics: Physics, navigation: Navigation, journal: Journal, playerHandle: number, detained: () => void) {
   const patrol = [{ x: 34.3, y: 0.08, z: 41 }, { x: 34.3, y: 0.08, z: 51 }];
-  const units = patrol.map((point) => ({ actor: createActor(scene, physics, navigation, point, 0x304f7c), stop: 0, arrestTime: 0 }));
+  const units = patrol.map((point, index) => ({ id: `person:police:${index}`, actor: createActor(scene, physics, navigation, point, 0x304f7c), stop: 0, arrestTime: 0 }));
   let state: 'patrol' | 'respond' | 'pursue' | 'search' = 'patrol';
   let cursor = 0;
   let lastKnown: Point3 | undefined;

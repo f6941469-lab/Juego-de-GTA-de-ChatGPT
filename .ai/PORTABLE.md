@@ -1,4 +1,4 @@
-# Entrega portable — Mercado Palma 0.3.1
+# Entrega portable — Mercado Palma 0.4.0
 
 ## Archivo y compilación
 
@@ -10,7 +10,7 @@ El generador rechaza múltiples chunks, imports pendientes, assets separados, UR
 
 `npm run build` genera tanto `dist/` para hosting como `jugar/index.html`. `npm run check:portable` recompila en memoria y compara byte por byte con el archivo guardado; no lo modifica. CI reconstruye, comprueba que el entregable versionado no haya cambiado y lo adjunta como artefacto descargable.
 
-La identificación portable es `data-delivery="portable"`, `data-build="mercado-palma-0.3.1"` y **VERSIÓN 0.3.1 · SIN CONEXIÓN**. El juego sigue necesitando WebGL 2, JavaScript y una interacción para activar audio. No usa Service Worker ni requiere conexión. Las preferencias gráficas siguen siendo opcionales: fallar IndexedDB no impide arrancar.
+La identificación portable es `data-delivery="portable"`, `data-build="mercado-palma-0.4.0"` y **VERSIÓN 0.4.0 · SIN CONEXIÓN**. El juego sigue necesitando WebGL 2, JavaScript y una interacción para activar audio. No usa Service Worker ni requiere conexión. Las preferencias gráficas siguen siendo opcionales: fallar IndexedDB no impide arrancar.
 
 ## Comprobación gráfica reproducible
 
@@ -28,7 +28,7 @@ El empaquetado no añade guardado de partidas. El guardado futuro exportará un 
 
 El sobre contendrá identificador de formato, versión de esquema, versión del juego y semilla; el contenido incluirá reloj, jugador/inventario, entidades con ID estable, economía/stock, daños de zonas e incidentes persistentes. Se validarán tipos, límites y referencias antes de aplicar; un archivo inválido no reiniciará ni modificará parcialmente la partida actual. Los handles de Rapier, mallas, funciones y recursos GPU no se serializan: se reconstruyen a partir del estado lógico. La fase 2 debe fijar los IDs/contratos antes de implementar esta persistencia en la fase 9.
 
-## Límite de aceptación
+## Registro de aceptación de 0.3.1
 
 Resultado de esta entrega: tipos, 20 pruebas Vitest, compilación web+portable y comparación reproducible aprobados. El HTML ocupa 2.962.673 bytes; SHA-256 `45fb12823e895506c31a70d9164fa299e9d30e2d22793e70108f021e216f05ee`. Chromium 156.0.8078.79/SwiftShader aprobó los flujos web y portable inline, cada uno en escritorio 960×640 y táctil 390×844, sin excepciones. El modo portable no emitió solicitudes HTTP(S). Audio verificado por estado del contexto, no por escucha humana. Informes en `/tmp/viceblock-031-web/report.json` y `/tmp/viceblock-031-portable/report.json`; el intento directo fallido queda en `/tmp/viceblock-031-file/report.json`.
 
@@ -45,3 +45,11 @@ Chromium 156.0.8078.79 con SwiftShader aprobó de nuevo el smoke portable inline
 La prueba web también aprobó los mismos flujos en escritorio y táctil, con cero excepciones. Informe en `/tmp/viceblock-publicacion-web/report.json`. Se inspeccionaron las capturas de portada, calle y teléfono táctil de la entrega portable.
 
 El HTML regenerado con el nuevo acceso se volvió a abrir inline sin red y arrancó la partida. La comprobación final también observó errores de consola y shaders, con cero errores y cero solicitudes HTTP(S). Informe y captura en `/tmp/viceblock-publicacion-portable/final-html.json` y `final-html.png`. El tamaño y SHA-256 coinciden con los registrados arriba.
+
+## Entrega 0.4.0
+
+La misma compilación portable integra ahora WebGPURenderer y los shaders TSL, manteniendo el backend WebGL 2. Los presupuestos de píxeles, rutas y estado se describen en [RENDERING.md](RENDERING.md). La fuente sigue dividida por módulos y el entregable sigue siendo un único HTML. La variante con WebGPU utiliza el backend que permita el navegador del equipo. La prueba WebGPU del adaptador de software del entorno falla también con un triángulo independiente, por lo que esa aceptación continúa pendiente.
+
+La comprobación de tipos, las 25 pruebas de seis archivos y la compilación web y portable pasaron. La comparación reproducible también pasó. El smoke web en Chromium 156.0.8078.79/SwiftShader seleccionó automáticamente WebGL 2 y aprobó escritorio 960×640 y táctil 390×844, sin errores de JavaScript o consola. Reporte en `/tmp/viceblock-040-web/report.json`.
+
+El HTML final ocupa 3.252.603 bytes y su SHA-256 es `eb91d48f6afd14eadc8643ea31c9f4822a4915dbb5c4712d4e9a375c51a3d907`. El smoke portable inline con red desactivada y ausencia de WebGPU simulada aprobó los mismos flujos de escritorio y táctiles, con cero solicitudes HTTP(S) y cero errores de JavaScript o consola. Informe en `/tmp/viceblock-040-portable/report.json`. La apertura file:// continúa pendiente por la política administrativa del navegador.

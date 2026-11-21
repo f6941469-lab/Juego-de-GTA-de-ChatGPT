@@ -10,12 +10,15 @@ import { Navigation } from './navigation';
 import { createPolice } from './police';
 import { createPopulation } from './population';
 import { createTraffic } from './traffic';
+import { WorldState } from './world-state';
+import type { Actor } from './actor';
 
 type Player = ReturnType<typeof createPlayer>;
 export type PhonePage = 'home' | 'feed' | 'bag' | 'help';
 const idle = { x: 0, z: 0, run: false, jump: false, aim: false, fire: false };
 export function createSession(scene: Scene, camera: PerspectiveCamera, physics: Physics, boxes: readonly StaticBox[], player: Player, audio: GameAudio, onContext: (context: InputContext) => void) {
   const journal = new Journal(); const economy = new Economy(); const weapon = new Weapon();
+  const world = new WorldState();
   const navigation = new Navigation(boxes);
   const feedback = createFeedback(scene, physics, (glass) => navigation.rebuild([...boxes, ...glass]));
   const population = createPopulation(scene, physics, navigation, journal, player.collider.handle);
@@ -28,6 +31,24 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
   let emptyLatched = false;
   const police = createPolice(scene, physics, navigation, journal, player.collider.handle, () => { detention = true; });
   const actors = [...population.people.map((person) => person.actor), ...police.units.map((unit) => unit.actor)];
+  function registerActor(id: string, actor: Actor) {
+    world.register({ id, kind: 'person', position: actor.position,
+      get heading() { return actor.heading; }, get health() { return actor.health; } });
+  }
+  world.register({ id: 'player', kind: 'person', position: player.position,
+    get heading() { return player.heading; }, get health() { return health; } });
+  for (const person of population.people) registerActor(person.id, person.actor);
+  for (const unit of police.units) registerActor(unit.id, unit.actor);
+  for (const car of traffic.cars) {
+    world.register({ id: car.id, kind: 'vehicle', position: car.position, get heading() { return car.heading; } });
+    world.register({ id: car.driverId, kind: 'person', position: car.position, vehicleId: car.id });
+    world.register({ id: car.seatId, kind: 'seat', position: car.position, occupantId: car.driverId, vehicleId: car.id });
+  }
+  world.register({ id: 'shop:mercado-palma', kind: 'shop', position: shop.counter });
+  for (const window of feedback.windows) {
+    world.register({ id: window.id, kind: 'damage', position: window.box, get health() { return window.intact ? 100 : 0; } });
+  }
+  world.update(0, player.position);
   physics.step(1 / 60);
   function tell(message: string, sound = false) { notice = message; noticeUntil = now + 4; if (sound) audio.play('notice'); }
   function context(value: InputContext) { overlay = value; selection = 0; aim = false; player.setWeapon(weapon.equipped, false); onContext(value); }
@@ -103,10 +124,11 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
   function reset() {
     context('world'); now = 0; journal.reset(); economy.reset(); weapon.reset(); population.reset(); police.reset(); traffic.reset(); feedback.reset(); player.reset();
     health = 100; threatTime = footDistance = 0; threatSent = robberyPaid = detention = emptyLatched = false; hitUntil = 0; previousFeet.copy(player.position);
+    world.reset(player.position);
     physics.step(1 / 60); tell('Mercado Palma · entra por la puerta central y acércate a Mara');
   }
   const api = {
-    journal, economy, weapon, population, police, traffic, feedback, navigation,
+    journal, economy, weapon, population, police, traffic, feedback, navigation, world,
     get time() { return now; }, get overlay() { return overlay; }, get phonePage() { return phonePage; }, get selection() { return selection; },
     get health() { return health; }, get muted() { return muted; }, get aiming() { return aim; }, get hit() { return now < hitUntil; },
     get notice() { return now < noticeUntil ? notice : ''; },
@@ -115,10 +137,11 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
     command, select,
     closeOverlay() { context('world'); },
     step(dt: number, controls: MovementInput & { aim: boolean; fire: boolean }) {
+      navigation.beginStep();
       now += dt; const input = overlay === 'world' ? controls : idle;
       weapon.tick(dt); aim = weapon.equipped && (input.aim || input.fire);
       player.setWeapon(weapon.equipped, aim); previousFeet.copy(player.position); player.prepareStep(dt, input);
-      population.step(dt, now, player.position, weapon.equipped); police.step(dt, now, player.position, weapon.equipped);
+      population.step(dt, now, player.position, weapon.equipped, world); police.step(dt, now, player.position, weapon.equipped);
       actors.forEach((actor) => actor.prepare(dt)); traffic.prepare(dt, now);
       physics.step(dt); player.finishStep(dt); actors.forEach((actor) => actor.finish(dt)); traffic.finish();
       footDistance += planarDistance(previousFeet, player.position);
@@ -147,6 +170,7 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
         reset(); economy.money = Math.max(0, economy.money - 30);
         tell('Traslado al inicio · nueva escena · $30 de gastos', true);
       }
+      world.update(now, player.position);
       feedback.step(dt); audio.update(player.position, traffic.cars, police.state !== 'patrol', now);
     },
     render(alpha: number, dt: number) {

@@ -1,8 +1,8 @@
 import {
-  BackSide, Color, DirectionalLight, FogExp2, HemisphereLight, Mesh, ShaderMaterial,
+  Color, DirectionalLight, FogExp2, HemisphereLight, Mesh,
   SphereGeometry, Vector3, type Scene,
 } from 'three';
-import { skyFragmentShader, skyVertexShader } from '../../shaders/sky';
+import { createSkyMaterial } from '../../shaders/sky';
 
 const shadowExtent = 63;
 const worldUp = new Vector3(0, 1, 0);
@@ -45,21 +45,8 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
   const fog = new FogExp2(palette.dayHaze, 0.0075);
   scene.fog = fog;
 
-  const skyMaterial = new ShaderMaterial({
-    uniforms: {
-      uSunDirection: { value: new Vector3() },
-      uMoonDirection: { value: new Vector3() },
-      uGroundHaze: { value: fog.color },
-      uDaylight: { value: 1 },
-      uTwilight: { value: 0 },
-      uTime: { value: 0 },
-    },
-    vertexShader: skyVertexShader,
-    fragmentShader: skyFragmentShader,
-    side: BackSide,
-    depthWrite: false,
-  });
-  const sky = new Mesh(new SphereGeometry(1, 32, 20), skyMaterial);
+  const skyShader = createSkyMaterial(fog.color);
+  const sky = new Mesh(new SphereGeometry(1, 32, 20), skyShader.material);
   sky.name = 'Sky dome';
   // The dome writes far-plane depth in its vertex shader. Draw after opaque geometry
   // so the depth test skips procedural sky shading behind buildings and ground.
@@ -67,8 +54,8 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
   sky.frustumCulled = false;
   scene.add(sky, sun, sun.target, ambient);
 
-  const sunDirection = skyMaterial.uniforms.uSunDirection.value as Vector3;
-  const moonDirection = skyMaterial.uniforms.uMoonDirection.value as Vector3;
+  const sunDirection = skyShader.sun.value;
+  const moonDirection = skyShader.moon.value;
   const lightDirection = new Vector3();
   const shadowCenter = new Vector3();
   const shadowRight = new Vector3();
@@ -83,9 +70,9 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
 
     const daylight = smoothstep(-0.14, 0.16, sunDirection.y);
     const twilight = 1 - smoothstep(0.05, 0.51, Math.abs(sunDirection.y - 0.05));
-    skyMaterial.uniforms.uDaylight.value = daylight;
-    skyMaterial.uniforms.uTwilight.value = twilight;
-    skyMaterial.uniforms.uTime.value = elapsed;
+    skyShader.daylight.value = daylight;
+    skyShader.twilight.value = twilight;
+    skyShader.clock.value = elapsed;
 
     const sunStrength = smoothstep(0.003, 0.115, sunDirection.y);
     const moonStrength = smoothstep(0.12, 0.4, moonDirection.y);

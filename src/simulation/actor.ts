@@ -15,6 +15,7 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
   let path: Point3[] = [];
   let destination: Point3 | undefined;
   let routeAge = 0;
+  let routeVersion = navigation.version;
   let speed = 0;
   let resolvedSpeed = 0;
   let stuck = 0;
@@ -45,8 +46,9 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
       previous.copy(position); previousHeading = heading; routeAge += dt; stun = Math.max(0, stun - dt);
       let dx = 0; let dz = 0;
       if (destination && health > 0 && stun === 0 && !api.arrived) {
-        if (!path.length && routeAge >= 1 || stuck > 1 && routeAge > 2) {
-          path = navigation.path(position, destination); routeAge = 0;
+        if ((!path.length && routeAge >= 1) || (stuck > 1 && routeAge > 2) || routeVersion !== navigation.version) {
+          const route = navigation.requestPath(position, destination);
+          if (route !== undefined) { path = route; routeAge = 0; routeVersion = navigation.version; }
         }
         while (path.length && planarDistance(position, path[0]) < 0.19) path.shift();
         const target = path[0];

@@ -10,6 +10,15 @@ verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
+## 0.4.0 · Base de la fase 2 y backend WebGPU
+
+- WorldState conecta IDs, ocupantes, asientos, zonas, daños e historial de las entidades de Session. Cuotas de 128 entidades y 60 muestras a 4 Hz.
+- Navigation sustituye el área local por una rejilla del distrito, reutiliza buffers y cola de prioridad, y atiende dos peticiones de actores por tick con 8192 visitas como máximo. Se renuevan rutas al cambiar la revisión de geometría.
+- La lógica civil usa intervalos por distancia y urgencia. Session conserva el avance único de Rapier y la interpolación de actores.
+- WebGPURenderer inicializa y compila de forma asíncrona. Los shaders TSL se comparten con el backend WebGL 2. Los perfiles acotan píxeles y sombras, y F3 muestra backend y cuotas.
+- Tipos, 25 pruebas, build y comparación reproducible aprobados. Smoke web y portable inline offline aprobados en escritorio y táctil con WebGL 2 y cero errores de JavaScript o consola.
+- La prueba WebGPU del adaptador de software falla también fuera de Three con un triángulo WGSL. Se registra ese límite y queda pendiente el perfilado en GPU física. Alcance en [RENDERING.md](RENDERING.md).
+
 ## 2026-11-21 · Acceso y verificación de la entrega HTML
 
 - Botón **Abrir juego sin conexión** en el index raíz al abrirse localmente, con navegación relativa a `jugar/index.html`; enlace ZIP de main en README.

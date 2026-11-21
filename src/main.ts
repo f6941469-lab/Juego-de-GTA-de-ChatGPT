@@ -25,7 +25,7 @@ async function startGame() {
   let alpha = 1
   let elapsed = 0
   let lastTime = performance.now()
-  let video: ReturnType<typeof createRenderer> | undefined
+  let video: Awaited<ReturnType<typeof createRenderer>> | undefined
   let player: ReturnType<typeof createPlayer>
   let session: Session | undefined
   let physics: Physics | undefined
@@ -104,7 +104,7 @@ async function startGame() {
     scene = worldScene
     const camera = new PerspectiveCamera(58, 1, 0.08, 650)
     const intro = new PerspectiveCamera(54, 1, 0.08, 650)
-    const display = createRenderer(canvas)
+    const display = await createRenderer(canvas)
     video = display
     const district = buildDistrict(worldScene, gameConfig.seed)
     const atmosphere = createAtmosphere(worldScene, hour)
@@ -165,7 +165,7 @@ async function startGame() {
       display.render(worldScene, startView ? intro : camera)
       if (debug) {
         const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics!.world.colliders.len(), 1 + session!.population.people.length + session!.police.units.length, simulationMs)
-        if (reading) ui.setDebug(`${reading}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
+        if (reading) ui.setDebug(`${reading}\n${session!.world.count} entidades · ${session!.world.historyCount}/60 muestras · ${session!.navigation.stats.deferred} rutas diferidas\n${display.backend} · ${display.renderer.domElement.width} × ${display.renderer.domElement.height}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
       }
       frameId = requestAnimationFrame(safeFrame)
     }
@@ -181,6 +181,7 @@ async function startGame() {
       }
     }
 
+    await display.prepare(worldScene, intro)
     mode = 'start'
     lastTime = performance.now()
     frame(lastTime)
@@ -190,7 +191,7 @@ async function startGame() {
     console.error('Viceblock no pudo iniciar', error)
     ui.setMode(mode, video
       ? 'No se pudo cargar el distrito. Vuelve a cargar la página para reintentar.'
-      : 'Viceblock necesita WebGL 2. Activa la aceleración gráfica y vuelve a cargar.')
+      : 'Viceblock necesita WebGPU o WebGL 2. Activa la aceleración gráfica y vuelve a cargar.')
   }
 
   window.addEventListener('pagehide', (event) => {

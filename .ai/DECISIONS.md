@@ -216,3 +216,9 @@ El usuario rechazó conservar el sistema y presentación anteriores tras compara
 El usuario autorizó iniciar el plan que exige un solo HTML y conservar el runtime elegido. Se añade un generador basado en la API pública de Vite, sin introducir dependencias. El código permanece modular, la compilación web sigue en dist/ y la distribución autocontenida se incluye como jugar/index.html para que descargar el repositorio también traiga el archivo preparado. Se integran fuentes, CSS, JS clásico, WASM compat y licencias, con comprobación de igualdad reproducible; no se depende de módulos locales, CDN, servidor o Service Worker.
 
 La restricción administrativa de file:// se respeta: prueba inline offline y apertura directa se registran como verificaciones diferentes. El guardado futuro será exportación/importación explícita por archivo y tendrá validación previa a aplicar estado; IndexedDB será solo una preferencia opcional. El alcance de esta entrega no incluye todavía guardado de partidas, ampliación de IA, LLM o historia.
+
+## 2026-11-21 · Backend gráfico compartido y trabajo acotado
+
+El usuario solicitó continuar el plan y utilizar WebGPU respetando los límites de carga. Se usa WebGPURenderer de la versión de Three ya fijada, con dispositivo WebGPU y compatibilidad WebGL 2. Cielo y agua se comparten como TSL. El renderizador inicializa y compila antes de habilitar la partida.
+
+La base global conserva Session como coordinador y un único avance físico. Navigation limita las búsquedas de cada tick y reutiliza el espacio de trabajo. WorldState referencia las entidades originales y conserva instantáneas copiadas con cuotas. El alcance de 0.4.0 es la primera parte de la fase 2. Los contratos y verificaciones activas están en RENDERING.md y SIMULATION.md.

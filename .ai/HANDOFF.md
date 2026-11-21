@@ -1,4 +1,18 @@
-# Continuación — Mercado Palma 0.3.1 portable
+# Continuación — Mercado Palma 0.4.0
+
+Continuación autorizada del plan con WebGPU y límites de carga. `Session` registra las entidades existentes en `WorldState`. `Navigation` cubre el mapa transitable con A* reutilizable y trabajo acotado. Los cambios de geometría invalidan las rutas por revisión. Las decisiones civiles usan distancia y urgencia, manteniendo movimiento y física en el tick compartido.
+
+`createRenderer` inicializa de forma asíncrona WebGPU o WebGL 2 y compila antes del arranque. Cielo y agua comparten TSL. La entrega sigue siendo `jugar/index.html`, generada por el empaquetador existente. Consultar [RENDERING.md](RENDERING.md), [SIMULATION.md](SIMULATION.md) y la fase 2 de ROADMAP.md para seguir.
+
+La fase 2 aún requiere navegación jerárquica/vial, reservas y distribución de actividades en otras zonas. Mantener los presupuestos y comprobar continuidad al extender los sistemas. Los documentos siguientes conservan el contexto histórico de 0.3.1.
+
+## Verificación de la entrega actual
+
+Tipos, 25 pruebas, build y check:portable aprobados. Pruebas web y portable inline offline en Chromium 156/SwiftShader aprobadas en escritorio y táctil, con backend WebGL 2 y cero errores de JavaScript o consola. Los informes están en `/tmp/viceblock-040-web/report.json` y `/tmp/viceblock-040-portable/report.json`. El HTML final y su checksum están registrados en PORTABLE.md.
+
+WebGPU en el adaptador de software falla incluso con un triángulo fuera del juego. Se mantiene pendiente su aceptación en un dispositivo utilizable y el perfilado en GPU física. La apertura directa file:// continúa bloqueada por la política del entorno.
+
+## Contexto anterior de la entrega portable
 
 Revalidación para publicación solicitada el 2026-11-21 sobre main@765bc51. El index raíz añade el botón **Abrir juego sin conexión** y README enlaza el ZIP descargable. El portable se regeneró con ese acceso integrado. Tipos, 20 pruebas, build y comparación reproducible aprobados. Las pruebas web y portable inline offline pasaron. La apertura file:// volvió a quedar bloqueada. Ver la sección de publicación en [PORTABLE.md](PORTABLE.md) para tamaño, hash e informes.
 

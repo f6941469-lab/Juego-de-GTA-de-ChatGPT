@@ -18,6 +18,17 @@ Plan de ampliación solicitado por el usuario en [ROADMAP.md](ROADMAP.md).
 
 El empaquetado ya está incorporado al proyecto y produce el archivo preparado en `jugar/`; no es solo el experimento temporal. La fase no se considera cerrada hasta comprobar la apertura local real. Los hitos de IA, tiendas, vehículos, destrucción, policía y replay y sus criterios de aceptación están en la hoja de ruta.
 
+## Entrega 0.4.0 · Base global y WebGPU
+
+- [x] IDs para personas, coches, ocupantes, asientos, tienda y cristales conectados a Session.
+- [x] Estado por zonas con continuidad de identidad y daños, e historial con cuotas.
+- [x] Navegación peatonal sobre el distrito y búsquedas acotadas por tick y por consulta.
+- [x] Cadencia de decisiones por distancia y urgencia, manteniendo el paso físico compartido.
+- [x] Renderizador WebGPU y compatibilidad WebGL 2 con shaders TSL y límites de resolución.
+- [ ] Completar navegación jerárquica y vial con destinos, reservas y cambios localizados.
+- [ ] Distribuir civiles y actividades por todas las zonas y comprobar incidentes lejos del mercado.
+- [ ] Medir GPU física y consumo sostenido antes de fijar metas de FPS.
+
 ## Requisitos incorporados al plan, todavía pendientes
 
 - [ ] NPC activos desde el inicio, con objetivos, objetos de actividad, diálogo contextual en español, memoria e interrupciones por peligro.

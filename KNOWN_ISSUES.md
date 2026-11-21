@@ -1,5 +1,7 @@
 # Limitaciones conocidas
 
+La entrega 0.4.0 inicia la fase 2. La navegación global y el registro por zonas tienen cuotas. Quedan por ampliar la red vial, las actividades civiles de otras zonas y la navegación jerárquica. El historial acotado prepara la futura reproducción. La prueba WebGPU de Dawn/SwiftShader falla también al dibujar un triángulo independiente. Quedan pendientes la aceptación de ese backend y las mediciones de rendimiento en hardware físico.
+
 - La entrega 0.3.1 incorpora un HTML autocontenido en `jugar/index.html`. Falta validar su apertura directa por `file://`: la política del Chromium administrado devuelve `ERR_BLOCKED_BY_ADMINISTRATOR`. Las pruebas inline con red desactivada se registran aparte y no sustituyen esa aceptación. Soporte de archivos locales en móviles físicos pendiente.
 
 - El distrito tiene límites fijos y se carga completo al iniciar. Solo Mercado Palma tiene un interior accesible. Sectores activos y niveles de detalle quedan pendientes.

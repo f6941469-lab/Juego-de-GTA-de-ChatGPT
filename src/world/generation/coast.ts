@@ -1,12 +1,5 @@
-import {
-  Color,
-  Mesh,
-  PlaneGeometry,
-  ShaderMaterial,
-  UniformsLib,
-  UniformsUtils,
-  Vector3,
-} from 'three';
+import { Mesh, PlaneGeometry, Vector3 } from 'three';
+import { createWaterMaterial } from '../../shaders/water';
 import type { DirectionalLight, Scene } from 'three';
 import type { DistrictGeometry } from './geometry';
 import { districtBounds, inlandEdge, makeRandom, shoreline } from './layout';
@@ -35,69 +28,9 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
     }
   }
 
-  const water = new ShaderMaterial({
-    fog: true,
-    uniforms: UniformsUtils.merge([
-      UniformsLib.fog,
-      {
-        uTime: { value: 0 },
-        uShore: { value: shoreline },
-        uDaylight: { value: 1 },
-        uSun: { value: new Vector3(-0.55, 0.34, 0.45).normalize() },
-        uDeep: { value: new Color('#216e8b') },
-        uTeal: { value: new Color('#288b83') },
-        uFoam: { value: new Color('#b6d4be') },
-      },
-    ]),
-    vertexShader: /* glsl */ `
-      #include <fog_pars_vertex>
+  const water = createWaterMaterial(shoreline);
 
-      varying vec3 vWorld;
-      void main() {
-        vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
-        vec4 mvPosition = viewMatrix * vec4(vWorld, 1.0);
-        gl_Position = projectionMatrix * mvPosition;
-        #include <fog_vertex>
-      }
-    `,
-    fragmentShader: /* glsl */ `
-      #include <fog_pars_fragment>
-
-      uniform float uTime;
-      uniform float uShore;
-      uniform float uDaylight;
-      uniform vec3 uSun;
-      uniform vec3 uDeep;
-      uniform vec3 uTeal;
-      uniform vec3 uFoam;
-      varying vec3 vWorld;
-
-      void main() {
-        vec2 uv = vWorld.xz;
-        float phaseA = uv.x * .99 + uv.y * .53 + uTime * 1.29;
-        float phaseB = uv.x * .48 - uv.y * 1.2 - uTime * 1.91;
-        float phaseC = uv.x * 1.26 + uv.y * .74 - uTime * .73;
-        float ripple = (sin(phaseA) + sin(phaseB) * .63 + sin(phaseC) * .40) * .032;
-        vec3 normal = normalize(vec3((cos(phaseA) + cos(phaseB) * .45) * .093, 1.0, (cos(phaseC) - cos(phaseB)) * .076));
-        vec3 viewDirection = normalize(cameraPosition - vWorld);
-        float reflectance = pow(1.0 - max(dot(normal, viewDirection), 0.0), 4.0);
-        float stripe = uv.x - uShore + sin(uv.y * .38 + uTime * .63) * .21;
-        float foam = (1.0 - smoothstep(.09, .44, abs(stripe - .47 + sin(uTime * 1.2) * .27))) * .74;
-        foam += (1.0 - smoothstep(.06, .19, abs(stripe - 1.54 + sin(uTime * 1.3 + .8) * .32))) * .22;
-        vec3 color = mix(uTeal, uDeep, smoothstep(.0, 18.0, stripe));
-        color = mix(color * (.79 + ripple * 5.0), uFoam, foam);
-        color = mix(color, vec3(.137, .239, .314), reflectance * .56);
-        float sparkle = pow(max(dot(normalize(uSun + viewDirection), normal), 0.0), 170.0);
-        color += vec3(.92, .52, .26) * sparkle * .67;
-        gl_FragColor = vec4(color * uDaylight, 1.0);
-        #include <tonemapping_fragment>
-        #include <colorspace_fragment>
-        #include <fog_fragment>
-      }
-    `,
-  });
-
-  const sea = new Mesh(new PlaneGeometry(362, 760), water);
+  const sea = new Mesh(new PlaneGeometry(362, 760), water.material);
   sea.name = 'Bahía Palmera';
   sea.position.set(shoreline + 180, -0.09, 0);
   sea.rotation.x = -Math.PI / 2;
@@ -106,12 +39,12 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
   const sunDirection = new Vector3();
   let sun: DirectionalLight | undefined;
   return (elapsed, daylight) => {
-    water.uniforms.uTime.value = elapsed;
+    water.clock.value = elapsed;
     sun ??= scene.children.find((child): child is DirectionalLight => 'isDirectionalLight' in child);
     if (sun) {
       sunDirection.copy(sun.position).sub(sun.target.position).normalize();
-      water.uniforms.uSun.value.copy(sunDirection);
+      water.sun.value.copy(sunDirection);
     }
-    water.uniforms.uDaylight.value = 0.18 + daylight * 0.83;
+    water.daylight.value = 0.18 + daylight * 0.83;
   };
 }

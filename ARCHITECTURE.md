@@ -8,7 +8,7 @@ Vite sirve y compila la aplicación TypeScript. `src/main.ts` conecta los sistem
 | `src/world/` | Construcción determinista del distrito, límites, punto de aparición y datos para el mapa |
 | `src/physics/` | Mundo Rapier y representación física de los sólidos |
 | `src/player/`, `src/characters/` | Movimiento, cámara en tercera persona y apariencia animada del personaje |
-| `src/renderer/`, `src/shaders/` | Renderizador WebGL 2, perfiles gráficos, iluminación y cielo procedural |
+| `src/renderer/`, `src/shaders/` | WebGPURenderer, compatibilidad WebGL 2, shaders TSL y presupuestos de resolución |
 | `src/ui/` | Portada, estado de juego, pausa, minimapa y presentación de diagnósticos |
 | `src/persistence/` | Preferencia gráfica local en IndexedDB |
 | `src/config/`, `src/debug/` | Semilla y tiempos del juego, medidas del renderizador |
@@ -26,3 +26,11 @@ Vite sirve y compila la aplicación TypeScript. `src/main.ts` conecta los sistem
 - La generación del mundo es determinista con la misma semilla. La posición del jugador y la hora pertenecen a la sesión. IndexedDB guarda el perfil gráfico.
 
 El circuito vial actual es un conjunto de puntos con curvas, independiente de sus mallas. No sustituye al futuro grafo vial con destinos e intersecciones arbitrarias. Journal entrega evidencia temporal a civiles, policía y teléfono; sus eventos y testimonios tienen límites de memoria.
+
+## Base global de la entrega 0.4.0
+
+`Session` registra personas, vehículos, conductores, asientos, tienda y cristales en `WorldState`. Los IDs son estables durante la sesión y tras reiniciar. Las zonas de 24 metros mantienen membresía y daños referenciados a las entidades originales. El historial conserva hasta 60 instantáneas a un máximo de cuatro muestras por segundo, con un máximo de 128 entidades. Se prepara así el estado histórico que necesitará el replay.
+
+`Navigation` cubre el distrito transitable con un espacio A* reutilizable y cola de prioridad. Los actores comparten dos búsquedas por tick y cada búsqueda visita hasta 8192 celdas. Una petición diferida conserva la ruta y se reintenta en el siguiente tick. Los cambios de geometría invalidan las rutas mediante una revisión. Las decisiones civiles se espacian por distancia y urgencia, mientras sus movimientos continúan en el paso fijo compartido.
+
+El renderizador inicializa WebGPU de forma asíncrona y obtiene un dispositivo WebGPU compatible. Si no lo obtiene usa el backend WebGL 2 de Three. Cielo y agua se expresan en TSL para ambos backends. Cada perfil limita píxeles y mapas de sombras. Los presupuestos y el alcance de las verificaciones se registran en [.ai/RENDERING.md](.ai/RENDERING.md).
