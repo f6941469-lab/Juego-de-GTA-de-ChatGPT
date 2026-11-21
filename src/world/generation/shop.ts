@@ -2,6 +2,7 @@ import type { StaticBox } from '../../physics/physics';
 import type { DistrictGeometry } from './geometry';
 
 export const shop = {
+  id: 'shop:mercado-palma',
   entrance: { x: 15, y: 0.08, z: 40.5 },
   cashier: { x: 17.6, y: 0.08, z: 30.6 },
   counter: { x: 17.4, y: 0.08, z: 33.4 },

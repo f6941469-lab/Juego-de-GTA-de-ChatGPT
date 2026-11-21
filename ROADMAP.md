@@ -1,6 +1,6 @@
 # Plan de implementación — ciudad viva y entrega en un solo HTML
 
-Base de gameplay: Mercado Palma 0.3.0, commit `038456a`. La primera implementación, 0.3.1, incorpora el empaquetador y el entregable `jugar/index.html`; la apertura directa file:// sigue pendiente por política del navegador del entorno. La entrega 0.4.0 inicia la fase 2 con IDs, registro por zonas, historial acotado y navegación peatonal global, además del renderizador WebGPU solicitado. La fase 2 continúa en curso y las fases posteriores siguen planificadas. Se conserva la presentación elegida por el usuario y se amplía el runtime de `src/simulation/session.ts`.
+Base de gameplay: Mercado Palma 0.3.0, commit `038456a`. La primera implementación, 0.3.1, incorpora el empaquetador y el entregable `jugar/index.html`; la apertura directa file:// sigue pendiente por política del navegador del entorno. La entrega 0.4.0 inicia la fase 2 con IDs, registro por zonas, historial acotado y navegación peatonal global, además del renderizador WebGPU solicitado. La entrega 0.5.0 completa la base funcional de la fase 2 con navegación jerárquica, cambios locales, residentes alejados y red vial con destinos y reservas. Las fases posteriores siguen planificadas. Se conserva la presentación elegida por el usuario y se amplía el runtime de `src/simulation/session.ts`.
 
 ## Resultado que se entregará al jugador
 
@@ -8,7 +8,7 @@ Un `index.html` autocontenido que se abre con doble clic, funciona sin conexión
 
 El objetivo es que todo el mapa actual comparta NPC, comercios, vehículos, incidentes, destrucción y respuesta policial. Los edificios que funcionen como tiendas tendrán interiores y entradas reales. Ampliar el mapa en el futuro reutilizará estas mismas reglas; no se restaurará automáticamente el sistema anterior descartado por el usuario.
 
-## Punto de partida comprobado
+## Punto de partida comprobado · base 0.3.0
 
 - Hay una tienda comercial y asaltable, una pistola, cuatro civiles, tres coches en un circuito y dos policías a pie.
 - La navegación usa una rejilla local alrededor del mercado (`navigation.ts`); no cubre toda la ciudad. Comercios y población contienen posiciones y personajes fijados para esa escena.
@@ -32,6 +32,15 @@ El objetivo es que todo el mapa actual comparta NPC, comercios, vehículos, inci
 | 9. Cierre de integración | Guardado/carga, presupuestos de simulación, pruebas prolongadas, audio, animación y mediciones de hardware. | Cadena completa de compra/asaltos/testigos/tráfico/policía/destrucción/replay en varias zonas; recursos acotados y perfilado real. Cada fase incorpora estas verificaciones antes de este cierre. |
 
 La grabación necesita que el historial de estados/eventos se diseñe en la fase 2. Su almacenamiento básico se introduce entonces, aunque la reproducción se entregue en la fase 8. Los bloqueos y cambios de materiales también deben formar parte de los contratos iniciales del mundo.
+
+## Aceptación de la base global · 0.5.0
+
+- IDs y estado de sesión compartidos entre las zonas, sin recrear personas, ocupantes, coches o cristales al cambiar el foco.
+- Rejilla jerárquica peatonal, cambios locales y reservas de paso. Red vial derivada del trazado completo: 25 cruces y 80 carriles dirigidos, con destinos y reservas.
+- Diez civiles, incluidos seis residentes fuera del bloque inicial. Un disparo real lejos del mercado genera percepción, aviso y última posición conocida mediante el mismo código que los incidentes cercanos.
+- Cuotas de cuatro decisiones civiles y dos rutas por tick; continuidad física y ocultación visual distante. Los cuerpos siguen residentes: no se presenta streaming físico ni simulación lejana por horarios como implementados.
+
+La aceptación funcional de fase 2 está cubierta por `tests/city-simulation.test.ts` junto a las suites de gameplay existentes. La fase 3 sigue con objetivos, objetos y conversaciones. Las reservas de puertas/colas de comercio, transferencias de asientos, aparcamiento y patrullas corresponden a sus fases posteriores. La apertura file:// de fase 1 y la aceptación WebGPU en hardware utilizable continúan pendientes por los límites documentados del entorno.
 
 ## Decisiones para ampliar lo existente
 

@@ -1,12 +1,22 @@
-# Estado del proyecto — Viceblock 0.4.1
+# Estado del proyecto — Viceblock 0.5.0
 
-La versión activa es la entrega Mercado Palma de las primeras capturas, restaurada íntegramente sobre main por petición del usuario. Session controla un distrito compacto con cuatro civiles, tres coches autónomos, comerciante, pistola, testigos, dos policías a pie, teléfono y dos escaparates destructibles. El HUD, mapa, presentación y controles son los de esa entrega.
+La versión activa es la entrega Mercado Palma de las primeras capturas, restaurada íntegramente sobre main por petición del usuario. Session controla un distrito compacto con diez civiles distribuidos y tres coches autónomos con destinos, comerciante, pistola, testigos, dos policías a pie, teléfono y dos escaparates destructibles. El HUD, mapa, presentación y controles son los de esa entrega.
 
 La conducción y los distritos del sistema anterior no forman parte del runtime activo. Su historial y documentación se conservan. No se trata de la integración anterior con otro HUD.
 
 Consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md) para el alcance y verificaciones y [.ai/SIMULATION.md](.ai/SIMULATION.md) para contratos activos.
 
-La primera implementación del plan añade `jugar/index.html`, generado reproduciblemente con JS/CSS/fuentes/WASM/licencias integrados y sin dependencias nuevas. El modo web de desarrollo se conserva. El límite de validación `file://` y el contrato futuro de partidas están en [.ai/PORTABLE.md](.ai/PORTABLE.md). Esta entrega no incorpora todavía la ampliación de NPC, vehículos, nueve tiendas o replay.
+La primera implementación del plan añade `jugar/index.html`, generado reproduciblemente con JS/CSS/fuentes/WASM/licencias integrados y sin dependencias nuevas. El modo web de desarrollo se conserva. El límite de validación `file://` y el contrato futuro de partidas están en [.ai/PORTABLE.md](.ai/PORTABLE.md). El mismo empaquetado integra la ampliación 0.5.0 descrita a continuación; las nueve tiendas y el replay siguen pendientes.
+
+## Entrega 0.5.0 · Fase 2 funcional
+
+Navegación jerárquica sobre 48 zonas de rejilla, actualizaciones de obstáculos localizadas, conservación de rutas todavía válidas y reservas con cesión de paso. Se incorporan seis residentes con IDs y recorridos propios, además de los cuatro del mercado. Máximo cuatro decisiones civiles y dos búsquedas de rutas por tick.
+
+Los mismos tres coches usan 80 carriles sobre 25 intersecciones, destinos cambiantes y semáforos instanciados. No hay conducción del jugador todavía. Los personajes se atenúan a 64–80 m y se ocultan a 84 m; sus cuerpos y estado continúan simulándose. No se ha incorporado streaming físico.
+
+Las pruebas ejercitan rutas por el distrito real, cruce de peatones, tráfico por otras calles, continuidad de identidad/daño y denuncia de un disparo alejado sin conocimiento policial de la posición posterior del jugador. La fase 3 ampliará actividades, objetos y conversación contextual; fases posteriores añaden aparcamiento, robo, nueve tiendas y replay.
+
+Tipos, 32 pruebas, build y comprobaciones reproducibles aprobados. Web y ZIP real dentro de iframe de otro origen verificados en escritorio/táctil con WebGL 2/SwiftShader, sin errores ni recursos externos. La aceptación WebGPU en hardware utilizable y las mediciones físicas siguen pendientes. Resultados y hashes en `.ai/CURRENT_STATE.md`, `.ai/ITCH.md` y `.ai/PORTABLE.md`.
 
 ## Base global de 0.4.0
 

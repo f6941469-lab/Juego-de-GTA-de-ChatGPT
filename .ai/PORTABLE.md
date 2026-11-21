@@ -1,4 +1,4 @@
-# Entrega portable — Mercado Palma 0.4.1
+# Entrega portable — Mercado Palma 0.5.0
 
 ## Archivo y compilación
 
@@ -10,7 +10,7 @@ El generador rechaza múltiples chunks, imports pendientes, assets separados, UR
 
 `npm run build` genera tanto `dist/` para hosting como `jugar/index.html`. `npm run check:portable` recompila en memoria y compara byte por byte con el archivo guardado; no lo modifica. CI reconstruye, comprueba que el entregable versionado no haya cambiado y lo adjunta como artefacto descargable.
 
-La identificación portable es `data-delivery="portable"`, `data-build="mercado-palma-0.4.1"` y **VERSIÓN 0.4.1 · SIN CONEXIÓN**. El juego sigue necesitando WebGL 2, JavaScript y una interacción para activar audio. No usa Service Worker ni requiere conexión. Las preferencias gráficas siguen siendo opcionales: fallar IndexedDB no impide arrancar.
+La identificación portable es `data-delivery="portable"`, `data-build="mercado-palma-0.5.0"` y **VERSIÓN 0.5.0 · SIN CONEXIÓN**. El juego sigue necesitando WebGPU o WebGL 2, JavaScript y una interacción para activar audio. No usa Service Worker ni requiere conexión. Las preferencias gráficas siguen siendo opcionales: fallar IndexedDB no impide arrancar.
 
 ## Comprobación gráfica reproducible
 
@@ -57,3 +57,18 @@ El HTML final ocupa 3.252.603 bytes y su SHA-256 es `eb91d48f6afd14eadc8643ea31c
 ## Exportación itch.io 0.4.1
 
 `publicar/viceblock-itch.zip` contiene el portable compilado como único `index.html` en la raíz. El HTML conserva sus recursos y licencias integrados. Se corrige además el enfoque inicial en frames de otro origen. La estructura, comprobaciones y resultados de esta entrega están en [ITCH.md](ITCH.md).
+
+## Entrega 0.5.0 · 2026-11-21
+
+Tipos, 32 pruebas Vitest en siete archivos, build web/portable/ZIP, check:portable y check:itch aprobados. Python zipfile confirmó entrada única `index.html`, CRC e igualdad exacta con el HTML portable.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.261.299 | `b43f69f9433e1b6c6dee3de540064a3deefd6834fcfa083be755b0fec7af1408` |
+| `publicar/viceblock-itch.zip` | 1.173.095 | `0b330516c87db81a07b0ca5308a66c0a8c02197e9f71b7127176e20023c7d691` |
+
+El ZIP final pasó los flujos completos en iframe sandbox de otro origen: escritorio 960×640 y táctil 390×844, Chromium 156.0.8078.79/SwiftShader, backend WebGL 2. Cero errores de JavaScript/consola, solicitudes externas o rutas faltantes. Informe `/tmp/viceblock-050-itch/report.json`.
+
+La entrega web de producción también pasó en ambos tamaños, sin errores. Informe `/tmp/viceblock-050-web/report.json`. Se inspeccionaron las vistas de calle y móvil; la captura web nocturna muestra el mercado a las 22:00. El smoke espera ahora el cierre del diálogo y la actualización del reloj antes de capturar la noche.
+
+La prueba del ZIP usa alojamiento local; no publica en una cuenta de itch.io. WebGPU en hardware utilizable, mediciones físicas y file:// mantienen los límites de validación documentados.

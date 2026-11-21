@@ -25,7 +25,9 @@ export function createPolice(scene: Scene, physics: Physics, navigation: Navigat
     if (incidents.has(incident)) return;
     incidents.add(incident);
     if (incidents.size > 96) incidents.delete(incidents.values().next().value!);
-    lastKnown = { ...point }; identified ||= known; searchTime = 22;
+    lastKnown = { ...point }; identified ||= known;
+    const approach = Math.min(...units.map(unit => planarDistance(unit.actor.position, point)));
+    searchTime = Math.min(70, 22 + Math.max(0, approach - 35) / 2.8);
     if (state !== 'pursue') state = 'respond';
   }
   return {

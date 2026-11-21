@@ -142,6 +142,9 @@ try {
   for (let i = 0; i < 7; i++) await page.keyboard.press('ArrowLeft');
   await game.waitForFunction(() => document.querySelector('#time-output').value === '22:00');
   await game.locator('#resume-button').click();
+  await game.locator('#game-dialog').waitFor({ state: 'hidden' });
+  await game.waitForFunction(() => document.querySelector('#hud-time').textContent === '22:00');
+  await game.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.screenshot({ path: join(output, 'night.png') });
   report.checks.push('Night setting 22:00 and interior lighting capture');
   await page.goto('about:blank'); await page.close();

@@ -1,12 +1,18 @@
-# Viceblock 0.4.1 · Mercado Palma
+# Viceblock 0.5.0 · Mercado Palma
 
-Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, cuatro civiles con rutinas, tres coches autónomos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. El alcance es local y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
+Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, diez civiles con rutas por distintos barrios, tres coches autónomos con destinos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. La simulación comparte estado en todo el distrito y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
 ## Sustitución del sistema anterior
 
 Esta versión usa íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y la tienda de Mara. El motor de simulación, interfaz y mapa de la integración anterior fueron sustituidos por esta entrega por petición del usuario. La conducción, los distritos adicionales y la policía avanzada anteriores quedan fuera de la versión activa; su código permanece en el historial de Git.
 
-La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.4.1 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.4.1**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
+La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.5.0 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.5.0**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
+
+## Ciudad compartida · fase 2
+
+Los peatones buscan rutas entre zonas y ceden espacio al cruzarse. Seis vecinos nuevos viven fuera del bloque inicial y pueden percibir, huir o denunciar incidentes mediante las mismas reglas del mercado. Los tres coches recorren una red de 25 cruces y 80 carriles dirigidos, con destinos, semáforos y reservas de cruce.
+
+La simulación conserva las identidades y daños al desplazarse por el distrito. Las decisiones tienen una cuota de cuatro civiles por tick; las rutas, dos búsquedas de hasta 8192 celdas. Los personajes alejados dejan de dibujarse gradualmente mientras su estado continúa. F3 muestra estas cuotas. Las conversaciones, la conducción del jugador y las nueve tiendas corresponden a las siguientes fases.
 
 ## Publicar en itch.io
 

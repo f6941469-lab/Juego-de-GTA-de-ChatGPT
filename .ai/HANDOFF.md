@@ -1,4 +1,24 @@
-# Continuación — Mercado Palma 0.4.1
+# Continuación — Mercado Palma 0.5.0
+
+El usuario confirmó que 0.4.1 funciona en itch.io y autorizó continuar el plan. La base funcional de fase 2 queda implementada en 0.5.0. Mantener el runtime de Mercado Palma; no restaurar el motor/HUD anterior.
+
+## Contratos que se conservan
+
+- Session prepara a jugador/actores/tráfico, avanza Rapier una vez y lee poses. Render interpolado.
+- Navigation: jerarquía de 48 zonas, dos búsquedas de hasta 8192 visitas conjuntas por tick, actualización de obstáculo local, rutas vigentes conservadas y reservas/cesión físicas. Ver NAVIGATION.md.
+- Diez civiles con IDs estables y seis recorridos de barrio nuevos. Cursor rotativo: cuatro decisiones civiles por tick con cadencia por distancia/urgencia. Sus cuerpos siguen residentes; fade/cull visual distante.
+- RoadNetwork: 25 cruces, 80 carriles, mismos tres coches/ocupantes, destinos y reservas de cruce completo. No hay aparcamiento ni conducción/robo.
+- Un aviso distante conserva la posición del incidente y aumenta el plazo de aproximación; las posiciones posteriores exigen visión policial.
+
+`npm run build` genera dist, `jugar/index.html` y `publicar/viceblock-itch.zip`. El ZIP contiene exclusivamente el HTML compilado como index en la raíz. Preservar el formato que funciona en itch.io y comprobarlo con check:portable, check:itch y `tests/itch-smoke.mjs`. No publicar el ZIP fuente de GitHub como juego HTML.
+
+La siguiente unidad del plan es fase 3: actividades/objetivos y objetos desde el inicio, conversación contextual en español e interrupciones por peligro. Mantener las cuotas, la percepción y los IDs; sin incorporar LLM todavía. Colas, nueve tiendas, transferencias de asientos, robo y replay corresponden a fases posteriores. El estado por zonas sigue siendo de la sesión, sin guardado en disco ni streaming físico.
+
+Tipos, 32 pruebas, build y comparación reproducible aprobados. Smoke web de producción y ZIP real en iframe de otro origen aprobados en escritorio y táctil, cero errores y recursos externos. Rutas de informes y aceptación de la entrega en CURRENT_STATE.md, PORTABLE.md e ITCH.md. Reproducir navegador con los comandos de abajo usando `/tmp/viceblock-050-web` o `/tmp/viceblock-050-itch` como salida. No usar SwiftShader como medida de FPS de hardware. WebGPU físico y file:// siguen pendientes por los límites ya documentados.
+
+## Registro de continuación de 0.4.1
+
+### Exportación 0.4.1
 
 El encargo actual corrige la exportación para itch.io. `npm run build` y `build:itch` generan `publicar/viceblock-itch.zip`, que incluye el HTML compilado como `index.html` en la raíz. El enlace de descarga de README apunta a ese archivo listo para subir. El ZIP fuente del repositorio conserva la estructura de desarrollo. `check:itch` verifica la vigencia del paquete. La prueba `tests/itch-smoke.mjs` ejecuta el contenido del ZIP en un iframe sandbox de otro origen. Ver [ITCH.md](ITCH.md).
 

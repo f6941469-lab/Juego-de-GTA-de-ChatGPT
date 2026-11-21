@@ -1,12 +1,12 @@
-# Trabajo pendiente — Mercado Palma 0.4.1
+# Trabajo pendiente — Mercado Palma 0.5.0
 
-- Validar `jugar/index.html` mediante apertura real file:// sin conexión en un navegador que permita archivos locales. El Chromium administrado lo bloquea; no sustituir esta aceptación por la prueba inline. Ver [../PORTABLE.md](../PORTABLE.md).
-- Completar la fase 2 de [../../ROADMAP.md](../../ROADMAP.md): navegación jerárquica/vial, reservas, actualización local y actividades de otras zonas sobre los IDs, zonas e historial incorporados; los eventos prepararán también replay y futura narrativa.
+La base funcional de la fase 2 está implementada: jerarquía y cambios locales, reservas peatonales/viales, tráfico por destinos, diez civiles y prueba de incidente alejado con continuidad. Contratos en [../SIMULATION.md](../SIMULATION.md) y [../NAVIGATION.md](../NAVIGATION.md).
 
-- Medir fluidez y memoria con GPU física; no usar SwiftShader como benchmark de hardware.
-- Profundizar navegación/colas y ampliar zonas de simulación antes de aumentar población.
-- Incorporar conducción y entrada/salida progresivamente sobre el nuevo runtime cuando se solicite.
-- Implementar replay real acotado antes de habilitar video.
-- Escuchar y ajustar las señales de audio en hardware real.
+- Fase 3 de [../../ROADMAP.md](../../ROADMAP.md): objetivos y actividades diferenciados desde el inicio, objetos, horarios y conversación contextual en español. Conservar percepción, memoria y cuotas; sin incorporar LLM todavía.
+- Fases 4–5: aparcamiento, transferencias reales de ocupantes, robo y conducción; después nueve tiendas, colas, economía y consumo de NPC. Las reservas actuales son de paso y cruces completos.
+- Fases posteriores: destrucción ampliada, policía avanzada y replay POV acotado antes de habilitar video.
+- Validar el HTML por file:// en un navegador que permita archivos locales. El Chromium administrado bloquea esa apertura; la prueba del ZIP en iframe tiene otro alcance.
+- Validar WebGPU en un dispositivo utilizable y medir fluidez, memoria y temperatura con GPU física. SwiftShader sirve para comprobar flujos.
+- Escuchar y ajustar audio en hardware real. Guardar/Cargar sigue pendiente; el estado por zonas es de la sesión, sin persistencia en disco.
 
 El sistema anterior y sus tareas permanecen en el historial hasta d565cdc.

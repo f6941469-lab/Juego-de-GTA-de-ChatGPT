@@ -1,9 +1,9 @@
 ---
 document_id: CORE-DECISIONS
 status: active
-last_updated: 2026-11-20
-verified_against: "248f8b44b7aebf77fc38a0d5c0bde996e680cec5"
-verification_scope: "static-analysis-only"
+last_updated: 2026-11-21
+verified_against: "Mercado Palma 0.5.0"
+verification_scope: "typecheck + 32 pruebas + build; navegador en CURRENT_STATE.md"
 ---
 
 # Registro de Decisiones de Arquitectura (`DECISIONS.md`)
@@ -11,6 +11,16 @@ verification_scope: "static-analysis-only"
 Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) junto con decisiones arquitectónicas identificadas en código y propuestas futuras.
 
 ---
+
+## 0.5.0 · Extender la base global con trabajo acotado
+
+Se conserva Session, sus actores y su único paso físico. Navigation incorpora una jerarquía aproximada de zonas y un reintento global dentro de la cuota A* conjunta, evitando multiplicar búsquedas. Los obstáculos cambian por rectángulo y la revisión conserva las rutas todavía libres. Las reservas duran un tick y la cesión se ejecuta mediante movimiento físico.
+
+RoadNetwork se deriva del trazado existente y está acotada a 25 nodos/80 carriles. Los mismos tres coches reciben destinos; no se incorporan todavía conducción ni transferencia de ocupantes. Un cruce tiene un propietario, decisión conservadora que deberá evolucionar al aumentar la densidad. Las señales se instancian y sus colores solo cambian de fase.
+
+La ampliación añade seis residentes con recorridos definidos para el distrito y un límite de cuatro decisiones civiles por tick con cursor rotativo. Las poses continúan a distancia; la ocultación visual no reconstruye cuerpos. Esta entrega satisface la aceptación funcional de fase 2 y deja horarios, conversación, comercio múltiple y streaming físico para los hitos posteriores. Detalles en [NAVIGATION.md](NAVIGATION.md); pruebas en `tests/city-simulation.test.ts`.
+
+## Decisiones anteriores
 
 ### `ADR-0001` — Three.js (WebGL 2) y Rapier3D WASM sin motor comercial
 - **Fecha:** 2026-11-18

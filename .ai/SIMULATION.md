@@ -1,6 +1,6 @@
 # Contratos de la escena Mercado Palma
 
-La entrega 0.4.0 amplía navegación y estado global sobre estos contratos de gameplay. Conserva el empaquetado portable mediante `scripts/build-portable.mjs`; ver [PORTABLE.md](PORTABLE.md). No se ejecuta una simulación distinta al abrir el HTML integrado.
+La entrega 0.5.0 amplía navegación y estado global sobre estos contratos de gameplay. Conserva el empaquetado portable mediante `scripts/build-portable.mjs`; ver [PORTABLE.md](PORTABLE.md). No se ejecuta una simulación distinta al abrir el HTML integrado.
 
 ## Tiempo y física
 
@@ -12,7 +12,7 @@ Rapier mantiene autoridad para cuerpos, rayos, colisiones y obstrucciones de cá
 
 La tienda sustituye exclusivamente el lote procedural `3:3:1`. Club Neón y los demás hitos permanecen. Entrada al sur; puerta central abierta, sin teleport. `shop.ts` es la fuente de posiciones de entrada, productos, mostrador y comerciante. Las paredes, techo, mostrador y estantes son cajas independientes. Los dos escaparates pertenecen a Feedback.
 
-Navigation usa una rejilla A* de celdas de 0,6 m sobre la parte transitable del distrito, inflada para cápsulas y derivada de las cajas que afectan a peatones. Reutiliza buffers y cola de prioridad. Session abre un presupuesto de dos rutas por tick y cada búsqueda admite 8192 visitas. La destrucción reconstruye la rejilla e incrementa su revisión para que los actores renueven las rutas. La jerarquía por zonas y las actualizaciones locales están pendientes. El zócalo de un escaparate roto continúa siendo sólido; quitar cristal no inventa una puerta a nivel de suelo.
+Navigation usa una rejilla A* de celdas de 0,6 m sobre la parte transitable del distrito, inflada para cápsulas y derivada de las cajas que afectan a peatones. Reutiliza buffers y cola de prioridad. Session abre un presupuesto de dos rutas por tick y cada búsqueda admite 8192 visitas. La jerarquía de 48 zonas limita un corredor inicial, con reintento global dentro del presupuesto conjunto. La destrucción actualiza el rectángulo del obstáculo y sus enlaces; los actores solo descartan rutas que dejaron de ser transitables. Las reservas por tick y la cesión lateral evitan cruces frontales sin teletransportar. Contratos en [NAVIGATION.md](NAVIGATION.md). El zócalo de un escaparate roto continúa siendo sólido; quitar cristal no inventa una puerta a nivel de suelo.
 
 Actor comparte controlador, ruta, giro interpolado, salud y pose. Los civiles tienen rutinas con destinos, esperas y recuperación. El comerciante vuelve a su puesto. Los bloqueos tienen reintento y cambio de etapa; no hay rutas aleatorias. Agentes incapacitados permanecen en el suelo con colisión deshabilitada hasta reiniciar la escena.
 
@@ -36,7 +36,7 @@ Romper cristal oculta la malla, elimina su collider y actualiza navegación. Poo
 
 ## Tráfico, sonido y recursos
 
-Tres coches con conductor visible y asiento ocupado recorren un circuito de carril con curvas entre avenidas 0/28 y calles 7/45. Aceleran/frenan, respetan fases compartidas y hacen barridos de caja contra peatones, coches y geometría. Los neumáticos descansan en Y=0; collider y barrido comparten un desplazamiento vertical que cubre la carrocería. Son cuerpos cinemáticos con una caja de colisión aproximada, no una simulación de neumáticos o suspensión. El jugador no puede conducirlos. Las luces de semáforo pertenecen al mismo reloj de tráfico; la geometría estática queda apagada.
+Tres coches con conductor visible y asiento ocupado recorren 80 carriles dirigidos entre 25 cruces, con destinos cambiantes, uniones curvas y reservas de intersección. Aceleran/frenan, respetan fases compartidas y hacen barridos de caja contra peatones, coches y geometría. Los neumáticos descansan en Y=0; collider y barrido comparten un desplazamiento vertical que cubre la carrocería. Son cuerpos cinemáticos con una caja de colisión aproximada, no una simulación de neumáticos o suspensión. El jugador no puede conducirlos. Las luces de semáforo pertenecen al mismo reloj de tráfico; la geometría estática queda apagada.
 
 Web Audio genera sonidos originales: pasos del jugador, motores, disparos, recarga, rotura, compras, impactos, avisos y señal de respuesta policial. Máximo ocho voces puntuales y cuatro osciladores continuos; atenuación por distancia y deduplicación. No hay voces humanas ni grabaciones ambientales. El mute está en el teléfono. El contexto se desbloquea al jugar y se suspende en pausa.
 
@@ -46,4 +46,4 @@ Dispose libera controladores/cuerpos, mallas de instancias, geometrías, materia
 
 WorldState registra los objetos existentes con IDs estables. El estado vivo sigue en sus módulos originales y el registro conserva referencias a esas entidades. Cambiar la zona o la distancia al jugador conserva identidad, salud, ocupación y daño. La cuota es de 128 entidades y 60 instantáneas a un máximo de cuatro muestras por segundo. Las muestras copian poses y estados para separar historia y presente. Reiniciar la sesión restaura primero los sistemas y limpia después el historial.
 
-Los incidentes incluyen el ID de la zona de su posición inicial. Journal conserva la copia de esa posición y sus cuotas previas. Las decisiones civiles usan la distancia registrada y la urgencia para espaciar su evaluación. Rapier y la interpolación continúan al ritmo habitual. La red de tráfico sigue siendo el circuito existente y la población mantiene las cuatro personas de Mercado Palma.
+Los incidentes incluyen el ID de la zona de su posición inicial. Journal conserva la copia de esa posición y sus cuotas previas. Las decisiones civiles usan la distancia registrada y la urgencia para espaciar su evaluación. Rapier y la interpolación continúan al ritmo habitual. La población tiene diez civiles, seis de ellos con recorridos de otros barrios. Un cursor rotativo limita las decisiones a cuatro por tick. Los mismos actores perciben incidentes lejanos; la denuncia conserva lugar e identificación. El plazo policial de aproximación incorpora distancia sin revelar el movimiento posterior del jugador. La red vial comparte los IDs de los tres coches existentes.

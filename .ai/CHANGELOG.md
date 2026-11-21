@@ -1,14 +1,26 @@
 ---
 document_id: CORE-CHANGELOG
 status: active
-last_updated: 2026-11-20
-verified_against: "173aa01-dirty (Phase 7)"
-verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 live test"
+last_updated: 2026-11-21
+verified_against: "Mercado Palma 0.5.0"
+verification_scope: "typecheck + 32 pruebas + build; navegador en CURRENT_STATE.md"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
+
+## 0.5.0 · Base funcional de fase 2
+
+- Jerarquía peatonal de 48 zonas, A* de corredor y reintento dentro del límite conjunto de 8192 visitas. Actualización local de colliders y enlaces; conservación de rutas vigentes.
+- Reservas por tick con ocupación de jugador/actores y cesión mediante controlador Rapier.
+- Seis perfiles de barrio y diez civiles con IDs estables; máximo cuatro decisiones por tick mediante cursor rotativo. Huida local para vecinos alejados.
+- RoadNetwork derivada de avenidas/calles: 25 nodos y 80 carriles, Dijkstra, destinos cambiantes, uniones curvas y reservas. Se conservan tres coches, cuerpos y conductores. Reinicio restaura destinos y reservas.
+- Semáforos en un InstancedMesh, colores por fase; fade/cull de actores a distancia conservando estado y física. F3 expone cuotas.
+- Plazo policial de aproximación según distancia, manteniendo las reglas de evidencia/última observación.
+- Siete pruebas nuevas verifican cambios locales, reservas, cruce físico, rutas sobre calles/colliders reales, cuotas, continuidad y denuncia mediante disparo real fuera del mercado. Tipos, 32 pruebas y build aprobados.
+- Web y ZIP final en iframe de otro origen aprobados en escritorio y táctil, cero errores y recursos externos.
+- Empaquetado portable e itch.io preservado sin nuevas dependencias. Resultados de navegador y hashes de la entrega en CURRENT_STATE.md, PORTABLE.md e ITCH.md.
 
 ## 0.4.1 · Exportación de publicación para itch.io
 

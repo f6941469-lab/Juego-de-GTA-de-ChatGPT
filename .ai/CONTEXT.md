@@ -1,13 +1,11 @@
-# Contexto activo — Viceblock 0.4.1
+# Contexto activo — Viceblock 0.5.0
 
-El usuario solicitó explícitamente sustituir el sistema anterior por la versión de las primeras capturas, publicada originalmente en work@5660edc. La integración de d565cdc que conservaba el runtime anterior queda sustituida. La referencia visual y funcional es Mercado Palma, con el HUD de efectivo/salud a la derecha, minimapa compacto y teléfono verde.
+El usuario sustituyó explícitamente el sistema anterior por Mercado Palma, publicada originalmente en work@5660edc. Mantener su HUD, minimapa compacto y teléfono verde. No restaurar el antiguo SimulationEngine ni conducción/distritos descartados.
 
-Stack sin cambios de dependencias: TypeScript/Vite/Three.js/Rapier/Web Audio. Una simulación Session a paso fijo 60 Hz; render interpolado. Versión visible en portada y atributo data-build del HTML. Tests npm son 25 pruebas del código activo; las suites del sistema retirado permanecen en Git.
+TypeScript/Vite/Three.js/Rapier/Web Audio, sin nuevas dependencias. `src/main.ts` usa Session, dueña de un único paso físico a 60 Hz; el render interpola. WebGPURenderer con compatibilidad WebGL 2 y shaders TSL, límites de píxeles y sombras. La aceptación WebGPU en hardware utilizable sigue pendiente; ver RENDERING.md.
 
-Consultar CURRENT_STATE.md, HANDOFF.md y SIMULATION.md. Los directorios systems/ y architecture/ contienen documentación histórica marcada como archivada.
+La base funcional de fase 2 está entregada: WorldState con IDs y zonas, jerarquía peatonal y cambios locales, reservas, diez civiles y tráfico por destinos sobre 25 cruces/80 carriles. Las decisiones civiles tienen cuota de cuatro por tick y las rutas de dos búsquedas de 8192 visitas. Los actores lejanos continúan físicamente aunque se oculten. No existe streaming físico ni guardado de partida. El incidente alejado se verifica a través de Session y del arma real.
 
-Primera implementación del plan autorizada: `scripts/build-portable.mjs` usa Vite existente para generar `jugar/index.html` con recursos/licencias integrados. `npm run build` genera ambas entregas; `build:portable` solo la portable y `check:portable` comprueba igualdad. No se han añadido dependencias o funciones de simulación. Ver PORTABLE.md; la política de Chromium bloquea file://, por lo que el modo inline offline no acredita doble clic.
+`npm run build` genera web, `jugar/index.html` y `publicar/viceblock-itch.zip`, que contiene un único index compilado en la raíz. El usuario confirmó el funcionamiento en itch.io de 0.4.1; preservar esa entrega. `check:portable` y `check:itch` comprueban reproducibilidad. El ZIP se prueba en iframe de otro origen; file:// continúa bloqueado por la política del navegador de este entorno.
 
-La entrega 0.4.0 inicia la base global de la fase 2. Navigation cubre el mapa transitable con cuotas A*. WorldState registra IDs, zonas y muestras de historia sin duplicar las entidades existentes. El renderizador usa WebGPU si obtiene un dispositivo y WebGL 2 como compatibilidad, con cielo/agua TSL y límites de píxeles. Los límites activos están en RENDERING.md. La ampliación de población, nueve tiendas, conducción y replay siguen pendientes.
-
-La entrega 0.4.1 añade el ZIP de carga para itch.io en `publicar/viceblock-itch.zip`. El archivo contiene exclusivamente el HTML compilado como `index.html` en la raíz. El siguiente hito de simulación continúa tras esta corrección de exportación. Véase ITCH.md.
+Consultar CURRENT_STATE.md, HANDOFF.md, SIMULATION.md y NAVIGATION.md. Las suites activas son 32 pruebas en siete archivos. La siguiente fase es vida civil y diálogo contextual; conducción/robo, nueve tiendas, policía avanzada y replay siguen en ROADMAP.md. Las carpetas systems/ y architecture/ están archivadas.

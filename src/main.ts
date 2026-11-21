@@ -12,6 +12,9 @@ import { createAtmosphere, createRenderer } from './renderer/renderer'
 import { createUI } from './ui/ui'
 import { createGameplayUI } from './ui/gameplay'
 import { createSession, type Session } from './simulation/session'
+import { navigationLimits } from './simulation/navigation'
+import { populationLimits } from './simulation/population'
+import { worldLimits } from './simulation/world-state'
 import type { Physics } from './physics/physics'
 import { buildDistrict } from './world/district'
 
@@ -165,7 +168,7 @@ async function startGame() {
       display.render(worldScene, startView ? intro : camera)
       if (debug) {
         const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics!.world.colliders.len(), 1 + session!.population.people.length + session!.police.units.length, simulationMs)
-        if (reading) ui.setDebug(`${reading}\n${session!.world.count} entidades · ${session!.world.historyCount}/60 muestras · ${session!.navigation.stats.deferred} rutas diferidas\n${display.backend} · ${display.renderer.domElement.width} × ${display.renderer.domElement.height}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
+        if (reading) ui.setDebug(`${reading}\n${session!.world.count} entidades · ${session!.world.historyCount}/${worldLimits.historyFrames} muestras\n${session!.population.stats.decisions}/${populationLimits.decisionsPerStep} decisiones · ${session!.navigation.stats.lastVisited}/${navigationLimits.visitedPerSearch} celdas\n${session!.traffic.network.lanes.length} carriles · ${session!.navigation.stats.waits} esperas · ${session!.navigation.stats.deferred} rutas diferidas\n${display.backend} · ${display.renderer.domElement.width} × ${display.renderer.domElement.height}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
       }
       frameId = requestAnimationFrame(safeFrame)
     }

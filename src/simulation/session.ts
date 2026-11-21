@@ -20,7 +20,7 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
   const journal = new Journal(); const economy = new Economy(); const weapon = new Weapon();
   const world = new WorldState();
   const navigation = new Navigation(boxes);
-  const feedback = createFeedback(scene, physics, (glass) => navigation.rebuild([...boxes, ...glass]));
+  const feedback = createFeedback(scene, physics, (glass, changed) => navigation.rebuild([...boxes, ...glass], changed));
   const population = createPopulation(scene, physics, navigation, journal, player.collider.handle);
   const traffic = createTraffic(scene, physics, journal);
   let now = 0; let overlay: InputContext = 'world'; let phonePage: PhonePage = 'home'; let selection = 0;
@@ -31,6 +31,8 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
   let emptyLatched = false;
   const police = createPolice(scene, physics, navigation, journal, player.collider.handle, () => { detention = true; });
   const actors = [...population.people.map((person) => person.actor), ...police.units.map((unit) => unit.actor)];
+  const walkers = [{ owner: player.collider.handle, position: player.position },
+    ...actors.map(actor => ({ owner: actor.collider.handle, position: actor.position, get active() { return actor.health > 0; } }))];
   function registerActor(id: string, actor: Actor) {
     world.register({ id, kind: 'person', position: actor.position,
       get heading() { return actor.heading; }, get health() { return actor.health; } });
@@ -44,7 +46,7 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
     world.register({ id: car.driverId, kind: 'person', position: car.position, vehicleId: car.id });
     world.register({ id: car.seatId, kind: 'seat', position: car.position, occupantId: car.driverId, vehicleId: car.id });
   }
-  world.register({ id: 'shop:mercado-palma', kind: 'shop', position: shop.counter });
+  world.register({ id: shop.id, kind: 'shop', position: shop.counter });
   for (const window of feedback.windows) {
     world.register({ id: window.id, kind: 'damage', position: window.box, get health() { return window.intact ? 100 : 0; } });
   }
@@ -137,7 +139,7 @@ export function createSession(scene: Scene, camera: PerspectiveCamera, physics: 
     command, select,
     closeOverlay() { context('world'); },
     step(dt: number, controls: MovementInput & { aim: boolean; fire: boolean }) {
-      navigation.beginStep();
+      navigation.beginStep(walkers);
       now += dt; const input = overlay === 'world' ? controls : idle;
       weapon.tick(dt); aim = weapon.equipped && (input.aim || input.fire);
       player.setWeapon(weapon.equipped, aim); previousFeet.copy(player.position); player.prepareStep(dt, input);

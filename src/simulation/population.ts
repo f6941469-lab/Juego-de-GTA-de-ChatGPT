@@ -5,6 +5,9 @@ import { createActor, type Actor } from './actor';
 import { eyes, Journal, planarDistance, type WorldEvent } from './model';
 import type { Navigation } from './navigation';
 import type { WorldState } from './world-state';
+import { cityResidents } from './city-residents';
+
+export const populationLimits = { decisionsPerStep: 4 } as const;
 
 export type CivilianState = 'routine' | 'browsing' | 'nervous' | 'reacting' | 'reporting' | 'fleeing' | 'recovering' | 'down';
 interface Civilian {
@@ -21,7 +24,8 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     { id: 'person:tomas', name: 'Tomás', spawn: walk[1], role: 'walker', color: 0x7096b1, personality: 'call', route: [walk[0], walk[1], walk[2]] },
     { id: 'person:sol', name: 'Sol', spawn: walk[0], role: 'walker', color: 0xe1ad6a, personality: 'flee', route: [walk[1], walk[2], walk[0]] },
   ] as const;
-  const people: Civilian[] = specs.map((spec) => ({ ...spec, route: [...spec.route], actor: createActor(scene, physics, navigation, spec.spawn, spec.color, spec.role === 'cashier' ? Math.PI : 0), nextDecision: 0, lastDecision: 0, state: 'routine', timer: 0, stop: 0, cursor: 0, fearUntil: 0 }));
+  const definitions = [...specs, ...cityResidents(navigation)];
+  const people: Civilian[] = definitions.map((spec) => ({ ...spec, route: [...spec.route], actor: createActor(scene, physics, navigation, spec.spawn, spec.color, spec.role === 'cashier' ? Math.PI : 0), nextDecision: 0, lastDecision: 0, state: 'routine', timer: 0, stop: 0, cursor: 0, fearUntil: 0 }));
   const safePlaces = [{ x: 8, y: 0.08, z: 51 }, { x: 22, y: 0.08, z: 51 }, { x: 34.3, y: 0.08, z: 41 }];
   function sees(person: Civilian, point: Point3, fov = true) {
     const { actor } = person; const distance = planarDistance(actor.position, point);
@@ -35,14 +39,23 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     person.timer = 0.35 + people.indexOf(person) * 0.18; person.fearUntil = event.time + 14;
     person.actor.goTo(undefined);
   }
+  let decisionCursor = 0;
+  const stats = { decisions: 0, deferred: 0 };
   const api = {
-    people,
+    people, stats,
     cashier: people[0],
     step(dt: number, now: number, player: Point3, armed: boolean, world?: WorldState) {
-      for (const person of people) {
+      stats.decisions = 0;
+      const first = decisionCursor;
+      decisionCursor = (decisionCursor + 1) % people.length;
+      for (let offset = 0; offset < people.length; offset++) {
+        const index = (first + offset) % people.length;
+        const person = people[index];
         const { actor } = person;
         if (actor.health <= 0) { person.state = 'down'; continue; }
         if (now < person.nextDecision) continue;
+        if (stats.decisions >= populationLimits.decisionsPerStep) { stats.deferred++; continue; }
+        stats.decisions++;
         const decisionDt = Math.max(dt, now - person.lastDecision);
         person.lastDecision = now;
         const tier = world?.tier(person.id) ?? 'near';
@@ -73,7 +86,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
           }
         } else if (person.state === 'fleeing') {
           if (actor.arrived || actor.stuck > 2.5) {
-            const destinations = [...safePlaces].sort((a, b) => planarDistance(b, person.memory?.event.position ?? player) - planarDistance(a, person.memory?.event.position ?? player));
+            const destinations = (index < 4 ? [...safePlaces] : [...person.route]).sort((a, b) => planarDistance(b, person.memory?.event.position ?? player) - planarDistance(a, person.memory?.event.position ?? player));
             actor.goTo(destinations[(actor.stuck > 2.5 ? 1 : 0)], 3.8);
           }
           if (now >= person.fearUntil) { person.state = 'recovering'; person.timer = 3; actor.goTo(undefined); }
@@ -90,12 +103,12 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
         } else if (person.state === 'browsing') {
           if (person.timer === 0) { person.stop = (person.stop + 1) % person.route.length; person.state = 'routine'; }
         } else {
-          actor.goTo(person.route[person.stop], 1.3 + people.indexOf(person) * 0.12);
+          actor.goTo(person.route[person.stop], 1.3 + (index % 4) * 0.12);
           if (actor.arrived || actor.stuck > 3) { person.state = 'browsing'; person.timer = person.role === 'customer' ? 3.5 : 1.2; actor.goTo(undefined); }
         }
       }
     },
-    reset() { for (const person of people) { person.actor.reset(); person.state = 'routine'; person.timer = person.cursor = person.stop = person.fearUntil = person.nextDecision = person.lastDecision = 0; person.memory = undefined; } },
+    reset() { decisionCursor = 0; stats.decisions = stats.deferred = 0; for (const person of people) { person.actor.reset(); person.state = 'routine'; person.timer = person.cursor = person.stop = person.fearUntil = person.nextDecision = person.lastDecision = 0; person.memory = undefined; } },
     dispose() { for (const person of people) person.actor.dispose(); },
   };
   return api;

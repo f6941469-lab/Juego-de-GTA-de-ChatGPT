@@ -1,4 +1,4 @@
-# Memoria activa — Mercado Palma 0.4.1
+# Memoria activa — Mercado Palma 0.5.0
 
 1. [CURRENT_STATE.md](CURRENT_STATE.md): sistema activo, sustitución autorizada y verificaciones actuales.
 2. [HANDOFF.md](HANDOFF.md): continuación, publicación y ejecución de la versión correcta.
@@ -12,9 +12,11 @@
 
 `src/main.ts` usa `createSession` desde `src/simulation/session.ts`; la interfaz es `src/ui/gameplay.ts` y el distrito se genera con `src/world/district.ts`.
 
-10. [RENDERING.md](RENDERING.md) describe el backend WebGPU/WebGL 2, los shaders TSL y los presupuestos activos de la entrega 0.4.0.
+10. [RENDERING.md](RENDERING.md) describe el backend WebGPU/WebGL 2, los shaders TSL y los presupuestos activos de la entrega 0.5.0.
 
 11. [ITCH.md](ITCH.md) describe el ZIP de publicación, la configuración de carga y la prueba del juego en un iframe de otro origen.
+
+12. [NAVIGATION.md](NAVIGATION.md): jerarquía peatonal, cambios locales, reservas y red vial global, incorporados en 0.5.0.
 
 ## Historial archivado
 

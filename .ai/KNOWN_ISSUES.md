@@ -1,18 +1,12 @@
-# Limitaciones activas — Mercado Palma 0.4.1
+# Limitaciones activas — Mercado Palma 0.5.0
 
-Consultar [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) y [CURRENT_STATE.md](CURRENT_STATE.md). No hay conducción del jugador, otros distritos, persecuciones policiales en coche ni replay de video en esta entrega. El tráfico recorre un circuito local y la policía actúa a pie. La fluidez en GPU física y la escucha humana del audio siguen pendientes.
+Consultar [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) y [CURRENT_STATE.md](CURRENT_STATE.md). Diez civiles y tres coches por destinos sobre la red vial global. No hay conducción del jugador, aparcamiento, otros distritos, persecuciones policiales en coche ni replay. La fase 3 ampliará actividades, objetos y conversaciones.
 
-El HTML portable ya se genera en `jugar/index.html`; la apertura `file://` está bloqueada por política del Chromium administrado y continúa pendiente de aceptación. No se ha eludido esa política; ver [PORTABLE.md](PORTABLE.md).
+Las reservas actuales son de celdas peatonales y de cruces viales completos. No incluyen colas/puertas comerciales ni transferencia de asientos. La simulación distante mantiene cuerpos físicos; solo se reducen decisiones y representación visual. Los horarios y el streaming físico siguen pendientes. El estado por zonas dura la sesión, no se guarda en disco.
 
-## Límites de la base global 0.4.0
+El ZIP dedicado de itch.io contiene el HTML compilado como único index en la raíz. El usuario confirmó que funciona en itch.io tras 0.4.1. Se mantiene la comprobación del paquete en un iframe de otro origen: [ITCH.md](ITCH.md).
 
-La rejilla peatonal cubre el mapa. Las búsquedas y el registro de entidades tienen cuotas. La jerarquía de navegación, el grafo vial con destinos, las reservas y las actualizaciones locales de obstáculos siguen pendientes. El tráfico mantiene el circuito existente y los cuatro civiles sus actividades del mercado. El historial acotado prepara el replay futuro. La medición de WebGPU en GPU física y el comportamiento térmico continúan pendientes.
-
-WebGPU en Dawn/SwiftShader del entorno produce errores de instancia incluso con un triángulo independiente del juego. La aceptación del backend WebGPU queda pendiente en un dispositivo utilizable. Véase [RENDERING.md](RENDERING.md).
-
-## Exportación para itch.io
-
-Se corrigió la estructura de publicación con un ZIP dedicado cuyo único archivo es el HTML compilado en la raíz. El archivo fuente del repositorio incluye la plantilla de desarrollo en esa ruta. El paquete de carga y sus pruebas están documentados en [ITCH.md](ITCH.md).
+La apertura file:// continúa bloqueada por política del Chromium administrado; ver [PORTABLE.md](PORTABLE.md). WebGPU en Dawn/SwiftShader falla también con un triángulo independiente; su aceptación en hardware utilizable, el perfilado físico, la temperatura y la escucha del audio siguen pendientes. Ver [RENDERING.md](RENDERING.md).
 
 ## Registro histórico del sistema sustituido
 

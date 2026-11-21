@@ -1,5 +1,14 @@
 # Historial de cambios
 
+## 0.5.0 · Ciudad compartida y rutas por barrios
+
+- Seis vecinos adicionales, diez civiles en total, con recorridos y reacciones a incidentes en otros barrios.
+- Navegación peatonal jerárquica, cambios locales al romper un cristal y cesión de paso entre actores.
+- Los tres coches recorren una red de 25 cruces y 80 carriles con destinos, giros continuos, semáforos y reservas.
+- Cuotas de cuatro decisiones civiles y dos búsquedas por tick. Personajes distantes se atenúan y ocultan conservando su estado; luces de tráfico en un lote.
+- Un aviso lejano amplía el tiempo policial de aproximación conservando el lugar denunciado.
+- HTML y ZIP de itch.io regenerados como 0.5.0. La siguiente fase ampliará actividades y conversación contextual.
+
 ## 0.4.1 · Paquete para itch.io
 
 - ZIP listo para cargar en `publicar/viceblock-itch.zip`, con `index.html` compilado en la raíz y todos los recursos integrados.

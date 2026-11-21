@@ -2,7 +2,7 @@ import { BoxGeometry, CanvasTexture, DoubleSide, Mesh, MeshBasicMaterial, MeshSt
 import type { Physics, Point3, StaticBox } from '../physics/physics';
 import { shopWindows } from '../world/generation/shop';
 
-export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged: (boxes: StaticBox[]) => void) {
+export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged: (boxes: StaticBox[], changed?: StaticBox) => void) {
   const geometry = new BoxGeometry();
   const glass = new MeshStandardMaterial({ color: 0x91d4d1, transparent: true, opacity: 0.32, roughness: 0.13, metalness: 0.1, depthWrite: false });
   const particleMaterial = new MeshBasicMaterial({ color: 0xe9d6aa });
@@ -28,7 +28,7 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
       sign.position.set(15, 3.88, 39.65); scene.add(sign);
     }
   }
-  const updateGeometry = () => onGeometryChanged(windows.filter((window) => window.intact).map((window) => window.box));
+  const updateGeometry = (changed?: StaticBox) => onGeometryChanged(windows.filter((window) => window.intact).map((window) => window.box), changed);
   function particle(point: Point3, ballistic: boolean, lifetime: number) {
     const item = particles[nextParticle++ % particles.length]; item.mesh.position.set(point.x, point.y, point.z);
     item.mesh.visible = true; item.ballistic = ballistic; item.life = item.duration = lifetime;
@@ -41,7 +41,7 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
     hit(handle: number, point: Point3) {
       const target = windows.find((window) => window.intact && window.collider.handle === handle);
       if (!target) return false;
-      target.intact = false; target.mesh.visible = false; physics.world.removeCollider(target.collider, true); updateGeometry();
+      target.intact = false; target.mesh.visible = false; physics.world.removeCollider(target.collider, true); updateGeometry(target.box);
       for (let i = 0; i < 14; i++) {
         const p = particle(point, true, 0.7 + i * 0.045);
         p.mesh.scale.set(0.04 + i % 3 * 0.018, 0.08, 0.025); p.mesh.rotation.set(i, i * 0.7, 0);

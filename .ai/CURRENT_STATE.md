@@ -1,4 +1,33 @@
-# Estado activo — Mercado Palma 0.4.1
+# Estado activo — Mercado Palma 0.5.0
+
+Entrega de 2026-11-21 sobre la versión itch.io que el usuario confirmó funcional. Se completa la base funcional de fase 2 conservando la presentación de Mercado Palma y Session como autoridad del único paso físico.
+
+## Implementado
+
+- Diez civiles: los cuatro originales y seis residentes con IDs y recorridos de otros barrios. La huida usa destinos locales y los incidentes comparten percepción, memoria y avisos.
+- Navigation con jerarquía de 48 zonas de rejilla, A* reutilizable y actualización del área de un obstáculo cambiado. Reservas de paso y cesión mediante movimiento físico.
+- RoadNetwork de 25 cruces y 80 carriles dirigidos. Los mismos tres coches reciben destinos cambiantes, uniones curvas y reservas; continúan los barridos Rapier y los ocupantes existentes.
+- Cuotas de cuatro decisiones civiles y dos búsquedas por tick, con 8192 visitas conjuntas por búsqueda. Los personajes se atenúan a 64–80 m y se ocultan a 84 m, conservando cuerpos y estado. Las 300 lámparas de tráfico usan un solo lote.
+- Plazo policial de aproximación según distancia, conservando la posición denunciada y la exigencia de visión para actualizarla. Un disparo real fuera del mercado genera un aviso del vecino local sin revelar la posición posterior del jugador.
+- El HTML y el ZIP dedicado se regeneran como 0.5.0, sin nuevas dependencias ni cambios al formato de itch.io.
+
+Contratos en [SIMULATION.md](SIMULATION.md), [NAVIGATION.md](NAVIGATION.md) y [RENDERING.md](RENDERING.md). La siguiente fase es vida civil con actividades, objetos y conversación contextual. Aparcamiento, transferencias de asientos, conducción/robo, nueve tiendas y replay continúan en ROADMAP.md. No se han incorporado horarios, streaming físico, LLM ni guardado en disco.
+
+## Verificación de 0.5.0
+
+Tipos, 32 pruebas en siete archivos, build web/portable/ZIP, check:portable y check:itch aprobados. La librería estándar ZIP de Python comprobó entrada única, CRC e igualdad del HTML final. Los hashes y tamaños están en PORTABLE.md e ITCH.md.
+
+La suite nueva verifica cambios locales frente a reconstrucción, cruce físico de peatones, red/curvas/reservas, circulación sobre colliders del distrito real, cuotas y actividad distante, continuidad de daños e identidad, reinicio y denuncia de un disparo real alejado.
+
+La prueba web de producción pasó en Chromium 156.0.8078.79/SwiftShader con backend WebGL 2, escritorio 960×640 y táctil 390×844, sin errores de JavaScript o consola. Informe `/tmp/viceblock-050-web/report.json`.
+
+El ZIP final pasó también la prueba completa en iframe sandbox de otro origen, escritorio y táctil: cero errores de JavaScript/consola, solicitudes externas o rutas faltantes. Informe `/tmp/viceblock-050-itch/report.json`. Se inspeccionaron las capturas de calle y móvil y la noche de la entrega web. El paquete conserva un único index compilado en su raíz.
+
+La aceptación WebGPU en hardware utilizable y las mediciones físicas continúan pendientes por el fallo Dawn/SwiftShader reproducido también fuera del juego. La apertura file:// continúa bloqueada por la política del navegador del entorno. El estado por zonas dura la sesión; no equivale a guardar una partida.
+
+## Registro de 0.4.1
+
+### Exportación para itch.io 0.4.1
 
 La corrección de publicación añade `publicar/viceblock-itch.zip`, con el HTML compilado en su raíz. El ZIP del repositorio incluía la plantilla de desarrollo en esa ubicación y el juego compilado en una subcarpeta. La exportación actual toma `jugar/index.html` y lo empaqueta como único archivo. Instrucciones y comprobaciones en [ITCH.md](ITCH.md).
 

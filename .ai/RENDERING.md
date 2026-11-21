@@ -1,4 +1,4 @@
-# Renderizado activo de Mercado Palma 0.4.0
+# Renderizado activo de Mercado Palma 0.5.0
 
 ## Backend y materiales
 
@@ -23,10 +23,14 @@ La resolución se limita también al DPR del dispositivo. El límite se aplica a
 
 - Session conserva un paso fijo compartido para Rapier. FixedLoop limita la recuperación a 0,1 segundos por cuadro.
 - A* comparte su espacio de trabajo y cola de prioridad. Los actores solicitan hasta dos búsquedas por tick, cada una con 8192 celdas visitadas como máximo. Las peticiones que exceden la cuota se reintentan sin descartar la ruta vigente.
-- Las decisiones civiles se evalúan cada 0,1 segundos cerca, 0,25 a distancia intermedia y 0,6 lejos. Las reacciones activas usan 0,05 segundos. Los actores mantienen movimiento físico e interpolación en el paso habitual.
+- Las decisiones civiles se evalúan cada 0,1 segundos cerca, 0,25 a distancia intermedia y 0,6 lejos. Las reacciones activas usan 0,05 segundos. Un cursor rotativo limita a cuatro decisiones civiles por tick. Los actores mantienen movimiento físico e interpolación en el paso habitual.
 - WorldState admite 128 entidades y 60 muestras históricas a un máximo de cuatro muestras por segundo. Journal conserva sus cuotas de 96 incidentes y 16 testimonios. Feedback conserva 36 partículas y Web Audio sus voces acotadas.
 
-El historial guarda poses, salud e IDs de ocupación. Constituye la base de la fase de replay. La reproducción, el guardado de partidas y la ampliación de la red vial siguen en el plan.
+El historial guarda poses, salud e IDs de ocupación. Constituye la base de la fase de replay. La reproducción y el guardado de partidas siguen en el plan. La red vial global y sus límites están en [NAVIGATION.md](NAVIGATION.md).
+
+## Ampliación 0.5.0
+
+Diez civiles con estado continuo. Sus mallas se atenúan de 64 a 80 m y se ocultan a 84 m, omitiendo animación distante. Los cuerpos siguen residentes. Las lámparas de 25 cruces usan un solo InstancedMesh y actualizan colores al cambiar de fase. No se añaden luces dinámicas ni efectos de pantalla. F3 expone decisiones, visitas A*, carriles y esperas.
 
 ## Comprobación reproducible
 
@@ -39,6 +43,8 @@ El modo portable mantiene la red desactivada y comprueba ausencia de solicitudes
 El intento con Chromium 156 y adaptador Dawn/SwiftShader expuso `Instance dropped in popErrorScope` y errores al crear buffers durante la escena. Se reprodujo con una escena mínima y también con un triángulo WGSL usando directamente el API WebGPU, que terminó con `A valid external Instance reference no longer exists`. La creación inicial de un buffer aislado sí funcionó. Estos resultados dejan pendiente la aceptación del renderizado WebGPU en un dispositivo utilizable y las mediciones en GPU física.
 
 La comprobación de la escena completa en este entorno usa el backend WebGL 2. Las cifras de FPS de SwiftShader describen ejecución por software y se registran únicamente como diagnóstico. Los scripts temporales de diagnóstico están en `/tmp/viceblock-webgpu-check.mjs`, `/tmp/viceblock-three-probe.mjs` y `/tmp/viceblock-gpu-probe.mjs`.
+
+### Registro de aceptación de 0.4.0
 
 Tipos, 25 pruebas en seis archivos, build web/portable y comparación reproducible aprobados. El smoke de la escena completa pasó en Chromium 156.0.8078.79/SwiftShader con WebGL 2 en escritorio 960×640 y táctil 390×844. También pasó el HTML portable inline con red desactivada, cero solicitudes HTTP(S) y cero errores de JavaScript o consola. Informes en `/tmp/viceblock-040-web/report.json` y `/tmp/viceblock-040-portable/report.json`.
 

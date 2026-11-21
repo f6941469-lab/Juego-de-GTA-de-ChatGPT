@@ -14,7 +14,7 @@ Vite sirve y compila la aplicación TypeScript. `src/main.ts` conecta los sistem
 | `src/config/`, `src/debug/` | Semilla y tiempos del juego, medidas del renderizador |
 | `tests/` | Pruebas automatizadas ejecutadas con Vitest |
 
-`src/simulation/` contiene la sesión integrada, navegación local, actores, civiles, policía, tráfico, comercio/arma/eventos y feedback destructible. `src/audio/` sintetiza las señales de audio. `src/ui/gameplay.ts` presenta el estado y emite comandos sin aplicar compras, daño o IA. Sus contratos detallados y límites están en [.ai/SIMULATION.md](.ai/SIMULATION.md).
+`src/simulation/` contiene la sesión integrada, navegación jerárquica y vial, actores, civiles, policía, tráfico, comercio/arma/eventos y feedback destructible. `src/audio/` sintetiza las señales de audio. `src/ui/gameplay.ts` presenta el estado y emite comandos sin aplicar compras, daño o IA. Sus contratos detallados y límites están en [.ai/SIMULATION.md](.ai/SIMULATION.md).
 
 ## Contratos de la primera fase visual
 
@@ -25,12 +25,12 @@ Vite sirve y compila la aplicación TypeScript. `src/main.ts` conecta los sistem
 - El renderizador recibe la escena y la cámara. La atmósfera recibe una hora decimal y la posición de enfoque. La interfaz recibe la posición, el rumbo, la hora y el mapa, y emite acciones mediante callbacks.
 - La generación del mundo es determinista con la misma semilla. La posición del jugador y la hora pertenecen a la sesión. IndexedDB guarda el perfil gráfico.
 
-El circuito vial actual es un conjunto de puntos con curvas, independiente de sus mallas. No sustituye al futuro grafo vial con destinos e intersecciones arbitrarias. Journal entrega evidencia temporal a civiles, policía y teléfono; sus eventos y testimonios tienen límites de memoria.
+RoadNetwork deriva 25 cruces y 80 carriles dirigidos del trazado. Los tres coches eligen destinos y reservan cruces, conservando sus cuerpos y conductores. Las uniones curvas respetan las direcciones de los carriles. Contratos y límites en [.ai/NAVIGATION.md](.ai/NAVIGATION.md). Journal entrega evidencia temporal a civiles, policía y teléfono; sus eventos y testimonios tienen límites de memoria.
 
-## Base global de la entrega 0.4.0
+## Base global de las entregas 0.4.0–0.5.0
 
 `Session` registra personas, vehículos, conductores, asientos, tienda y cristales en `WorldState`. Los IDs son estables durante la sesión y tras reiniciar. Las zonas de 24 metros mantienen membresía y daños referenciados a las entidades originales. El historial conserva hasta 60 instantáneas a un máximo de cuatro muestras por segundo, con un máximo de 128 entidades. Se prepara así el estado histórico que necesitará el replay.
 
-`Navigation` cubre el distrito transitable con un espacio A* reutilizable y cola de prioridad. Los actores comparten dos búsquedas por tick y cada búsqueda visita hasta 8192 celdas. Una petición diferida conserva la ruta y se reintenta en el siguiente tick. Los cambios de geometría invalidan las rutas mediante una revisión. Las decisiones civiles se espacian por distancia y urgencia, mientras sus movimientos continúan en el paso fijo compartido.
+`Navigation` cubre el distrito transitable con un espacio A* reutilizable y cola de prioridad. Los actores comparten dos búsquedas por tick y cada búsqueda visita hasta 8192 celdas. Una petición diferida conserva la ruta y se reintenta en el siguiente tick. Una jerarquía de 48 zonas selecciona el corredor inicial. Los cambios de geometría actualizan solo el rectángulo afectado y los actores mantienen sus rutas todavía libres. Las reservas peatonales se liberan por tick. Las decisiones de los diez civiles se espacian por distancia y urgencia, con un máximo de cuatro por tick, mientras sus movimientos continúan en el paso fijo compartido.
 
 El renderizador inicializa WebGPU de forma asíncrona y obtiene un dispositivo WebGPU compatible. Si no lo obtiene usa el backend WebGL 2 de Three. Cielo y agua se expresan en TSL para ambos backends. Cada perfil limita píxeles y mapas de sombras. Los presupuestos y el alcance de las verificaciones se registran en [.ai/RENDERING.md](.ai/RENDERING.md).
