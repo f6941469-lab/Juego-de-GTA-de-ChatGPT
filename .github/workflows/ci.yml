@@ -18,7 +18,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - name: Comprobar entrega portable actualizada
-        run: git diff --exit-code -- jugar/index.html
+        run: git diff --exit-code -- jugar/index.html publicar/viceblock-itch.zip
       - uses: actions/upload-artifact@v4
         with:
           name: viceblock-portable

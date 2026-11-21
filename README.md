@@ -1,4 +1,4 @@
-# Viceblock 0.4.0 · Mercado Palma
+# Viceblock 0.4.1 · Mercado Palma
 
 Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, cuatro civiles con rutinas, tres coches autónomos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. El alcance es local y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
@@ -6,7 +6,17 @@ Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Pal
 
 Esta versión usa íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y la tienda de Mara. El motor de simulación, interfaz y mapa de la integración anterior fueron sustituidos por esta entrega por petición del usuario. La conducción, los distritos adicionales y la policía avanzada anteriores quedan fuera de la versión activa; su código permanece en el historial de Git.
 
-La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.4.0 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.4.0**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
+La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.4.1 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.4.1**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
+
+## Publicar en itch.io
+
+Descarga el archivo **viceblock-itch.zip** preparado para cargar en itch.io. [Descargar ZIP de publicación](https://github.com/f6941469-lab/Juego-de-GTA-de-ChatGPT/raw/refs/heads/main/publicar/viceblock-itch.zip)
+
+1. Elige **HTML** como tipo de proyecto en itch.io.
+2. Sube `viceblock-itch.zip` y activa **This file will be played in the browser** para ese archivo.
+3. Configura el área de juego en **960 × 640** y habilita el botón de pantalla completa. La interfaz también se adapta a pantallas táctiles.
+
+El ZIP contiene un único `index.html` compilado en su raíz, con estilos, fuentes, física y licencias integrados. El archivo se genera en `publicar/viceblock-itch.zip` mediante `npm run build` o `npm run build:itch`. `npm run check:itch` comprueba que coincide con el HTML compilado.
 
 ## Jugar sin servidor
 
@@ -69,6 +79,6 @@ npm run build
 npm run preview
 ```
 
-`npm run build` produce `dist/` para hosting y el HTML autocontenido en `jugar/`. `npm run preview` sirve `dist/`; no hace falta ejecutarlo para usar el archivo portable. Usa también un navegador para comprobar los controles, las colisiones y la escena con WebGL 2.
+`npm run build` produce `dist/` para hosting, el HTML autocontenido en `jugar/` y el ZIP para itch.io en `publicar/`. `npm run preview` sirve `dist/`; no hace falta ejecutarlo para usar el archivo portable. Usa también un navegador para comprobar los controles, las colisiones y la escena con WebGL 2.
 
 Consulta [el estado actual](PROJECT_STATE.md), [la arquitectura](ARCHITECTURE.md) y [la hoja de ruta](ROADMAP.md) antes de extender el juego.

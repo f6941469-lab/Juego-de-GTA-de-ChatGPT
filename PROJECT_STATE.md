@@ -1,4 +1,4 @@
-# Estado del proyecto — Viceblock 0.4.0
+# Estado del proyecto — Viceblock 0.4.1
 
 La versión activa es la entrega Mercado Palma de las primeras capturas, restaurada íntegramente sobre main por petición del usuario. Session controla un distrito compacto con cuatro civiles, tres coches autónomos, comerciante, pistola, testigos, dos policías a pie, teléfono y dos escaparates destructibles. El HUD, mapa, presentación y controles son los de esa entrega.
 
@@ -15,3 +15,9 @@ La primera parte de la fase 2 añade IDs estables, zonas de 24 metros y un histo
 El renderizador usa WebGPU si obtiene un dispositivo compatible y mantiene WebGL 2 como alternativa de ejecución. Ambos comparten shaders TSL. Los perfiles limitan resolución y sombras. El backend y los contadores se consultan con F3. Véase [.ai/RENDERING.md](.ai/RENDERING.md). La ampliación de la red vial, tiendas, población y replay continúa en el plan.
 
 Verificación de 0.4.0 aprobada con tipos, 25 pruebas, compilación y comparación reproducible del HTML. Los flujos web y portable inline offline pasaron en Chromium 156/SwiftShader con WebGL 2, escritorio y táctil. WebGPU en el adaptador de software falla también con un triángulo independiente. Siguen pendientes su aceptación en un dispositivo utilizable, las mediciones físicas y la apertura directa file://.
+
+## Publicación 0.4.1
+
+La exportación para itch.io se guarda en `publicar/viceblock-itch.zip`, con un único `index.html` compilado en la raíz. La corrección cubre formato, reproducción del paquete y comprobación en iframe de otro origen. La base de simulación continúa siendo la entrega 0.4.0. Instrucciones en README y [.ai/ITCH.md](.ai/ITCH.md).
+
+El ZIP pasó su validación de CRC y los flujos completos en iframe sandbox de otro origen, en escritorio y táctil, sin errores de JavaScript o consola ni solicitudes externas. Tipos, 25 pruebas, build y comprobaciones de vigencia aprobados. El registro reproducible está en `.ai/ITCH.md`.

@@ -10,6 +10,15 @@ verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
+## 0.4.1 · Exportación de publicación para itch.io
+
+- `scripts/build-itch.mjs` empaqueta el HTML portable en `publicar/viceblock-itch.zip`. ZIP DEFLATE de un único `index.html` en la raíz, CRC-32 y fecha fija, mediante módulos de Node.
+- `build` genera web, portable y ZIP. `build:itch` actualiza el paquete y `check:itch` exige igualdad. CI comprueba la vigencia del ZIP versionado.
+- `tests/itch-smoke.mjs` valida y sirve el ZIP en un iframe sandbox de otro origen. La prueba de navegador comparte los flujos mediante el Frame del juego.
+- Versión y enlaces actualizados para que la descarga preparada para itch.io sea directamente accesible desde README.
+- Se retira autofocus del cierre del diálogo y se condiciona el foco inicial de jugar a document.hasFocus, corrigiendo los dos errores de consola encontrados en la prueba del frame.
+- Tipos, 25 pruebas, build, check:portable, check:itch, CRC estándar y smoke del ZIP en iframe de otro origen aprobados. Escritorio y táctil con cero errores y solicitudes externas.
+
 ## 0.4.0 · Base de la fase 2 y backend WebGPU
 
 - WorldState conecta IDs, ocupantes, asientos, zonas, daños e historial de las entidades de Session. Cuotas de 128 entidades y 60 muestras a 4 Hz.

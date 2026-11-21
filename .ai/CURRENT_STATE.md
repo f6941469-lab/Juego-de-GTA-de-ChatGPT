@@ -1,4 +1,10 @@
-# Estado activo — Mercado Palma 0.4.0
+# Estado activo — Mercado Palma 0.4.1
+
+La corrección de publicación añade `publicar/viceblock-itch.zip`, con el HTML compilado en su raíz. El ZIP del repositorio incluía la plantilla de desarrollo en esa ubicación y el juego compilado en una subcarpeta. La exportación actual toma `jugar/index.html` y lo empaqueta como único archivo. Instrucciones y comprobaciones en [ITCH.md](ITCH.md).
+
+La validación del ZIP y su CRC pasó, al igual que tipos, 25 pruebas, compilación y comprobaciones reproducibles. El paquete completo pasó la prueba en iframe sandbox de otro origen, en escritorio y táctil, con cero errores y solicitudes externas. Informe en `/tmp/viceblock-041-itch/report.json`.
+
+## Base funcional 0.4.0
 
 Entrega del 2026-11-21. Se inicia la fase 2 del plan con navegación peatonal global, registro de entidades y zonas e historial con cuotas. Session sigue siendo dueño del único avance físico. La población, el mercado y el circuito de tráfico conservan su comportamiento de gameplay.
 

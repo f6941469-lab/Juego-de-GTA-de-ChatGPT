@@ -125,7 +125,7 @@ export function createUI(actions: UIActions) {
     }
 
     if (mode === "playing" && previousMode !== mode) canvas.focus({ preventScroll: true });
-    if (mode === "start" && previousMode === "loading" && !dialog.open) play.focus({ preventScroll: true });
+    if (mode === "start" && previousMode === "loading" && !dialog.open && document.hasFocus()) play.focus({ preventScroll: true });
   }
 
   function update(state: PlayerMapPosition & { hour: number }) {

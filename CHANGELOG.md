@@ -1,5 +1,13 @@
 # Historial de cambios
 
+## 0.4.1 · Paquete para itch.io
+
+- ZIP listo para cargar en `publicar/viceblock-itch.zip`, con `index.html` compilado en la raíz y todos los recursos integrados.
+- Comandos `build:itch` y `check:itch`, y comprobación de vigencia del ZIP en CI.
+- Prueba reutilizada dentro de un iframe sandbox de otro origen, sirviendo el contenido del ZIP bajo una ruta anidada.
+- README con el archivo de descarga y los ajustes para un proyecto HTML en itch.io.
+- Enfoque inicial adaptado a iframes de otro origen para evitar el autofocus bloqueado al cargar la portada.
+
 ## 0.4.0 · Navegación global y base WebGPU
 
 - Navegación peatonal sobre el mapa transitable, con buffers reutilizados, cola de prioridad y cuotas de búsquedas por tick.

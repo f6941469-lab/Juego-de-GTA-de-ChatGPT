@@ -222,3 +222,9 @@ La restricción administrativa de file:// se respeta: prueba inline offline y ap
 El usuario solicitó continuar el plan y utilizar WebGPU respetando los límites de carga. Se usa WebGPURenderer de la versión de Three ya fijada, con dispositivo WebGPU y compatibilidad WebGL 2. Cielo y agua se comparten como TSL. El renderizador inicializa y compila antes de habilitar la partida.
 
 La base global conserva Session como coordinador y un único avance físico. Navigation limita las búsquedas de cada tick y reutiliza el espacio de trabajo. WorldState referencia las entidades originales y conserva instantáneas copiadas con cuotas. El alcance de 0.4.0 es la primera parte de la fase 2. Los contratos y verificaciones activas están en RENDERING.md y SIMULATION.md.
+
+## 2026-11-21 · ZIP dedicado a itch.io
+
+La publicación usa `publicar/viceblock-itch.zip` con la entrada compilada `index.html` en la raíz. El generador lee el HTML portable ya integrado, comprime con DEFLATE y conserva licencias y recursos. Usa los módulos de Node existentes y una fecha fija para comprobar la reproducción byte a byte. La fuente del juego mantiene su estructura modular y su plantilla de desarrollo.
+
+La comprobación gráfica aloja el contenido extraído del ZIP bajo una ruta anidada y lo incrusta en un iframe sandbox de otro origen. Se reutilizan los flujos de la prueba de navegador existente mediante el Frame del juego.

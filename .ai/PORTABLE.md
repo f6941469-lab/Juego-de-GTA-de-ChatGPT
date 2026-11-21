@@ -1,4 +1,4 @@
-# Entrega portable — Mercado Palma 0.4.0
+# Entrega portable — Mercado Palma 0.4.1
 
 ## Archivo y compilación
 
@@ -10,7 +10,7 @@ El generador rechaza múltiples chunks, imports pendientes, assets separados, UR
 
 `npm run build` genera tanto `dist/` para hosting como `jugar/index.html`. `npm run check:portable` recompila en memoria y compara byte por byte con el archivo guardado; no lo modifica. CI reconstruye, comprueba que el entregable versionado no haya cambiado y lo adjunta como artefacto descargable.
 
-La identificación portable es `data-delivery="portable"`, `data-build="mercado-palma-0.4.0"` y **VERSIÓN 0.4.0 · SIN CONEXIÓN**. El juego sigue necesitando WebGL 2, JavaScript y una interacción para activar audio. No usa Service Worker ni requiere conexión. Las preferencias gráficas siguen siendo opcionales: fallar IndexedDB no impide arrancar.
+La identificación portable es `data-delivery="portable"`, `data-build="mercado-palma-0.4.1"` y **VERSIÓN 0.4.1 · SIN CONEXIÓN**. El juego sigue necesitando WebGL 2, JavaScript y una interacción para activar audio. No usa Service Worker ni requiere conexión. Las preferencias gráficas siguen siendo opcionales: fallar IndexedDB no impide arrancar.
 
 ## Comprobación gráfica reproducible
 
@@ -53,3 +53,7 @@ La misma compilación portable integra ahora WebGPURenderer y los shaders TSL, m
 La comprobación de tipos, las 25 pruebas de seis archivos y la compilación web y portable pasaron. La comparación reproducible también pasó. El smoke web en Chromium 156.0.8078.79/SwiftShader seleccionó automáticamente WebGL 2 y aprobó escritorio 960×640 y táctil 390×844, sin errores de JavaScript o consola. Reporte en `/tmp/viceblock-040-web/report.json`.
 
 El HTML final ocupa 3.252.603 bytes y su SHA-256 es `eb91d48f6afd14eadc8643ea31c9f4822a4915dbb5c4712d4e9a375c51a3d907`. El smoke portable inline con red desactivada y ausencia de WebGPU simulada aprobó los mismos flujos de escritorio y táctiles, con cero solicitudes HTTP(S) y cero errores de JavaScript o consola. Informe en `/tmp/viceblock-040-portable/report.json`. La apertura file:// continúa pendiente por la política administrativa del navegador.
+
+## Exportación itch.io 0.4.1
+
+`publicar/viceblock-itch.zip` contiene el portable compilado como único `index.html` en la raíz. El HTML conserva sus recursos y licencias integrados. Se corrige además el enfoque inicial en frames de otro origen. La estructura, comprobaciones y resultados de esta entrega están en [ITCH.md](ITCH.md).

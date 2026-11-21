@@ -1,6 +1,6 @@
 {
   "name": "viceblock",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "engines": {
@@ -8,12 +8,14 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "npm run typecheck && vite build && node scripts/build-portable.mjs",
+    "build": "npm run typecheck && vite build && node scripts/build-portable.mjs && node scripts/build-itch.mjs",
     "build:portable": "npm run typecheck && node scripts/build-portable.mjs",
     "check:portable": "node scripts/build-portable.mjs --check",
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:itch": "npm run build:portable && node scripts/build-itch.mjs",
+    "check:itch": "node scripts/build-itch.mjs --check"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",

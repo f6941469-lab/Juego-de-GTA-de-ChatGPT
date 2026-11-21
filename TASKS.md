@@ -29,6 +29,12 @@ El empaquetado ya está incorporado al proyecto y produce el archivo preparado e
 - [ ] Distribuir civiles y actividades por todas las zonas y comprobar incidentes lejos del mercado.
 - [ ] Medir GPU física y consumo sostenido antes de fijar metas de FPS.
 
+## Corrección de publicación 0.4.1
+
+- [x] Generar `publicar/viceblock-itch.zip` con el HTML compilado como único archivo en la raíz.
+- [x] Comprobar ZIP, CRC y reproducción del paquete con las herramientas existentes.
+- [x] Verificar los flujos de escritorio y táctiles en un iframe de otro origen usando el ZIP real.
+
 ## Requisitos incorporados al plan, todavía pendientes
 
 - [ ] NPC activos desde el inicio, con objetivos, objetos de actividad, diálogo contextual en español, memoria e interrupciones por peligro.

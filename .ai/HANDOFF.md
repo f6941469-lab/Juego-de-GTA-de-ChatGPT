@@ -1,4 +1,14 @@
-# Continuación — Mercado Palma 0.4.0
+# Continuación — Mercado Palma 0.4.1
+
+El encargo actual corrige la exportación para itch.io. `npm run build` y `build:itch` generan `publicar/viceblock-itch.zip`, que incluye el HTML compilado como `index.html` en la raíz. El enlace de descarga de README apunta a ese archivo listo para subir. El ZIP fuente del repositorio conserva la estructura de desarrollo. `check:itch` verifica la vigencia del paquete. La prueba `tests/itch-smoke.mjs` ejecuta el contenido del ZIP en un iframe sandbox de otro origen. Ver [ITCH.md](ITCH.md).
+
+La prueba encontró autofocus bloqueado al cargar frames de otro origen. Se retiró el atributo del cierre del diálogo y se limitó el foco inicial de jugar al documento ya enfocado.
+
+Verificaciones aprobadas con tipos, 25 pruebas, build, check:portable y check:itch. ZIP validado también con zipfile de Python y CRC correcto. El paquete ejecutó los flujos completos en iframe sandbox de otro origen, escritorio y táctil, con cero errores y recursos externos. Informes en `/tmp/viceblock-041-itch/report.json` y `/tmp/viceblock-041-web/report.json`. La prueba web directa también pasó con cero errores.
+
+El siguiente encargo retoma la fase 2 del plan. Los contratos de 0.4.0 se conservan como base funcional.
+
+## Base funcional 0.4.0
 
 Continuación autorizada del plan con WebGPU y límites de carga. `Session` registra las entidades existentes en `WorldState`. `Navigation` cubre el mapa transitable con A* reutilizable y trabajo acotado. Los cambios de geometría invalidan las rutas por revisión. Las decisiones civiles usan distancia y urgencia, manteniendo movimiento y física en el tick compartido.
 

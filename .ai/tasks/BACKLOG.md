@@ -1,4 +1,4 @@
-# Trabajo pendiente — Mercado Palma 0.4.0
+# Trabajo pendiente — Mercado Palma 0.4.1
 
 - Validar `jugar/index.html` mediante apertura real file:// sin conexión en un navegador que permita archivos locales. El Chromium administrado lo bloquea; no sustituir esta aceptación por la prueba inline. Ver [../PORTABLE.md](../PORTABLE.md).
 - Completar la fase 2 de [../../ROADMAP.md](../../ROADMAP.md): navegación jerárquica/vial, reservas, actualización local y actividades de otras zonas sobre los IDs, zonas e historial incorporados; los eventos prepararán también replay y futura narrativa.
