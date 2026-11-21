@@ -1,4 +1,4 @@
-# Viceblock 0.3.0 · Mercado Palma
+# Viceblock 0.3.1 · Mercado Palma
 
 Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, cuatro civiles con rutinas, tres coches autónomos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. El alcance es local y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
@@ -6,9 +6,15 @@ Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Pal
 
 Esta versión usa íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y la tienda de Mara. El motor de simulación, interfaz y mapa de la integración anterior fueron sustituidos por esta entrega por petición del usuario. La conducción, los distritos adicionales y la policía avanzada anteriores quedan fuera de la versión activa; su código permanece en el historial de Git.
 
-Para comprobar que ejecutas esta versión, la portada debe indicar **MERCADO PALMA · VERSIÓN 0.3.0** y la pestaña **Viceblock 0.3.0 — Mercado Palma**. Tras actualizar, detén el servidor anterior y ejecuta los comandos desde la carpeta recién descargada. Si sirves `dist/`, reconstruye primero con `npm run build`; una compilación anterior no se actualiza al descargar solo el código.
+La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.3.1 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.3.1**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
 
-## Ejecutar el juego
+## Jugar sin servidor
+
+Abre **[jugar/index.html](jugar/index.html)** en un navegador con WebGL 2. Ese archivo integra JavaScript, estilos, fuentes, física WASM y licencias: puedes copiar únicamente ese HTML y jugar sin conexión, sin Node, npm o servidor. El `index.html` de la raíz es la plantilla para desarrollar; el archivo preparado para jugar está en la carpeta `jugar`.
+
+El contenido integrado se comprueba con red desactivada. La apertura directa mediante `file://` sigue pendiente de validación porque el Chromium administrado de este entorno la bloquea por política. No se requieren cambios de seguridad para el entregable; consulta [la comprobación y sus límites](.ai/PORTABLE.md).
+
+## Desarrollar o preparar una nueva entrega
 
 Usa Node.js 24 LTS. Las versiones admitidas se registran en `package.json`. El entorno de desarrollo en la nube trae Node.js 24 y npm 11. Para jugar necesitas un navegador compatible con WebGL 2.
 
@@ -20,6 +26,14 @@ npm run dev
 ```
 
 Abre la dirección que indica Vite y selecciona **Explorar distrito** para entrar al distrito.
+
+Para actualizar solo el HTML portable después de cambiar el código:
+
+```sh
+npm run build:portable
+```
+
+El archivo generado `jugar/index.html` se incluye en cada entrega. `npm run check:portable` comprueba que coincide con la fuente actual sin modificarlo.
 
 | Control | Acción |
 | --- | --- |
@@ -51,6 +65,6 @@ npm run build
 npm run preview
 ```
 
-`npm run preview` sirve la compilación de `dist/`. Usa también un navegador para comprobar los controles, las colisiones y la escena con WebGL 2.
+`npm run build` produce `dist/` para hosting y el HTML autocontenido en `jugar/`. `npm run preview` sirve `dist/`; no hace falta ejecutarlo para usar el archivo portable. Usa también un navegador para comprobar los controles, las colisiones y la escena con WebGL 2.
 
 Consulta [el estado actual](PROJECT_STATE.md), [la arquitectura](ARCHITECTURE.md) y [la hoja de ruta](ROADMAP.md) antes de extender el juego.

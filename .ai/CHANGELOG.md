@@ -10,6 +10,13 @@ verification_scope: "typecheck + vitest (53/53) + vite build + Chromium WebGL 2 
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
 
+## 0.3.1 · Empaquetado portable de Mercado Palma
+
+- Generador `scripts/build-portable.mjs` mediante Vite IIFE en memoria, recursos integrados y validación de script clásico/ausencia de imports o assets separados. Entregable versionado `jugar/index.html`, comprobación byte a byte y artefacto de CI.
+- Versión 0.3.1 sincronizada en paquete, lockfile y portada. Misma Session, distrito y presentación; no hay dependencias nuevas. Las licencias se integran como JSON no ejecutable.
+- Smoke existente ampliado para modo portable offline, identificación, licencias, fuentes y ciclo real de AudioContext. Registro explícito de éxito/fallo y alcance inline frente a file://. El contenido inline pasó; la apertura directa sigue bloqueada por política administrativa.
+- Plan del usuario y contrato futuro de partidas documentados en ROADMAP.md y PORTABLE.md; no se presenta la planificación de NPC/replay como gameplay implementado.
+
 ## 2026-11-20 · Fase 7 — Pulido, streaming físico Rapier, presupuesto sectorial y E2E (working tree sobre `173aa01`)
 - **Resumen:** Streaming espacial de colisionadores estáticos en `createPhysics` (`streamingRadius = 112 m`, histéresis `+16 m`, cierre de `VB-002`) reduciendo de `514` a `131` colisionadores activos; presupuesto `1 sector/frame` y `flush()` en `streaming.ts` (`VB-003`); reutilización zero-alloc en `vehicle-obstacles.ts`, `engine.ts` y `main.ts` (`VB-009`); heurística de resolución basada en `renderCpuMs` insensible a 30 Hz ociosos (`VB-011`); `dispose()` simétrico en `renderer.ts`, `atmosphere.ts` e `input.ts` (`AbortController`) más teardown `pagehide` (`VB-008`); y suite E2E `tests/optimization-and-streaming.test.ts` (`VB-014`).
 - **Sistemas afectados:** Física (`physics/{physics,vehicle-obstacles}.ts`), Mundo (`world/streaming.ts`), Render (`renderer/{renderer,resolution,lighting/atmosphere}.ts`), Entrada (`core/input.ts`), Simulación/Orquestador (`simulation/engine.ts`, `main.ts`) y pruebas (`tests/optimization-and-streaming.test.ts`).

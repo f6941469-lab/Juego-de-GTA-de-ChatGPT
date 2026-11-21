@@ -1,5 +1,12 @@
 # Historial de cambios
 
+## 0.3.1 · Primera entrega portable
+
+- Un único archivo jugable en `jugar/index.html`, con JavaScript, estilos, fuentes, física WASM y licencias integrados; marca visible **SIN CONEXIÓN**.
+- Generación reproducible con Vite existente, comprobación de vigencia y artefacto de CI; sin dependencias nuevas ni cambios de gameplay.
+- Prueba gráfica del contenido integrado con red desactivada, incluyendo compras, arma, teléfono, audio y controles táctiles. Apertura directa file:// pendiente: bloqueada por política del Chromium administrado del entorno.
+- Plan ampliado con conversaciones, nueve tiendas, robo de coches, grabaciones POV y contratos para historia futura; estas ampliaciones aún no están implementadas.
+
 ## 0.3.0 · Mercado Palma — sustitución del sistema anterior
 
 - Sustitución completa autorizada del runtime anterior por la entrega visual de `5660edc`, sin reescribir el historial de Git.

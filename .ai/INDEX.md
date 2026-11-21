@@ -1,4 +1,4 @@
-# Memoria activa — Mercado Palma 0.3.0
+# Memoria activa — Mercado Palma 0.3.1
 
 1. [CURRENT_STATE.md](CURRENT_STATE.md): sistema activo, sustitución autorizada y verificaciones actuales.
 2. [HANDOFF.md](HANDOFF.md): continuación, publicación y ejecución de la versión correcta.
@@ -6,7 +6,9 @@
 4. [CONTEXT.md](CONTEXT.md): contexto mínimo y tecnología.
 5. [KNOWN_ISSUES.md](KNOWN_ISSUES.md), [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md): alcance parcial y limitaciones.
 6. [DECISIONS.md](DECISIONS.md), [CHANGELOG.md](CHANGELOG.md): decisiones y cambios, con historial preservado.
-7. [tasks/BACKLOG.md](tasks/BACKLOG.md): siguiente trabajo del runtime actual.
+7. [../ROADMAP.md](../ROADMAP.md): plan global, HTML portable, nueve tiendas, conversaciones/LLM móvil, robo de coches, POV y puntos de extensión para narrativa futura.
+8. [tasks/BACKLOG.md](tasks/BACKLOG.md): siguiente trabajo del runtime actual.
+9. [PORTABLE.md](PORTABLE.md): empaquetado reproducible, HTML jugable, pruebas sin red y diseño del archivo de partida.
 
 `src/main.ts` usa `createSession` desde `src/simulation/session.ts`; la interfaz es `src/ui/gameplay.ts` y el distrito se genera con `src/world/district.ts`.
 

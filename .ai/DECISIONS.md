@@ -210,3 +210,9 @@ La rama work partía de `2ee553f`; main ya había evolucionado hasta `d0c70d9`. 
 ## Sustitución completa por Mercado Palma 0.3.0
 
 El usuario rechazó conservar el sistema y presentación anteriores tras comparar las capturas. Se sustituye todo el árbol operativo de src/ y sus pruebas por la entrega `5660edc`, y se retiran los módulos ajenos a ella. Cambia la entrada de SimulationEngine a Session y vuelven el HUD, teléfono, distrito compacto y controles de la captura de referencia. El historial de main se mantiene mediante un commit normal posterior a d565cdc. Los contratos anteriores quedan archivados, no se combinan ni se ejecutan como alternativa.
+
+## Entrega portable de Mercado Palma 0.3.1
+
+El usuario autorizó iniciar el plan que exige un solo HTML y conservar el runtime elegido. Se añade un generador basado en la API pública de Vite, sin introducir dependencias. El código permanece modular, la compilación web sigue en dist/ y la distribución autocontenida se incluye como jugar/index.html para que descargar el repositorio también traiga el archivo preparado. Se integran fuentes, CSS, JS clásico, WASM compat y licencias, con comprobación de igualdad reproducible; no se depende de módulos locales, CDN, servidor o Service Worker.
+
+La restricción administrativa de file:// se respeta: prueba inline offline y apertura directa se registran como verificaciones diferentes. El guardado futuro será exportación/importación explícita por archivo y tendrá validación previa a aplicar estado; IndexedDB será solo una preferencia opcional. El alcance de esta entrega no incluye todavía guardado de partidas, ampliación de IA, LLM o historia.

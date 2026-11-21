@@ -1,5 +1,7 @@
 # Contratos de la escena Mercado Palma
 
+La entrega 0.3.1 conserva estos contratos de gameplay y añade empaquetado portable mediante `scripts/build-portable.mjs`; ver [PORTABLE.md](PORTABLE.md). No se ejecuta una simulación distinta al abrir el HTML integrado.
+
 ## Tiempo y física
 
 `createSession.step()` es el dueño del tick integrado: jugador.prepareStep → decisiones de civiles/policía → preparar actores/tráfico → Physics.step una vez → finish de todas las poses → armas/incidentes/feedback. `player.step()` conserva un wrapper para pruebas y uso con un único personaje. No combinar el wrapper con el tick de Session.

@@ -1,6 +1,8 @@
-# Limitaciones activas — Mercado Palma 0.3.0
+# Limitaciones activas — Mercado Palma 0.3.1
 
 Consultar [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) y [CURRENT_STATE.md](CURRENT_STATE.md). No hay conducción del jugador, otros distritos, persecuciones policiales en coche ni replay de video en esta entrega. El tráfico recorre un circuito local y la policía actúa a pie. La fluidez en GPU física y la escucha humana del audio siguen pendientes.
+
+El HTML portable ya se genera en `jugar/index.html`; la apertura `file://` está bloqueada por política del Chromium administrado y continúa pendiente de aceptación. No se ha eludido esa política; ver [PORTABLE.md](PORTABLE.md).
 
 ## Registro histórico del sistema sustituido
 

@@ -1,5 +1,7 @@
 # Limitaciones conocidas
 
+- La entrega 0.3.1 incorpora un HTML autocontenido en `jugar/index.html`. Falta validar su apertura directa por `file://`: la política del Chromium administrado devuelve `ERR_BLOCKED_BY_ADMINISTRATOR`. Las pruebas inline con red desactivada se registran aparte y no sustituyen esa aceptación. Soporte de archivos locales en móviles físicos pendiente.
+
 - El distrito tiene límites fijos y se carga completo al iniciar. Solo Mercado Palma tiene un interior accesible. Sectores activos y niveles de detalle quedan pendientes.
 - El recorrido del jugador sigue siendo a pie. Hay tres coches autónomos en un circuito local y dos policías a pie; faltan conducción, asientos transferibles, rutas/destinos generales, persecuciones en patrulla, refuerzos y combate policial.
 - Navegación y percepción de los seis agentes se concentran en el bloque del mercado. Hay destinos y recuperación de bloqueos, pero no un sistema de multitudes ni entrada a otros edificios. Incapacitados y productos agotados se restablecen al reiniciar la escena.
