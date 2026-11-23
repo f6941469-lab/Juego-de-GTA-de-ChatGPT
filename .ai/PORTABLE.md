@@ -79,10 +79,10 @@ Tipos, `37` pruebas Vitest en `8` archivos, `build` (`dist/`, `jugar/index.html`
 
 | Archivo | Bytes | SHA-256 |
 | --- | --- | --- |
-| `jugar/index.html` | 3.315.889 | `2284337c646dfa60cf20e95f43dea4f7d109682c4dc8af1ca07e54e2615979e5` |
-| `publicar/viceblock-itch.zip` | 1.191.380 | `607e32e3f3d8a36b29af29f018a8fa7bd89040a059e594a26af6787dc491a6a2` |
+| `jugar/index.html` | 3.321.838 | `56e4e8bb5372dab14d7ecef601057bdb8126442d15cab5cfec760a1f0f71e14a` |
+| `publicar/viceblock-itch.zip` | 1.193.459 | `37eb4c0106654e2d03442a4cc66c853b9987d7b58b7190606f4263cfe0995dc0` |
 
 En Google Chrome `158.0.8127.36` (SwiftShader WebGL 2, Playwright Python):
 - `jugar/index.html` abierto directamente mediante `file://` con red desactivada (`960×640`): arrancó en `WebGL 2` con `data-delivery="portable"`, `0` solicitudes HTTP(S) y `0` errores de consola/JS.
-- `dist/` (`960×640`, Baja `720×480`): arrancó en `WebGL 2`, `F3` midió `328` llamadas y `237.161` triángulos, teléfono abierto con `↑` y cerrado con `Esc`, `0` excepciones JS (`failed_urls: []`, dos 404 de `/favicon.ico` del servidor estático local).
+- `dist/` (`960×640`, Baja `720×480`): arrancó en `20,63 s` con `WebGL 2`, `F3` midió **`77` llamadas, `207.945` triángulos, `9.50 ms` render CPU y `15.90 ms` simulación CPU**, teléfono abierto con `↑` y cerrado con `Esc`, `0` excepciones JS (`failed_urls: []`, dos 404 de `/favicon.ico` del servidor estático local).
 - Queda pendiente en Fase 9 implementar Guardar/Cargar partida por archivo JSON y validar WebGPU/FPS en hardware físico.

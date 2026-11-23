@@ -129,14 +129,16 @@ export function createWitnessRecorder(scene: Scene, physics: Physics, journal: J
     return vehiclePool[index];
   }
 
+  let lastEventId = 0;
+  const lookVec = new Vector3();
+
   return {
     step(
       dt: number,
       now: number,
       people: readonly Civilian[],
       playerPos: Point3,
-      actors: readonly ReplayActorSnapshot[],
-      vehicles: readonly ReplayVehicleSnapshot[],
+      getSnapshots: () => { actors: readonly ReplayActorSnapshot[]; vehicles: readonly ReplayVehicleSnapshot[] },
     ) {
       // 1. Start witness captures for civilians currently holding up phone in 'recording'
       for (const person of people) {
@@ -165,8 +167,9 @@ export function createWitnessRecorder(scene: Scene, physics: Physics, journal: J
         }
       }
 
-      // 2. Also trigger nearby street CCTV cameras on loud/major incidents for multi-angle replay
-      for (const evt of journal.events) {
+      // 2. Trigger nearby street CCTV cameras only on newly published major incidents
+      for (const evt of journal.since(lastEventId)) {
+        lastEventId = evt.id;
         if (now - evt.time > 0.5) continue;
         if (!['shot', 'robbery', 'theft', 'collision'].includes(evt.kind)) continue;
         for (const cam of streetCams) {
@@ -194,7 +197,10 @@ export function createWitnessRecorder(scene: Scene, physics: Physics, journal: J
         }
       }
 
-      // 3. Advance all active captures & commit progressive segments
+      if (captures.size === 0) return;
+
+      // 3. Advance all active captures & commit progressive segments (lazy snapshot construction)
+      let cachedSnaps: { actors: readonly ReplayActorSnapshot[]; vehicles: readonly ReplayVehicleSnapshot[] } | undefined;
       for (const cap of captures.values()) {
         if (cap.finished) continue;
         cap.duration += dt;
@@ -205,6 +211,8 @@ export function createWitnessRecorder(scene: Scene, physics: Physics, journal: J
 
         if (cap.sampleAcc >= 0.18 && cap.clip.frames.length < 45) {
           cap.sampleAcc = 0;
+          cachedSnaps ??= getSnapshots();
+          const { actors, vehicles } = cachedSnaps;
           if (cap.witness) {
             const pos = cap.witness.actor.position;
             const camPos: Point3 = witnessDown
@@ -248,7 +256,7 @@ export function createWitnessRecorder(scene: Scene, physics: Physics, journal: J
       if (!frame) return;
       replayGroup.visible = true;
       camera.position.set(frame.camX, frame.camY, frame.camZ);
-      camera.lookAt(new Vector3(frame.lookX, frame.lookY, frame.lookZ));
+      camera.lookAt(lookVec.set(frame.lookX, frame.lookY, frame.lookZ));
 
       frame.actors.forEach((a, i) => {
         const entry = ensureActorMesh(i);
@@ -281,6 +289,7 @@ export function createWitnessRecorder(scene: Scene, physics: Physics, journal: J
     },
     reset() {
       captures.clear();
+      lastEventId = 0;
       replayGroup.visible = false;
     },
     dispose() {

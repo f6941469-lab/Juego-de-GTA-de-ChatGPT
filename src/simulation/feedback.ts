@@ -1,4 +1,4 @@
-import { BoxGeometry, CanvasTexture, DoubleSide, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, PointLight, Scene, Vector3 } from 'three';
+import { BoxGeometry, CanvasTexture, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PlaneGeometry, PointLight, Scene, Vector3 } from 'three';
 import type { Physics, Point3, StaticBox } from '../physics/physics';
 import { allShops } from '../world/generation/shop';
 
@@ -48,36 +48,42 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
     return { id: spec.id, kind: spec.kind, box: spec.box, mesh, collider: physics.addBox(spec.box), intact: true };
   });
 
+  const particleGroup = new Group();
+  particleGroup.visible = false;
+  scene.add(particleGroup);
   const particles = Array.from({ length: 48 }, () => {
     const mesh = new Mesh(geometry, particleMaterial);
     mesh.visible = false;
-    scene.add(mesh);
+    particleGroup.add(mesh);
     return { mesh, velocity: new Vector3(), life: 0, duration: 0, ballistic: false };
   });
   let nextParticle = 0;
+  let activeParticles = 0;
 
   // Keep a single pooled interior PointLight so shaders stay at NUM_POINT_LIGHTS=1 across all 9 stores.
   const interior = new PointLight(0xffd8a2, 18, 13, 2);
   interior.position.set(allShops[0].centerX, 2.8, allShops[0].centerZ + 0.2);
   scene.add(interior);
+  let lastLightFocusX = Number.NaN;
+  let lastLightFocusZ = Number.NaN;
 
   const signs: Mesh[] = [];
   if (typeof document !== 'undefined') {
     for (const store of allShops) {
       const canvas = document.createElement('canvas');
-      canvas.width = 1024;
-      canvas.height = 160;
+      canvas.width = 512;
+      canvas.height = 80;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.fillStyle = store.id === 'shop:mercado-palma' ? '#163e3d' : store.accentColor;
-        ctx.fillRect(0, 0, 1024, 160);
+        ctx.fillRect(0, 0, 512, 80);
         ctx.fillStyle = '#ffe7b1';
-        ctx.font = 'bold 64px sans-serif';
+        ctx.font = 'bold 32px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(store.name.toUpperCase(), 512, 93);
-        ctx.font = '22px sans-serif';
+        ctx.fillText(store.name.toUpperCase(), 256, 46);
+        ctx.font = '11px sans-serif';
         ctx.fillStyle = '#e8f5ee';
-        ctx.fillText(`ABIERTO  ·  ${store.tagline.toUpperCase()}`, 512, 135);
+        ctx.fillText(`ABIERTO  ·  ${store.tagline.toUpperCase()}`, 256, 68);
         const sign = new Mesh(new PlaneGeometry(Math.min(7.6, store.width * 0.76), 1.18), new MeshBasicMaterial({ map: new CanvasTexture(canvas), side: DoubleSide }));
         sign.position.set(store.centerX, 3.88, store.centerZ + 5.45);
         scene.add(sign);
@@ -94,6 +100,8 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
 
   function particle(point: Point3, ballistic: boolean, lifetime: number) {
     const item = particles[nextParticle++ % particles.length];
+    if (item.life <= 0) activeParticles++;
+    particleGroup.visible = true;
     item.mesh.position.set(point.x, point.y, point.z);
     item.mesh.visible = true;
     item.ballistic = ballistic;
@@ -106,7 +114,7 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
   return {
     windows,
     props,
-    get particleCount() { return particles.filter((p) => p.life > 0).length; },
+    get particleCount() { return activeParticles; },
     hit(handle: number, point: Point3) {
       const targetWindow = windows.find((w) => w.intact && w.collider.handle === handle);
       if (targetWindow) {
@@ -114,7 +122,7 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
         targetWindow.mesh.visible = false;
         physics.world.removeCollider(targetWindow.collider, true);
         updateGeometry(targetWindow.box);
-        for (let i = 0; i < 14; i++) {
+        for (let i = 0; i < 12; i++) {
           const p = particle(point, true, 0.7 + i * 0.045);
           p.mesh.scale.set(0.04 + (i % 3) * 0.018, 0.08, 0.025);
           p.mesh.rotation.set(i, i * 0.7, 0);
@@ -128,7 +136,7 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
         targetProp.mesh.visible = false;
         physics.world.removeCollider(targetProp.collider, true);
         updateGeometry(targetProp.box);
-        const count = targetProp.kind === 'hydrant' ? 16 : 10;
+        const count = targetProp.kind === 'hydrant' ? 14 : 9;
         for (let i = 0; i < count; i++) {
           const p = particle(point, true, targetProp.kind === 'hydrant' ? 1.1 + i * 0.04 : 0.7 + i * 0.04);
           p.mesh.scale.set(0.06, targetProp.kind === 'hydrant' ? 0.14 : 0.08, 0.06);
@@ -171,7 +179,9 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
       }
     },
     step(dt: number, focus?: Point3) {
-      if (focus) {
+      if (focus && Math.hypot(focus.x - lastLightFocusX, focus.z - lastLightFocusZ) >= 1.5) {
+        lastLightFocusX = focus.x;
+        lastLightFocusZ = focus.z;
         let best = allShops[0];
         let bestD = Infinity;
         for (const store of allShops) {
@@ -180,21 +190,29 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
         }
         interior.position.set(best.centerX, 2.8, best.centerZ + 0.2);
       }
+      if (activeParticles === 0) return;
+      let remaining = 0;
       for (const item of particles) {
         if (item.life <= 0) continue;
         item.life = Math.max(0, item.life - dt);
-        item.mesh.visible = item.life > 0;
-        if (item.ballistic) {
-          item.velocity.y -= 10 * dt;
-          item.mesh.position.addScaledVector(item.velocity, dt);
-          item.mesh.rotation.x += dt * 3;
-          if (item.mesh.position.y < 0.06) {
-            item.mesh.position.y = 0.06;
-            item.velocity.multiplyScalar(0.2);
-            item.velocity.y = Math.abs(item.velocity.y);
+        if (item.life > 0) {
+          remaining++;
+          if (item.ballistic) {
+            item.velocity.y -= 10 * dt;
+            item.mesh.position.addScaledVector(item.velocity, dt);
+            item.mesh.rotation.x += dt * 3;
+            if (item.mesh.position.y < 0.06) {
+              item.mesh.position.y = 0.06;
+              item.velocity.multiplyScalar(0.2);
+              item.velocity.y = Math.abs(item.velocity.y);
+            }
           }
+        } else {
+          item.mesh.visible = false;
         }
       }
+      activeParticles = remaining;
+      particleGroup.visible = remaining > 0;
     },
     reset() {
       for (const target of windows) {
@@ -208,6 +226,9 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
         prop.mesh.visible = true;
       }
       for (const item of particles) { item.life = 0; item.mesh.visible = false; }
+      activeParticles = 0;
+      particleGroup.visible = false;
+      lastLightFocusX = lastLightFocusZ = Number.NaN;
       interior.position.set(allShops[0].centerX, 2.8, allShops[0].centerZ + 0.2);
       updateGeometry();
     },
@@ -220,7 +241,7 @@ export function createFeedback(scene: Scene, physics: Physics, onGeometryChanged
         if (prop.intact) physics.world.removeCollider(prop.collider, true);
         prop.mesh.removeFromParent();
       }
-      for (const item of particles) item.mesh.removeFromParent();
+      particleGroup.removeFromParent();
       interior.removeFromParent();
       interior.dispose();
       for (const sign of signs) {

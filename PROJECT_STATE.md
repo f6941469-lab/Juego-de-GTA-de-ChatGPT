@@ -6,12 +6,12 @@ El motor/HUD anterior permanece descartado en el historial de Git. Consulta [.ai
 
 El empaquetado portable sigue generando `jugar/index.html` y `publicar/viceblock-itch.zip` sin dependencias nuevas; ver [.ai/PORTABLE.md](.ai/PORTABLE.md) e [.ai/ITCH.md](.ai/ITCH.md).
 
-## Entrega 0.5.0 · Fases 3–8 y optimización
+## Entrega 0.5.0 · Fases 3–8 y optimización contra tirones
 
-- **Rendimiento y mapa:** Sectores de `48 m` con lotes `core`/`detail` (`updateVisibility`), sombras desactivadas en follaje/detalle, vegetación reducida, `sharedBoxGeometry` en avatares, desaceleración distante (`> 42 m`) y `1` único `PointLight` agrupado que sigue al comercio más cercano al foco (`328` llamadas y `237.161` triángulos en `F3` Baja).
+- **Rendimiento y mapa:** Lotes `core` unificados globalmente, sectores `detail` de `64 m` (`updateVisibility`), simplificación de micro-parteluces de pisos altos, cada avatar y cada vehículo consolidado en `1` único `InstancedMesh` con material compartido opaco (sin recompilaciones de shader en juego), omisión de `computeColliderMovement` en actores estáticos/embarcados y `1` único `PointLight` agrupado (`77` llamadas, `207.945` triángulos, `9.50 ms` render CPU y `15.90 ms` simulación CPU en `F3` Baja).
 - **Nueve comercios y transporte:** `Mercado Palma` más `8` locales nuevos con interior y comerciante independiente; `4` paradas de autobús y `2` estaciones transitables de metro (`Metro Sur`, `Metro Norte`).
-- **Vida civil, tráfico y policía:** Rutinas de trabajo/compras/bus/metro, charla con NPCs (`E`), seguimiento persistente (`Pedro`), conducción/expulsión de conductores (`F`), `2` patrullas en `RoadNetwork` con desembarco, fuego recíproco y barricadas.
-- **Grabación POV y replay:** Muestreo de testigos y `streetCams` multiángulo con envío progresivo (los clips parciales sobreviven si cae el testigo) y visor 3D aislado desde `Palma Social` o al terminar arrestado/abatido.
+- **Vida civil autónoma, tráfico y policía:** Todos los civiles móviles alternan autónomamente entre compras en las 9 tiendas, viajes en bus/metro (desviándose al metro si pierden el bus), lugares de trabajo/ocio, charla con NPCs (`E`), seguimiento persistente, conducción/expulsión de conductores sin duplicar actores (`F`) y `2` patrullas en `RoadNetwork` con desembarco, fuego recíproco y barricadas.
+- **Grabación POV y replay:** Muestreo perezoso de testigos y `streetCams` multiángulo con envío progresivo (los clips parciales sobreviven si cae el testigo), crecimiento orgánico de `views`/`likes` y visor 3D aislado.
 
 Tipos, `37` pruebas en `8` archivos, `build`, `check:portable` y `check:itch` aprobados. Chrome `158` (`WebGL 2` SwiftShader) validó `dist/`, `jugar/index.html` vía `file://` offline y `publicar/viceblock-itch.zip` en `iframe` móvil `390×844` sin excepciones JS. Siguen pendientes Guardar/Cargar JSON (Fase 9), aceptación `WebGPU` en hardware físico y mediciones reales de FPS/audio. Resultados y hashes en `.ai/CURRENT_STATE.md`, `.ai/ITCH.md` y `.ai/PORTABLE.md`.
 

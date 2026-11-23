@@ -14,53 +14,85 @@ export interface AvatarPose {
 }
 
 const sharedBoxGeometry = new THREE.BoxGeometry();
+const sharedAvatarMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
+const tempMatrix = new THREE.Matrix4();
+const tempPos = new THREE.Vector3();
+const tempQuat = new THREE.Quaternion();
+const tempScale = new THREE.Vector3();
+
+interface PivotNode {
+  group: THREE.Group;
+  parent?: PivotNode;
+  netMatrix: THREE.Matrix4;
+  isProp: boolean;
+  hidden: boolean;
+}
+
+interface PartEntry {
+  pivot: PivotNode;
+  localMatrix: THREE.Matrix4;
+  color: THREE.Color;
+  index: number;
+}
 
 export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
   const mesh = new THREE.Group();
   mesh.name = 'Player avatar';
   scene.add(mesh);
 
-  const geometry = sharedBoxGeometry;
-  const materials: THREE.MeshStandardMaterial[] = [];
-  const color = (hex: number, roughness = 0.85) => {
-    const material = new THREE.MeshStandardMaterial({ color: hex, roughness });
-    materials.push(material);
-    return material;
-  };
-  const skin = color(0xbd7855);
-  const skinShadow = color(0xa96048);
-  const hair = color(0x211927);
-  const hairLight = color(0x322332);
-  const shirt = color(shirtColor);
-  const shirtLight = color(new THREE.Color(shirtColor).multiplyScalar(1.15).getHex());
-  const piping = color(0xf2a772);
-  const cream = color(0xffe2a0);
-  const pants = color(0x333848);
-  const pantsLight = color(0x4a4b55);
-  const shoe = color(0xeedfc9);
-  const sole = color(0x867676);
+  const skin = 0xbd7855;
+  const skinShadow = 0xa96048;
+  const hair = 0x211927;
+  const hairLight = 0x322332;
+  const shirt = shirtColor;
+  const shirtLight = new THREE.Color(shirtColor).multiplyScalar(1.15).getHex();
+  const piping = 0xf2a772;
+  const cream = 0xffe2a0;
+  const pants = 0x333848;
+  const pantsLight = 0x4a4b55;
+  const shoe = 0xeedfc9;
+  const sole = 0x867676;
+
+  const pivotMap = new Map<THREE.Object3D, PivotNode>();
+  const pivots: PivotNode[] = [];
+  const parts: PartEntry[] = [];
+
+  function pivot(parent: THREE.Object3D, x: number, y: number, z: number, isProp = false) {
+    const group = new THREE.Group();
+    group.position.set(x, y, z);
+    const parentNode = pivotMap.get(parent);
+    const node: PivotNode = {
+      group,
+      parent: parentNode,
+      netMatrix: new THREE.Matrix4(),
+      isProp: isProp || Boolean(parentNode?.isProp),
+      hidden: false,
+    };
+    pivotMap.set(group, node);
+    pivots.push(node);
+    return group;
+  }
 
   function block(
     parent: THREE.Object3D,
-    material: THREE.MeshStandardMaterial,
+    hexColor: number,
     x: number, y: number, z: number,
     width: number, height: number, depth: number,
-    castsShadow = false,
+    _castsShadow = false,
   ) {
-    const part = new THREE.Mesh(geometry, material);
-    part.position.set(x, y, z);
-    part.scale.set(width, height, depth);
-    part.castShadow = castsShadow;
-    part.receiveShadow = true;
-    parent.add(part);
-    return part;
-  }
-
-  function pivot(parent: THREE.Object3D, x: number, y: number, z: number) {
-    const group = new THREE.Group();
-    group.position.set(x, y, z);
-    parent.add(group);
-    return group;
+    const pivotNode = pivotMap.get(parent)!;
+    const localMatrix = new THREE.Matrix4().compose(
+      tempPos.set(x, y, z),
+      tempQuat.identity(),
+      tempScale.set(width, height, depth),
+    );
+    parts.push({
+      pivot: pivotNode,
+      localMatrix,
+      color: new THREE.Color(hexColor),
+      index: parts.length,
+    });
   }
 
   const hips = pivot(mesh, 0, 0.9, 0);
@@ -118,39 +150,75 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
     legs.push({ side, thigh, knee, ankle });
   }
 
-  let phase = 0;
-  let effort = 0;
-  let airborne = 0;
-  const upperWeights = { aim: 0, handsUp: 0, phone: 0, hurt: 0 };
   const leftHand = arms[0].elbow;
   const hand = arms[1].elbow;
-  const pistol = pivot(hand, 0, -0.25, 0);
+  const pistol = pivot(hand, 0, -0.25, 0, true);
   pistol.rotation.x = -Math.PI / 2;
   block(pistol, pants, 0, 0, -0.09, 0.09, 0.12, 0.28);
   block(pistol, hair, 0, -0.075, 0, 0.08, 0.16, 0.1);
   pistol.visible = false;
 
-  const phoneProp = pivot(hand, 0, -0.24, -0.06);
+  const phoneProp = pivot(hand, 0, -0.24, -0.06, true);
   block(phoneProp, hair, 0, 0, 0, 0.085, 0.15, 0.025);
   block(phoneProp, shirtLight, 0, 0, -0.015, 0.065, 0.11, 0.01);
   phoneProp.visible = false;
 
-  const coffeeProp = pivot(leftHand, 0, -0.25, -0.05);
+  const coffeeProp = pivot(leftHand, 0, -0.25, -0.05, true);
   block(coffeeProp, shoe, 0, 0, 0, 0.09, 0.13, 0.09);
   block(coffeeProp, hair, 0, 0.075, 0, 0.1, 0.025, 0.1);
   coffeeProp.visible = false;
 
-  const bagProp = pivot(leftHand, -0.05, -0.34, 0);
+  const bagProp = pivot(leftHand, -0.05, -0.34, 0, true);
   block(bagProp, piping, 0, 0, 0, 0.14, 0.24, 0.20);
   block(bagProp, cream, 0, 0.13, 0, 0.03, 0.06, 0.12);
   bagProp.visible = false;
 
-  const briefcaseProp = pivot(leftHand, -0.04, -0.35, 0);
+  const briefcaseProp = pivot(leftHand, -0.04, -0.35, 0, true);
   block(briefcaseProp, pants, 0, 0, 0, 0.10, 0.25, 0.34);
   block(briefcaseProp, hair, 0, 0.14, 0, 0.04, 0.04, 0.12);
   briefcaseProp.visible = false;
 
-  const props = new Set([pistol, phoneProp, coffeeProp, bagProp, briefcaseProp]);
+  // One single InstancedMesh per avatar (1 draw call instead of 16)
+  const batch = new THREE.InstancedMesh(sharedBoxGeometry, sharedAvatarMaterial, parts.length);
+  batch.castShadow = true;
+  batch.receiveShadow = true;
+  for (const part of parts) {
+    batch.setColorAt(part.index, part.color);
+  }
+  batch.instanceColor!.needsUpdate = true;
+  mesh.add(batch);
+
+  function syncBatchMatrices() {
+    for (let i = 0; i < pivots.length; i++) {
+      const node = pivots[i];
+      if (node.parent?.hidden || (node.isProp && !node.group.visible)) {
+        node.hidden = true;
+        continue;
+      }
+      node.hidden = false;
+      node.group.updateMatrix();
+      if (node.parent) {
+        node.netMatrix.multiplyMatrices(node.parent.netMatrix, node.group.matrix);
+      } else {
+        node.netMatrix.copy(node.group.matrix);
+      }
+    }
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (part.pivot.hidden) {
+        batch.setMatrixAt(part.index, ZERO_MATRIX);
+      } else {
+        tempMatrix.multiplyMatrices(part.pivot.netMatrix, part.localMatrix);
+        batch.setMatrixAt(part.index, tempMatrix);
+      }
+    }
+    batch.instanceMatrix.needsUpdate = true;
+  }
+
+  let phase = 0;
+  let effort = 0;
+  let airborne = 0;
+  const upperWeights = { aim: 0, handsUp: 0, phone: 0, hurt: 0 };
 
   function animate({ effort: targetEffort, sprint, verticalSpeed, grounded, action = 'relaxed', armed = false, recoil = 0, carry = 'none' }: AvatarPose, dt: number) {
     effort = THREE.MathUtils.damp(effort, targetEffort, 13, dt);
@@ -197,6 +265,8 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
         - airborne * (verticalSpeed > 0 ? 0.4 : 0.23);
       ankle.rotation.x = -thigh.rotation.x * 0.25 - knee.rotation.x * 0.2;
     }
+
+    syncBatchMatrices();
   }
 
   function reset() {
@@ -205,47 +275,24 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
     airborne = 0;
     for (const pose of ['aim', 'handsUp', 'phone', 'hurt'] as const) upperWeights[pose] = 0;
     animate({ effort: 0, sprint: 0, verticalSpeed: 0, grounded: true }, 0);
+    batch.computeBoundingSphere();
   }
 
   reset();
-
-  // One draw per articulated pivot: repeated static blocks share geometry/material.
-  const palette = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
-  materials.push(palette);
-  const groups: THREE.Group[] = [];
-  mesh.traverse((object) => { if (object instanceof THREE.Group) groups.push(object); });
-  for (const group of groups) {
-    const parts = group.children.filter((child): child is THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> => child instanceof THREE.Mesh);
-    if (!parts.length) continue;
-    const batch = new THREE.InstancedMesh(geometry, palette, parts.length);
-    for (const [index, part] of parts.entries()) {
-      part.updateMatrix(); batch.setMatrixAt(index, part.matrix); batch.setColorAt(index, part.material.color);
-      part.removeFromParent();
-    }
-    const cast = !props.has(group) && (group === hips || group === torso || group === head || arms.some((a) => a.shoulder === group) || legs.some((l) => l.thigh === group));
-    batch.castShadow = cast;
-    batch.receiveShadow = !props.has(group);
-    batch.computeBoundingSphere();
-    group.add(batch);
-  }
 
   return {
     mesh,
     animate,
     reset,
-    setOpacity(value: number) {
-      palette.opacity = THREE.MathUtils.clamp(value, 0, 1);
-      const transparent = palette.opacity < 0.999;
-      if (palette.transparent !== transparent) {
-        palette.transparent = transparent;
-        palette.needsUpdate = true;
-      }
-      palette.depthWrite = !palette.transparent;
+    setShadow(enabled: boolean) {
+      if (batch.castShadow !== enabled) batch.castShadow = enabled;
+    },
+    setOpacity(_value: number) {
+      // Opaque shared material prevents mid-frame shader recompilation hitches
     },
     dispose() {
-      mesh.traverse((object) => { if (object instanceof THREE.InstancedMesh) object.dispose(); });
+      batch.dispose();
       mesh.removeFromParent();
-      for (const material of materials) material.dispose();
     },
   };
 }

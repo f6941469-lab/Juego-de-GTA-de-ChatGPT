@@ -28,19 +28,44 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
   let stun = 0;
   let opacity = 1;
   let farAnimAcc = 0;
+  let suspended = false;
+  let settleFrames = 2;
   const api = {
     position,
     collider: character.collider,
     get heading() { return heading; },
     get health() { return health; },
     get stuck() { return stuck; },
+    get suspended() { return suspended; },
     get arrived() { return !destination || planarDistance(position, destination) < 0.55; },
     action(value: AvatarPose['action']) { action = value; },
     carry(value: CarryItem) { carryItem = value; },
+    setSuspended(value: boolean, target?: Point3) {
+      suspended = value;
+      character.collider.setEnabled(!value && health > 0);
+      if (value) {
+        destination = undefined;
+        path = [];
+        passing = undefined;
+        speed = resolvedSpeed = 0;
+        avatar.mesh.visible = false;
+        if (target) {
+          position.set(target.x, target.y, target.z);
+          previous.copy(position);
+        }
+      } else if (target) {
+        character.warp(target);
+        position.set(target.x, target.y, target.z);
+        previous.copy(position);
+        settleFrames = 2;
+        avatar.mesh.visible = true;
+      }
+    },
     warp(target: Point3) {
       character.warp(target);
       position.set(target.x, target.y, target.z);
       previous.copy(position);
+      settleFrames = 2;
     },
     face(target: Point3, dt: number) {
       const angle = Math.atan2(target.x - position.x, position.z - target.z);
@@ -53,6 +78,11 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
     },
     prepare(dt: number) {
       previous.copy(position); previousHeading = heading; routeAge += dt; stun = Math.max(0, stun - dt);
+      if (suspended || health <= 0 || !character.collider.isEnabled()) {
+        movement = { x: 0, y: 0, z: 0 };
+        stuck = 0;
+        return;
+      }
       let dx = 0; let dz = 0;
       if (routeVersion !== navigation.version) {
         if (!navigation.pathClear(path)) path = [];
@@ -62,7 +92,7 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
       if (passing && (planarDistance(position, passing) < 0.19 || stuck > 1.5)) {
         passing = undefined; path = []; routeAge = 1;
       }
-      if (destination && health > 0 && stun === 0 && !api.arrived) {
+      if (destination && stun === 0 && !api.arrived) {
         if (!passing && ((!path.length && routeAge >= 1) || (stuck > 1 && routeAge > 2))) {
           const route = navigation.requestPath(position, destination);
           if (route !== undefined) { path = route; routeAge = 0; routeVersion = navigation.version; }
@@ -75,35 +105,56 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
         }
         if (target) {
           const distance = planarDistance(position, target);
-          const step = Math.min(speed * dt, distance);
-          dx = (target.x - position.x) / distance * step; dz = (target.z - position.z) / distance * step;
-          api.face(target, dt);
+          if (distance > 0.001) {
+            const step = Math.min(speed * dt, distance);
+            dx = (target.x - position.x) / distance * step; dz = (target.z - position.z) / distance * step;
+            api.face(target, dt);
+          }
         }
       }
-      if (health > 0) {
+      if (dx !== 0 || dz !== 0 || !grounded || settleFrames > 0) {
+        if (settleFrames > 0) settleFrames--;
         const result = character.move(dt, { x: dx, y: -0.18, z: dz });
         movement = result.movement; grounded = result.grounded;
-      } else movement = { x: 0, y: 0, z: 0 };
+      } else {
+        movement = { x: 0, y: 0, z: 0 };
+      }
       stuck = destination && !api.arrived && Math.hypot(movement.x, movement.z) < dt * 0.1 ? stuck + dt : 0;
     },
-    finish(dt: number) { const feet = character.readFeet(); position.set(feet.x, feet.y, feet.z); resolvedSpeed = Math.hypot(movement.x, movement.z) / dt; },
+    finish(dt: number) {
+      if (suspended || health <= 0 || !character.collider.isEnabled()) {
+        resolvedSpeed = 0;
+        return;
+      }
+      if (movement.x !== 0 || movement.y !== 0 || movement.z !== 0 || !grounded) {
+        const feet = character.readFeet();
+        position.set(feet.x, feet.y, feet.z);
+      }
+      resolvedSpeed = Math.hypot(movement.x, movement.z) / dt;
+    },
     render(alpha: number, dt: number, armed = false, cameraPosition?: Vector3) {
+      if (suspended) {
+        avatar.mesh.visible = false;
+        return;
+      }
       const distance = cameraPosition ? position.distanceTo(cameraPosition) : 0;
-      avatar.mesh.visible = !cameraPosition || distance < 84;
+      avatar.mesh.visible = !cameraPosition || (distance < 74 && distance > 0.55);
       if (!avatar.mesh.visible) { opacity = 0; return; }
+      avatar.setShadow(!cameraPosition || distance < 26);
       visual.lerpVectors(previous, position, alpha); avatar.mesh.position.copy(visual);
       avatar.mesh.rotation.y = -(previousHeading + Math.atan2(Math.sin(heading - previousHeading), Math.cos(heading - previousHeading)) * alpha);
       avatar.mesh.rotation.z = health <= 0 ? -Math.PI / 2 : 0;
       if (health <= 0) avatar.mesh.position.y += 0.25;
       if (cameraPosition) {
         const camDistance = Math.hypot(visual.x - cameraPosition.x, visual.y + 1 - cameraPosition.y, visual.z - cameraPosition.z);
-        const visibility = MathUtils.smoothstep(camDistance, 0.5, 1.4) * (1 - MathUtils.smoothstep(camDistance, 64, 80));
+        const visibility = MathUtils.smoothstep(camDistance, 0.5, 1.4) * (1 - MathUtils.smoothstep(camDistance, 62, 74));
         opacity = dt > 0 ? MathUtils.damp(opacity, visibility, 18, dt) : visibility;
         avatar.setOpacity(opacity);
       }
-      if (cameraPosition && distance > 42 && dt > 0) {
+      if (cameraPosition && (distance > 24 || (resolvedSpeed < 0.03 && action === 'relaxed')) && dt > 0) {
         farAnimAcc += dt;
-        if (farAnimAcc < 0.08) return;
+        const interval = distance > 42 ? 0.1 : 0.06;
+        if (farAnimAcc < interval) return;
         const stepDt = farAnimAcc;
         farAnimAcc = 0;
         avatar.animate({ effort: MathUtils.clamp(resolvedSpeed / 2, 0, 1), sprint: MathUtils.clamp((resolvedSpeed - 2) / 2, 0, 1), verticalSpeed: 0, grounded, action: stun > 0 ? 'hurt' : action, armed, carry: carryItem }, stepDt);
@@ -118,9 +169,11 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
       if (health === 0) { character.collider.setEnabled(false); api.goTo(undefined); }
     },
     reset() {
+      suspended = false; settleFrames = 2;
       character.warp(spawn); character.collider.setEnabled(true); position.set(spawn.x, spawn.y, spawn.z); previous.copy(position);
       heading = previousHeading = initialHeading; health = 100; action = 'relaxed'; carryItem = 'none'; stun = routeAge = stuck = resolvedSpeed = farAnimAcc = 0;
       destination = undefined; path = []; passing = undefined; avatar.reset();
+      avatar.mesh.visible = true;
       opacity = 1; avatar.setOpacity(1);
     },
     dispose() { character.dispose(); avatar.dispose(); },

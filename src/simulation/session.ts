@@ -96,20 +96,39 @@ export function createSession(
     },
   );
 
-  const dynamicActors: Actor[] = [];
-  const allActors = () => [
-    ...population.allPeople.map((person) => person.actor),
-    ...police.units.map((unit) => unit.actor),
-    ...dynamicActors,
-  ];
-  const walkers = () => [
-    ...(player.inVehicle ? [] : [{ owner: player.collider.handle, position: player.position }]),
-    ...allActors().map((actor) => ({
-      owner: actor.collider.handle,
-      position: actor.position,
-      get active() { return actor.health > 0 && actor.collider.isEnabled(); },
-    })),
-  ];
+  let cachedPopVersion = -1;
+  let cachedActors: Actor[] = [];
+  let cachedWalkers: Array<{ owner: number; position: Point3; readonly active: boolean }> = [];
+  const policeActorSet = new Set(police.units.map((u) => u.actor));
+  const playerWalker = {
+    owner: player.collider.handle,
+    position: player.position,
+    get active() { return !player.inVehicle; },
+  };
+
+  function allActors(): readonly Actor[] {
+    if (cachedPopVersion !== population.version) {
+      cachedPopVersion = population.version;
+      cachedActors = [
+        ...population.allPeople.map((person) => person.actor),
+        ...police.units.map((unit) => unit.actor),
+      ];
+      cachedWalkers = [
+        playerWalker,
+        ...cachedActors.map((actor) => ({
+          owner: actor.collider.handle,
+          position: actor.position,
+          get active() { return !actor.suspended && actor.health > 0 && actor.collider.isEnabled(); },
+        })),
+      ];
+    }
+    return cachedActors;
+  }
+
+  function walkers() {
+    allActors();
+    return cachedWalkers;
+  }
 
   function registerActor(id: string, actor: Actor) {
     world.register({
@@ -277,8 +296,7 @@ export function createSession(
         y: 0.08,
         z: car.position.z - Math.sin(car.heading) * 1.9,
       }, 2.5) ?? { x: car.position.x - 1.8, y: 0.08, z: car.position.z };
-      const driver = population.ejectFromVehicle(car.id, ejectPos, now);
-      dynamicActors.push(driver.actor);
+      population.ejectFromVehicle(car.id, ejectPos, now);
     }
     car.controlledByPlayer = true;
     car.abandoned = false;
@@ -449,6 +467,11 @@ export function createSession(
     }
   }
 
+  let cachedPrompt = '';
+  let lastPromptTime = -1;
+  let lastPromptX = Number.NaN;
+  let lastPromptZ = Number.NaN;
+
   function doResetWithFee() {
     reset();
     economy.money = Math.max(0, economy.money - 30);
@@ -467,7 +490,8 @@ export function createSession(
     activeTalkNpc = undefined;
     talkReply = '';
     activeShop = allShops[0];
-    dynamicActors.length = 0;
+    cachedPopVersion = -1;
+    lastPromptTime = -1;
     journal.reset();
     economy.reset();
     weapon.reset();
@@ -512,6 +536,34 @@ export function createSession(
     return '';
   }
 
+  function getPrompt(): string {
+    const moved = Math.hypot(player.position.x - lastPromptX, player.position.z - lastPromptZ) > 0.25;
+    if (moved || now - lastPromptTime >= 0.12 || lastPromptTime < 0) {
+      lastPromptTime = now;
+      lastPromptX = player.position.x;
+      lastPromptZ = player.position.z;
+      cachedPrompt = buildPrompt();
+    }
+    return cachedPrompt;
+  }
+
+  function buildReplaySnapshots() {
+    const actors: ReplayActorSnapshot[] = [
+      { id: 'player', position: player.position, heading: player.heading, health, armed: weapon.equipped, color: 0x247c81 },
+      ...population.allPeople.map((p) => ({
+        id: p.id, position: p.actor.position, heading: p.actor.heading, health: p.actor.health, armed: false, color: p.color,
+      })),
+      ...police.units.map((u) => ({
+        id: u.id, position: u.actor.position, heading: u.actor.heading, health: u.actor.health, armed: police.state === 'pursue', color: 0x304f7c,
+      })),
+    ];
+    const vehicles: ReplayVehicleSnapshot[] = [
+      ...traffic.allVehicles.map((v) => ({ id: v.id, position: v.position, heading: v.heading, color: v.color, kind: v.kind })),
+      ...police.patrolCars.map((p) => ({ id: p.id, position: p.position, heading: p.heading, color: 0x1e2c3d, kind: 'police' as const })),
+    ];
+    return { actors, vehicles };
+  }
+
   const api = {
     journal,
     economy,
@@ -554,7 +606,7 @@ export function createSession(
       return speech;
     },
     get threat() { return threatTime > 0 ? Math.min(1, threatTime / 3) : 0; },
-    get prompt() { return buildPrompt(); },
+    get prompt() { return getPrompt(); },
     command,
     select,
     openReplayWith,
@@ -604,19 +656,23 @@ export function createSession(
       previousPoliceState = police.state;
 
       const actors = allActors();
-      actors.forEach((actor) => actor.prepare(dt));
+      for (let i = 0; i < actors.length; i++) actors[i].prepare(dt);
       traffic.prepare(dt, now);
       physics.step(dt);
       player.finishStep(dt);
-      actors.forEach((actor) => actor.finish(dt));
+      for (let i = 0; i < actors.length; i++) actors[i].finish(dt);
       traffic.finish();
 
       if (currentVehicle) {
-        player.syncVehiclePose(currentVehicle.position, currentVehicle.heading);
+        const safePose = currentVehicle.position.y < 0
+          ? { x: currentVehicle.position.x, y: 0.2, z: currentVehicle.position.z }
+          : currentVehicle.position;
+        player.syncVehiclePose(safePose, currentVehicle.heading);
         if (currentVehicle.controlledByPlayer && Math.abs(currentVehicle.speed) > 2.2) {
           feedback.hitNear(currentVehicle.position, 1.8);
-          for (const actor of actors) {
-            if (actor.health > 0 && actor.collider.isEnabled() && planarDistance(actor.position, currentVehicle.position) < 1.55) {
+          for (let i = 0; i < actors.length; i++) {
+            const actor = actors[i];
+            if (actor.health > 0 && !actor.suspended && actor.collider.isEnabled() && planarDistance(actor.position, currentVehicle.position) < 1.55) {
               actor.hurt(45);
               audio.play('impact', actor.position);
             }
@@ -688,21 +744,8 @@ export function createSession(
         }
       }
 
-      // Witness POV Recording (real cameras + segment commits)
-      const actorSnaps: ReplayActorSnapshot[] = [
-        { id: 'player', position: player.position, heading: player.heading, health, armed: weapon.equipped, color: 0x247c81 },
-        ...population.allPeople.map((p) => ({
-          id: p.id, position: p.actor.position, heading: p.actor.heading, health: p.actor.health, armed: false, color: p.color,
-        })),
-        ...police.units.map((u) => ({
-          id: u.id, position: u.actor.position, heading: u.actor.heading, health: u.actor.health, armed: police.state === 'pursue', color: 0x304f7c,
-        })),
-      ];
-      const vehicleSnaps: ReplayVehicleSnapshot[] = [
-        ...traffic.allVehicles.map((v) => ({ id: v.id, position: v.position, heading: v.heading, color: v.color, kind: v.kind })),
-        ...police.patrolCars.map((p) => ({ id: p.id, position: p.position, heading: p.heading, color: 0x1e2c3d, kind: 'police' as const })),
-      ];
-      recorder.step(dt, now, population.allPeople, player.position, actorSnaps, vehicleSnaps);
+      // Witness POV Recording (lazy snapshots only built when an active capture samples a frame)
+      recorder.step(dt, now, population.allPeople, player.position, buildReplaySnapshots);
       journal.tickSocial(dt);
 
       if (detention || health === 0) {
@@ -727,8 +770,11 @@ export function createSession(
         if (clip) recorder.renderReplayFrame(camera, clip, replayFrame);
         return;
       }
-      for (const actor of allActors()) {
-        actor.render(alpha, dt, police.units.some((unit) => unit.actor === actor) && police.state === 'pursue', camera.position);
+      const actors = allActors();
+      const pursuing = police.state === 'pursue';
+      for (let i = 0; i < actors.length; i++) {
+        const actor = actors[i];
+        actor.render(alpha, dt, pursuing && policeActorSet.has(actor), camera.position);
       }
       traffic.render(alpha);
       police.render(alpha);

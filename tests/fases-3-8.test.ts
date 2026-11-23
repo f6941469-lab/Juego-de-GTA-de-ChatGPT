@@ -85,7 +85,7 @@ describe('Fases 3-8: tiendas, vida civil, transporte, destrucción, policía y r
     }
   });
 
-  it('permite robar un coche ocupado, conducirlo, bajar y dispara reacción del conductor y policía', async () => {
+  it('permite robar un coche ocupado sin duplicar conductor, conducirlo, bajar y dispara reacción policial', async () => {
     const scene = new Scene();
     const district = buildDistrict(scene, gameConfig.seed);
     const physics = await createPhysics(district.colliders);
@@ -93,12 +93,16 @@ describe('Fases 3-8: tiendas, vida civil, transporte, destrucción, policía y r
     const player = createPlayer(scene, camera, physics, district.spawn);
     const session = createSession(scene, camera, physics, district.colliders, player, audio(), vi.fn());
     try {
+      const beforeCount = session.population.allPeople.length;
       const car = session.traffic.cars[0];
       player.setInVehicle(false, { x: car.position.x + 1.5, y: 0.08, z: car.position.z });
       session.command('vehicle');
       expect(player.inVehicle).toBe(true);
       expect(session.currentVehicle?.id).toBe(car.id);
       expect(car.controlledByPlayer).toBe(true);
+      expect(session.population.allPeople).toHaveLength(beforeCount + 1);
+      const handles = new Set(session.population.allPeople.map((p) => p.actor.collider.handle));
+      expect(handles.size).toBe(session.population.allPeople.length);
       expect(session.journal.events.some((e) => e.kind === 'theft')).toBe(true);
 
       const startPos = car.position.clone();

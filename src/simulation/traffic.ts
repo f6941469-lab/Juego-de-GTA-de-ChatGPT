@@ -40,12 +40,55 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
   const network = new RoadNetwork();
   const destinations = [...network.nodes.values()];
   const geometry = new BoxGeometry();
-  const materials: MeshStandardMaterial[] = [];
-  const material = (color: number, emissive = 0) => { const result = new MeshStandardMaterial({ color, roughness: 0.65, emissive, emissiveIntensity: 0.8 }); materials.push(result); return result; };
-  const dark = material(0x27333b); const glass = material(0x769fa5); const tire = material(0x24252c); const skin = material(0xc58e66); const light = material(0xfbe2a1, 0xe9bd69); const brake = material(0xb52939, 0xb52939);
-  const busPaint = material(0x3a8c84); const metroPaint = material(0xd99b43);
-  function block(group: Group, mat: MeshStandardMaterial, x: number, y: number, z: number, w: number, h: number, d: number) {
-    const mesh = new Mesh(geometry, mat); mesh.position.set(x, y, z); mesh.scale.set(w, h, d); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); return mesh;
+  const vehicleMaterial = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.62 });
+  const materials: MeshStandardMaterial[] = [vehicleMaterial];
+  const dark = 0x27333b; const glass = 0x769fa5; const tire = 0x24252c; const skin = 0xc58e66; const light = 0xfbe2a1; const brake = 0xb52939;
+  const busPaint = 0x3a8c84; const metroPaint = 0xd99b43;
+  const partTransform = new Object3D();
+  const partColor = new Color();
+  const zeroMatrix = new Object3D();
+  zeroMatrix.scale.set(0, 0, 0);
+  zeroMatrix.updateMatrix();
+
+  function buildVehicleBatch(
+    group: Group,
+    specs: readonly { color: number; x: number; y: number; z: number; w: number; h: number; d: number; name?: string }[],
+  ) {
+    const batch = new InstancedMesh(geometry, vehicleMaterial, specs.length);
+    batch.castShadow = true;
+    batch.receiveShadow = true;
+    const matrices: Float32Array[] = [];
+    specs.forEach((s, i) => {
+      partTransform.position.set(s.x, s.y, s.z);
+      partTransform.scale.set(s.w, s.h, s.d);
+      partTransform.updateMatrix();
+      batch.setMatrixAt(i, partTransform.matrix);
+      batch.setColorAt(i, partColor.setHex(s.color));
+      matrices.push(new Float32Array(partTransform.matrix.elements));
+      if (s.name === 'Wheel') {
+        const wheelAnchor = new Object3D();
+        wheelAnchor.name = 'Wheel';
+        wheelAnchor.position.set(s.x, s.y, s.z);
+        wheelAnchor.scale.set(s.w, s.h, s.d);
+        group.add(wheelAnchor);
+      }
+    });
+    batch.instanceMatrix.needsUpdate = true;
+    batch.instanceColor!.needsUpdate = true;
+    batch.computeBoundingSphere();
+    group.add(batch);
+    return {
+      batch,
+      setPartVisible(index: number, visible: boolean) {
+        if (visible) {
+          partTransform.matrix.fromArray(matrices[index]);
+          batch.setMatrixAt(index, partTransform.matrix);
+        } else {
+          batch.setMatrixAt(index, zeroMatrix.matrix);
+        }
+        batch.instanceMatrix.needsUpdate = true;
+      },
+    };
   }
 
   const carColors = [0xe6b06f, 0x71aaa6, 0xb46d83];
@@ -54,18 +97,35 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     const lane = network.lanes.find(lane => lane.from.x === fromX && lane.from.z === fromZ && lane.to.x === toX && lane.to.z === toZ)!;
     const pose = lanePose(lane, distance); const mesh = new Group(); scene.add(mesh);
     const hex = carColors[index];
-    const paint = material(hex);
-    block(mesh, paint, 0, 0, 0, 1.65, 0.55, 3.5);
-    block(mesh, glass, 0, 0.5, -0.05, 1.4, 0.55, 1.7);
-    block(mesh, paint, 0, 0.8, 0, 1.48, 0.12, 1.8);
+    const carParts: { color: number; x: number; y: number; z: number; w: number; h: number; d: number; name?: string }[] = [
+      { color: hex, x: 0, y: 0, z: 0, w: 1.65, h: 0.55, d: 3.5 },
+      { color: glass, x: 0, y: 0.5, z: -0.05, w: 1.4, h: 0.55, d: 1.7 },
+      { color: hex, x: 0, y: 0.8, z: 0, w: 1.48, h: 0.12, d: 1.8 },
+    ];
     for (const side of [-1, 1]) {
-      block(mesh, paint, side * 0.72, 0.5, 0, 0.08, 0.6, 1.8);
-      block(mesh, light, side * 0.58, 0.05, -1.77, 0.35, 0.15, 0.06);
-      block(mesh, brake, side * 0.58, 0.05, 1.77, 0.35, 0.15, 0.06);
-      for (const z of [-1.05, 1.05]) block(mesh, tire, side * 0.83, -0.23, z, 0.18, 0.48, 0.52).name = 'Wheel';
+      carParts.push(
+        { color: hex, x: side * 0.72, y: 0.5, z: 0, w: 0.08, h: 0.6, d: 1.8 },
+        { color: light, x: side * 0.58, y: 0.05, z: -1.77, w: 0.35, h: 0.15, d: 0.06 },
+        { color: brake, x: side * 0.58, y: 0.05, z: 1.77, w: 0.35, h: 0.15, d: 0.06 },
+      );
+      for (const z of [-1.05, 1.05]) {
+        carParts.push({ color: tire, x: side * 0.83, y: -0.23, z, w: 0.18, h: 0.48, d: 0.52, name: 'Wheel' });
+      }
     }
-    const driverSeatMesh = block(mesh, dark, 0.34, 0.35, 0, 0.38, 0.4, 0.35);
-    const driverHeadMesh = block(mesh, skin, 0.34, 0.61, -0.1, 0.25, 0.25, 0.25);
+    const seatIdx = carParts.length;
+    carParts.push({ color: dark, x: 0.34, y: 0.35, z: 0, w: 0.38, h: 0.4, d: 0.35 });
+    const headIdx = carParts.length;
+    carParts.push({ color: skin, x: 0.34, y: 0.61, z: -0.1, w: 0.25, h: 0.25, d: 0.25 });
+    const batched = buildVehicleBatch(mesh, carParts);
+    let driverVisible = true;
+    const toggleDriver = (vis: boolean) => {
+      if (driverVisible === vis) return;
+      driverVisible = vis;
+      batched.setPartVisible(seatIdx, vis);
+      batched.setPartVisible(headIdx, vis);
+    };
+    const driverSeatMesh = { get visible() { return driverVisible; }, set visible(v: boolean) { toggleDriver(v); } };
+    const driverHeadMesh = { get visible() { return driverVisible; }, set visible(v: boolean) { toggleDriver(v); } };
     const body = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(pose.x, pose.y, pose.z));
     const collider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(0.86, 0.63, 1.83).setTranslation(0, COLLIDER_OFFSET_Y, 0), body);
     const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -pose.heading); body.setRotation(rotation, true);
@@ -110,12 +170,15 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
   const busStartLane = network.lanes.find((l) => l.from === busRouteNodes[7] && l.to === busRouteNodes[0])!;
   const busPose = lanePose(busStartLane, 4);
   const busMesh = new Group(); scene.add(busMesh);
-  block(busMesh, busPaint, 0, 0.35, 0, 2.05, 1.35, 5.4);
-  block(busMesh, glass, 0, 0.72, -2.1, 1.85, 0.55, 1.1);
+  const busParts: { color: number; x: number; y: number; z: number; w: number; h: number; d: number }[] = [
+    { color: busPaint, x: 0, y: 0.35, z: 0, w: 2.05, h: 1.35, d: 5.4 },
+    { color: glass, x: 0, y: 0.72, z: -2.1, w: 1.85, h: 0.55, d: 1.1 },
+  ];
   for (const side of [-1, 1]) {
-    block(busMesh, glass, side * 1.03, 0.72, 0.1, 0.05, 0.55, 3.4);
-    for (const z of [-1.7, 1.7]) block(busMesh, tire, side * 0.96, -0.22, z, 0.22, 0.52, 0.58);
+    busParts.push({ color: glass, x: side * 1.03, y: 0.72, z: 0.1, w: 0.05, h: 0.55, d: 3.4 });
+    for (const z of [-1.7, 1.7]) busParts.push({ color: tire, x: side * 0.96, y: -0.22, z, w: 0.22, h: 0.52, d: 0.58 });
   }
+  buildVehicleBatch(busMesh, busParts);
   const busBody = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(busPose.x, busPose.y, busPose.z));
   const busCollider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(1.05, 0.9, 2.75).setTranslation(0, 0.4, 0), busBody);
   const busPos = new Vector3(busPose.x, busPose.y, busPose.z);
@@ -152,8 +215,10 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
 
   // Metro Shuttle connecting Metro Sur (trackX: 15, trackZ: 58.9) & Metro Norte (trackX: -58.5, trackZ: -49.1)
   const metroMesh = new Group(); scene.add(metroMesh);
-  block(metroMesh, metroPaint, 0, 0.65, 0, 6.2, 1.4, 1.85);
-  block(metroMesh, glass, 0, 0.85, 0, 5.2, 0.55, 1.9);
+  buildVehicleBatch(metroMesh, [
+    { color: metroPaint, x: 0, y: 0.65, z: 0, w: 6.2, h: 1.4, d: 1.85 },
+    { color: glass, x: 0, y: 0.85, z: 0, w: 5.2, h: 0.55, d: 1.9 },
+  ]);
   const metroPos = new Vector3(metroStations[0].trackX, 0.1, metroStations[0].trackZ);
   const metroBody = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(metroPos.x, metroPos.y, metroPos.z));
   const metroCollider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(3.1, 0.75, 0.95).setTranslation(0, 0.65, 0), metroBody);
@@ -219,6 +284,9 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     if (route.length) bus.route = route;
   }
 
+  const upAxis = new Vector3(0, 1, 0);
+  const tempQuat = new Quaternion();
+
   function stepRoadVehicle(
     veh: {
       id: string; lane: RoadLane; route: RoadLane[]; turn: (RoadTurn & { next: RoadLane; distance: number }) | undefined;
@@ -252,11 +320,14 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     const advance = Math.min(veh.speed * dt, Math.max(0, clearance - 0.05));
     const travel = Math.min(advance, veh.turn ? veh.turn.length - veh.turn.distance : left);
     const pose = veh.turn ? turnPose(veh.turn, veh.turn.distance + travel) : lanePose(veh.lane, veh.distance + travel);
-    const delta = { x: pose.x - veh.position.x, y: 0, z: pose.z - veh.position.z };
-    const collision = physics.world.castShape(origin, veh.body.rotation(), delta, vehShape, 0.03, 1, true,
-      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, veh.collider);
-    const fraction = collision ? Math.max(0, collision.time_of_impact - 0.01) : 1;
-    if (fraction < 0.9 && veh.speed > 2 && onImpact) onImpact();
+    let fraction = 1;
+    if (veh.turn || clearance < 2.2) {
+      const delta = { x: pose.x - veh.position.x, y: 0, z: pose.z - veh.position.z };
+      const collision = physics.world.castShape(origin, veh.body.rotation(), delta, vehShape, 0.03, 1, true,
+        RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, veh.collider);
+      fraction = collision ? Math.max(0, collision.time_of_impact - 0.01) : 1;
+      if (fraction < 0.9 && veh.speed > 2 && onImpact) onImpact();
+    }
     if (veh.turn) {
       veh.turn.distance += travel * fraction;
       if (veh.turn.distance >= veh.turn.length - 0.001) {
@@ -273,12 +344,13 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     const resolved = veh.turn ? turnPose(veh.turn, veh.turn.distance) : lanePose(veh.lane, veh.distance);
     veh.heading += Math.atan2(Math.sin(resolved.heading - veh.heading), Math.cos(resolved.heading - veh.heading)) * (1 - Math.exp(-14 * dt));
     veh.body.setNextKinematicTranslation(resolved);
-    veh.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -veh.heading));
+    veh.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -veh.heading));
     if (fraction < 1) veh.speed *= fraction;
   }
 
   let time = 0;
   let playerInput: PlayerDriveInput = { throttle: 0, steer: 0, brake: false };
+  const allVehiclesList: ManagedVehicle[] = [...cars, bus, metro];
 
   return {
     cars,
@@ -286,7 +358,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     metro,
     network,
     get allVehicles(): ManagedVehicle[] {
-      return [...cars, bus, metro];
+      return allVehiclesList;
     },
     setPlayerDrive(input: PlayerDriveInput) {
       playerInput = input;
@@ -294,7 +366,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
     nearestBoardable(point: Point3, maxDist = 3.2): ManagedVehicle | undefined {
       let best: ManagedVehicle | undefined;
       let bestDist = maxDist;
-      for (const veh of [...cars, bus, metro]) {
+      for (const veh of allVehiclesList) {
         const d = Math.hypot(veh.position.x - point.x, veh.position.z - point.z);
         if (d < bestDist) {
           bestDist = d;
@@ -319,6 +391,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
             network.release(car.lane.to, car.id);
             car.reserved = false;
           }
+          car.parkedTimer = 0;
           const accel = playerInput.throttle > 0 ? 11 : playerInput.throttle < 0 ? -7 : 0;
           if (playerInput.brake) {
             car.speed = MathUtils.damp(car.speed, 0, 9, dt);
@@ -346,15 +419,35 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
           }
           const nextPos = { x: car.position.x + dx * frac, y: 0.47, z: car.position.z + dz * frac };
           car.body.setNextKinematicTranslation(nextPos);
-          car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
+          car.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -car.heading));
           continue;
         }
 
         if (car.abandoned) {
           car.speed = MathUtils.damp(car.speed, 0, 5, dt);
-          car.body.setNextKinematicTranslation(car.position);
-          car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
-          continue;
+          car.parkedTimer += dt;
+          // Recover abandoned car after 24s so road intersections never stay permanently blocked
+          if (car.parkedTimer >= 24) {
+            car.abandoned = false;
+            car.parkedTimer = 0;
+            car.driverId = car.initialDriverId;
+            car.occupiedSeats = 1;
+            car.turn = undefined;
+            car.route = [];
+            let bestLane = car.initialLane;
+            let bestDist = Infinity;
+            for (const candidate of network.lanes) {
+              const mid = lanePose(candidate, candidate.length * 0.5);
+              const d = Math.hypot(mid.x - car.position.x, mid.z - car.position.z);
+              if (d < bestDist) { bestDist = d; bestLane = candidate; }
+            }
+            car.lane = bestLane;
+            car.distance = Math.min(bestLane.length * 0.5, 4);
+          } else {
+            car.body.setNextKinematicTranslation(car.position);
+            car.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -car.heading));
+            continue;
+          }
         }
 
         stepRoadVehicle(car, shape, 5.4, dt, now, false, () => plan(car), () => {
@@ -374,7 +467,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
         bus.speed = 0;
         if (bus.dwellTimer === 0) bus.stoppedAtId = undefined;
         bus.body.setNextKinematicTranslation(bus.position);
-        bus.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -bus.heading));
+        bus.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -bus.heading));
       } else {
         if (bus.stopCooldown === 0) {
           for (const stop of busStops) {
@@ -390,7 +483,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
         stepRoadVehicle(bus, busShape, 4.6, dt, now, bus.dwellTimer > 0, planBus);
       }
 
-      // 3. Metro Shuttle (arrives/dwells at Metro Sur & Metro Norte)
+      // 3. Metro Shuttle (arrives/dwells at Metro Sur & Metro Norte with smooth coordinate interpolation)
       metro.previous.copy(metro.position);
       metro.previousHeading = metro.heading;
       metro.timer = Math.max(0, metro.timer - dt);
@@ -403,23 +496,28 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
         if (metro.timer === 0) {
           metro.phase = 'depart';
           metro.stoppedAtId = undefined;
-          metro.timer = 1.6;
+          metro.timer = 1.4;
         }
       } else if (metro.phase === 'depart') {
         const dir = metro.stationIndex === 0 ? 1 : -1;
-        metro.position.x = currentSt.trackX + dir * (1.6 - metro.timer) * 6;
+        metro.position.set(currentSt.trackX + dir * (1.4 - metro.timer) * 6, 0.1, currentSt.trackZ);
         metro.speed = 6;
         if (metro.timer === 0) {
           metro.phase = 'transit';
-          metro.timer = 9.0;
+          metro.timer = 3.8;
         }
       } else if (metro.phase === 'transit') {
-        metro.position.set(0, -12, 0); // Underground between stations
-        metro.speed = 12;
+        const progress = 1 - metro.timer / 3.8;
+        metro.position.set(
+          MathUtils.lerp(currentSt.trackX, nextSt.trackX, progress),
+          -6,
+          MathUtils.lerp(currentSt.trackZ, nextSt.trackZ, progress),
+        );
+        metro.speed = 14;
         if (metro.timer === 0) {
           metro.stationIndex = (metro.stationIndex + 1) % metroStations.length;
           metro.phase = 'arrive';
-          metro.timer = 1.6;
+          metro.timer = 1.4;
         }
       } else if (metro.phase === 'arrive') {
         const destSt = metroStations[metro.stationIndex];
@@ -428,7 +526,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
         metro.speed = 4;
         if (metro.timer === 0) {
           metro.phase = 'dwell';
-          metro.timer = 6.5;
+          metro.timer = 6.0;
           metro.stoppedAtId = destSt.id;
         }
       }
@@ -448,8 +546,8 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
         }
         signals.instanceColor!.needsUpdate = true; previousPhase = phase;
       }
-      for (const veh of [...cars, bus, metro]) {
-        veh.mesh.visible = veh.position.y > -5;
+      for (const veh of allVehiclesList) {
+        veh.mesh.visible = veh.position.y > -2;
         if (!veh.mesh.visible) continue;
         veh.mesh.position.lerpVectors(veh.previous, veh.position, alpha);
         veh.mesh.rotation.y = -(veh.previousHeading + Math.atan2(Math.sin(veh.heading - veh.previousHeading), Math.cos(veh.heading - veh.previousHeading)) * alpha);
@@ -462,13 +560,13 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
       for (const [index, car] of cars.entries()) {
         car.destination = (index * 7) % destinations.length;
         car.lane = car.initialLane; car.route = []; car.turn = undefined; car.reserved = false;
-        car.controlledByPlayer = false; car.abandoned = false;
+        car.controlledByPlayer = false; car.abandoned = false; car.parkedTimer = 0;
         car.driverId = car.initialDriverId; car.occupiedSeats = 1; car.passengerIds.length = 0;
         car.health = 100; car.driverSeatMesh.visible = true; car.driverHeadMesh.visible = true;
         car.distance = car.initialDistance; const pose = lanePose(car.lane, car.distance);
         car.body.setTranslation(pose, true); car.body.setNextKinematicTranslation(pose);
-        const q = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -pose.heading);
-        car.body.setRotation(q, true); car.body.setNextKinematicRotation(q);
+        tempQuat.setFromAxisAngle(upAxis, -pose.heading);
+        car.body.setRotation(tempQuat, true); car.body.setNextKinematicRotation(tempQuat);
         car.position.set(pose.x, pose.y, pose.z); car.previous.copy(car.position);
         car.heading = car.previousHeading = pose.heading; car.speed = car.cooldown = 0;
       }
@@ -477,8 +575,8 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
       bus.stoppedAtId = undefined; bus.passengerIds.length = 0; bus.occupiedSeats = 1; bus.speed = 0;
       const bp = lanePose(bus.lane, bus.distance);
       bus.body.setTranslation(bp, true); bus.body.setNextKinematicTranslation(bp);
-      const bq = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -bp.heading);
-      bus.body.setRotation(bq, true); bus.body.setNextKinematicRotation(bq);
+      tempQuat.setFromAxisAngle(upAxis, -bp.heading);
+      bus.body.setRotation(tempQuat, true); bus.body.setNextKinematicRotation(tempQuat);
       bus.position.set(bp.x, bp.y, bp.z); bus.previous.copy(bus.position);
       bus.heading = bus.previousHeading = bp.heading;
 
@@ -489,7 +587,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
       metro.body.setTranslation(metro.position, true); metro.body.setNextKinematicTranslation(metro.position);
     },
     dispose() {
-      for (const veh of [...cars, bus, metro]) { veh.mesh.removeFromParent(); physics.world.removeRigidBody(veh.body); }
+      for (const veh of allVehiclesList) { veh.mesh.removeFromParent(); physics.world.removeRigidBody(veh.body); }
       signals.removeFromParent(); signals.dispose(); signalMaterial.dispose();
       network.reset(); geometry.dispose(); materials.forEach((mat) => mat.dispose());
     },

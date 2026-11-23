@@ -1,12 +1,12 @@
 # Historial de cambios
 
-## 0.5.0 · Fases 3–8 y optimización gráfica (working tree en `main`, 2026-11-23)
+## 0.5.0 · Fases 3–8 y optimización contra tirones (2026-11-23)
 
-- **Optimización del distrito y render:** Sectores espaciales de `48 m` (`core`/`detail`), sombras desactivadas en follaje y detalle fino, avatares con `sharedBoxGeometry`, desaceleración distante y un único `PointLight` interior agrupado (`237.161` triángulos / `328` llamadas en `F3` Baja).
+- **Optimización del distrito, avatares y vehículos:** Lotes `core` unificados globalmente, sectores `detail` de `64 m`, simplificación de micro-parteluces en pisos altos, cada avatar y cada vehículo/patrulla consolidado en `1` único `InstancedMesh` con material compartido opaco (evitando recompilaciones de shader a mitad de partida), salto de `computeColliderMovement` en actores estáticos/embarcados, caché de `prompt`/`allActors` y `PointLight` único agrupado (**`77` llamadas y `207.945` triángulos** en `F3` Baja frente a `328` llamadas y `338.093` triángulos).
 - **9 tiendas reales y transporte público:** Reemplazadas cajas cerradas por `9` locales transitables (`Mercado Palma`, `Dulcería Sol`, `Panadería Brisa`, `Cafetería Mar`, `Restaurante Bahía`, `Farmacia Verde`, `Ropa Palmera`, `Armería Norte`, `Minimercado Sur`), `4` paradas de autobús y `2` estaciones de metro (`Metro Sur`, `Metro Norte`).
-- **Vida civil ("Pedro"), charla y eventos:** `21` civiles activos con trabajos, compras reales, accesorios en mano, charlas NPC↔NPC y Jugador↔NPC en español (`E`), detección de seguimiento persistente (`Pedro`) con desvío al metro si pierde el bus y eventos callejeros acotados.
-- **Vehículos, destrucción y policía:** Conducción y robo con `F`, autobús y metro circulando, `18` escaparates y `9` props destructibles conectados a `Navigation`, más `2` patrullas policiales en `RoadNetwork` con desembarco, fuego recíproco y barricadas.
-- **Grabación POV y replay:** Testigos y cámaras urbanas graban segmentos progresivos (sobreviviendo de forma parcial si el testigo muere, incluida caída de cámara) reproducibles en un visor 3D aislado desde `Palma Social` o al finalizar arrestado/abatido.
+- **Vida civil autónoma en toda la ciudad y limpieza legacy:** Todos los civiles móviles alternan autónomamente entre compras reales en las 9 tiendas, autobús, desvío al metro si pierden el bus, lugares de trabajo/ocio (`Jardín Coral`, `Paseo del Mar`, `Torre Alba`, `Hotel Miramar`, `Club Neón`), conversación en español (`E`), acoso persistente y eventos callejeros, eliminando bucles fijos y código obsoleto (`products`/`Item`, `dynamicActors` duplicado, getters duplicados).
+- **Corrección de bugs en vehículos, metro y policía:** Suspensión real (`actor.setSuspended`) para pasajeros en bus/metro y agentes en patrulla, interpolación suave en el metro sin hundir la cámara bajo el mapa, recuperación de coches abandonados, eliminación del doble paso en conductores expulsados y acumulador real de vistas/likes en `Palma Social`.
+- **Grabación POV y replay:** Testigos y cámaras urbanas graban segmentos progresivos con muestreo perezoso (`getSnapshots`) reproducibles en un visor 3D aislado.
 
 ## 0.5.0 · Ciudad compartida y rutas por barrios
 

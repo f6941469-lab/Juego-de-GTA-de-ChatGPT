@@ -55,13 +55,16 @@ type Batch = {
   instances: Placement[];
 };
 
-const SECTOR_SIZE = 48;
+const SECTOR_SIZE = 64;
 
 export class DistrictGeometry {
   private readonly boxGeometry = new BoxGeometry(1, 1, 1);
   private readonly batches = new Map<string, Batch>();
   private readonly materials = new Map<Finish, MeshStandardMaterial>();
   private readonly detailGroups: Array<{ mesh: InstancedMesh; x: number; z: number; visible: boolean }> = [];
+  private lastFocusX = Number.NaN;
+  private lastFocusZ = Number.NaN;
+  private lastDarkness = Number.NaN;
 
   box(
     finish: Finish,
@@ -87,12 +90,14 @@ export class DistrictGeometry {
     const isSkyline = placement.z < -95 || placement.x < -70;
     const isDetail = !isSkyline && (
       finish === 'foliage'
-      || (finish !== 'asphalt' && finish !== 'pavement' && finish !== 'wall' && maxDim < 1.35)
+      || (finish !== 'asphalt' && finish !== 'pavement' && finish !== 'wall' && maxDim < 1.45)
     );
     const shadow = castsShadow && !isDetail && finish !== 'foliage';
-    const sx = isSkyline ? 99 : Math.floor(placement.x / SECTOR_SIZE);
-    const sz = isSkyline ? 99 : Math.floor(placement.z / SECTOR_SIZE);
-    const sectorKey = isSkyline ? 'sky' : `${sx}:${sz}`;
+    // Core structural geometry is batched globally per material/geometry (minimal draw calls);
+    // fine detail and foliage are bucketed by 64m sectors for distance culling.
+    const sx = isDetail ? Math.floor(placement.x / SECTOR_SIZE) : 0;
+    const sz = isDetail ? Math.floor(placement.z / SECTOR_SIZE) : 0;
+    const sectorKey = isDetail ? `${sx}:${sz}` : 'core';
     const key = `${sectorKey}:${geometry.id}:${finish}:${shadow}:${isDetail ? 'd' : 'c'}`;
     let batch = this.batches.get(key);
     if (!batch) {
@@ -102,8 +107,8 @@ export class DistrictGeometry {
         castsShadow: shadow,
         detail: isDetail,
         sectorKey,
-        centerX: isSkyline ? -40 : (sx + 0.5) * SECTOR_SIZE,
-        centerZ: isSkyline ? -120 : (sz + 0.5) * SECTOR_SIZE,
+        centerX: isDetail ? (sx + 0.5) * SECTOR_SIZE : 0,
+        centerZ: isDetail ? (sz + 0.5) * SECTOR_SIZE : 0,
         instances: [],
       };
       this.batches.set(key, batch);
@@ -131,7 +136,7 @@ export class DistrictGeometry {
       });
 
       mesh.castShadow = castsShadow;
-      mesh.receiveShadow = true;
+      mesh.receiveShadow = !detail;
       mesh.computeBoundingSphere();
       if (detail) this.detailGroups.push({ mesh, x: centerX, z: centerZ, visible: true });
       group.add(mesh);
@@ -141,9 +146,12 @@ export class DistrictGeometry {
   }
 
   updateVisibility(focusX: number, focusZ: number): void {
+    if (Math.hypot(focusX - this.lastFocusX, focusZ - this.lastFocusZ) < 2.0) return;
+    this.lastFocusX = focusX;
+    this.lastFocusZ = focusZ;
     for (const entry of this.detailGroups) {
       const dist = Math.hypot(entry.x - focusX, entry.z - focusZ);
-      const next = entry.visible ? dist < 118 : dist < 104;
+      const next = entry.visible ? dist < 96 : dist < 84;
       if (next !== entry.visible) {
         entry.visible = next;
         entry.mesh.visible = next;
@@ -152,6 +160,8 @@ export class DistrictGeometry {
   }
 
   setNightLighting(darkness: number): void {
+    if (Math.abs(darkness - this.lastDarkness) < 0.004) return;
+    this.lastDarkness = darkness;
     for (const finish of ['glassLit', 'coralLight', 'aquaLight', 'goldLight'] as const) {
       const material = this.materials.get(finish);
       if (material) material.emissiveIntensity = presets[finish].emissiveIntensity * (0.78 + darkness * 1.20);

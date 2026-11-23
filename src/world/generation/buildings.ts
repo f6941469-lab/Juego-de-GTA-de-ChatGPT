@@ -101,14 +101,19 @@ function decorateFacade(
       const isEntry = publicFace && story === 0 && bay === Math.floor((bays - 1) / 2);
       const localHeight = isEntry ? 1.87 : windowHeight;
       const y = isEntry ? 1.05 : centerY;
-      mount('trim', dark, u, y, windowWidth + 0.16, localHeight + 0.17, 0.075);
+      if (story <= 1) {
+        mount('trim', dark, u, y, windowWidth + 0.16, localHeight + 0.17, 0.075);
+      }
       const interior = random() < (publicFace ? 0.32 : 0.20);
+      const glassShade = random() > 0.5 ? '#305d6e' : '#477780';
       mount(
         interior ? 'glassLit' : 'glass',
-        interior ? '#b27860' : (random() > 0.5 ? '#305d6e' : '#477780'),
+        interior ? '#b27860' : glassShade,
         u, y, windowWidth, localHeight, 0.085, 0.045,
       );
-      mount('trim', accent, u, y, 0.056, localHeight, 0.055, 0.10);
+      if (story <= 1) {
+        mount('trim', accent, u, y, 0.056, localHeight, 0.055, 0.10);
+      }
       mount('trim', band, u, y - localHeight / 2 - 0.03, windowWidth + 0.2, 0.11, 0.24);
       if (story === 0) {
         mount('trim', accent, u, y + localHeight * 0.28, windowWidth, 0.05, 0.06, 0.09);

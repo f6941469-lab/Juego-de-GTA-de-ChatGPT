@@ -185,6 +185,8 @@ async function startGame() {
       }
     }
 
+    player.render(1, 0)
+    session.render(1, 0)
     await display.prepare(worldScene, intro)
     mode = 'start'
     lastTime = performance.now()

@@ -1,5 +1,5 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import { BoxGeometry, Group, Mesh, MeshStandardMaterial, Quaternion, Scene, Vector3 } from 'three';
+import { BoxGeometry, Color, Group, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, Quaternion, Scene, Vector3 } from 'three';
 import type { Physics, Point3 } from '../physics/physics';
 import { createActor } from './actor';
 import { eyes, Journal, planarDistance } from './model';
@@ -48,32 +48,41 @@ export function createPolice(
 
   // Optional drivable/autonomous Patrol Cars when RoadNetwork is provided
   const patrolGeo = new BoxGeometry();
-  const bodyMat = new MeshStandardMaterial({ color: 0x1e2c3d, roughness: 0.55 });
-  const roofMat = new MeshStandardMaterial({ color: 0xedf2f7, roughness: 0.5 });
-  const sirenMat = new MeshStandardMaterial({ color: 0x3b82f6, emissive: 0x2563eb, emissiveIntensity: 1.2 });
-  const sirenRedMat = new MeshStandardMaterial({ color: 0xef4444, emissive: 0xdc2626, emissiveIntensity: 1.2 });
+  const bodyMat = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 });
+  const roofMat = bodyMat;
+  const sirenMat = bodyMat;
+  const sirenRedMat = bodyMat;
   const barricadeMat = new MeshStandardMaterial({ color: 0xe67e22, roughness: 0.7 });
+  const partTransform = new Object3D();
+  const partColor = new Color();
 
   const patrolCars: PolicePatrolCar[] = [];
   if (network) {
     const startSeeds = [[-22, -28, -22, 7], [28, -28, 28, 7]];
+    const parts = [
+      { c: 0x1e2c3d, x: 0, y: 0, z: 0, w: 1.72, h: 0.58, d: 3.65 },
+      { c: 0xedf2f7, x: 0, y: 0.52, z: 0, w: 1.46, h: 0.52, d: 1.8 },
+      { c: 0x3b82f6, x: -0.35, y: 0.84, z: -0.1, w: 0.45, h: 0.14, d: 0.24 },
+      { c: 0xef4444, x: 0.35, y: 0.84, z: -0.1, w: 0.45, h: 0.14, d: 0.24 },
+    ];
     for (const [idx, [fx, fz, tx, tz]] of startSeeds.entries()) {
       const lane = network.lanes.find((l) => l.from.x === fx && l.from.z === fz && l.to.x === tx && l.to.z === tz) ?? network.lanes[0];
       const pose = lanePose(lane, 6);
       const mesh = new Group();
       scene.add(mesh);
-      const addPart = (mat: MeshStandardMaterial, x: number, y: number, z: number, w: number, h: number, d: number) => {
-        const m = new Mesh(patrolGeo, mat);
-        m.position.set(x, y, z);
-        m.scale.set(w, h, d);
-        m.castShadow = m.receiveShadow = true;
-        mesh.add(m);
-        return m;
-      };
-      addPart(bodyMat, 0, 0, 0, 1.72, 0.58, 3.65);
-      addPart(roofMat, 0, 0.52, 0, 1.46, 0.52, 1.8);
-      addPart(sirenMat, -0.35, 0.84, -0.1, 0.45, 0.14, 0.24);
-      addPart(sirenRedMat, 0.35, 0.84, -0.1, 0.45, 0.14, 0.24);
+      const batch = new InstancedMesh(patrolGeo, bodyMat, parts.length);
+      batch.castShadow = batch.receiveShadow = true;
+      parts.forEach((p, i) => {
+        partTransform.position.set(p.x, p.y, p.z);
+        partTransform.scale.set(p.w, p.h, p.d);
+        partTransform.updateMatrix();
+        batch.setMatrixAt(i, partTransform.matrix);
+        batch.setColorAt(i, partColor.setHex(p.c));
+      });
+      batch.instanceMatrix.needsUpdate = true;
+      batch.instanceColor!.needsUpdate = true;
+      batch.computeBoundingSphere();
+      mesh.add(batch);
 
       const body = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(pose.x, pose.y, pose.z));
       const collider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(0.88, 0.65, 1.85).setTranslation(0, 0.25, 0), body);
@@ -91,7 +100,7 @@ export function createPolice(
       });
 
       const officer = createActor(scene, physics, navigation, { x: pose.x, y: 0.08, z: pose.z }, 0x264166);
-      officer.collider.setEnabled(false);
+      officer.setSuspended(true, pose);
       units.push({
         id: `person:police:${2 + idx}`,
         actor: officer,
@@ -103,6 +112,9 @@ export function createPolice(
       });
     }
   }
+
+  const upAxis = new Vector3(0, 1, 0);
+  const tempQuat = new Quaternion();
 
   // Dynamic tactical barricades deployed around reported area during high alert
   const barricades: Array<{ mesh: Mesh; collider: RAPIER.Collider; x: number; z: number }> = [];
@@ -197,8 +209,7 @@ export function createPolice(
           unit.actor.goTo(car.position, 2.2);
           if (planarDistance(unit.actor.position, car.position) < 2.2) {
             unit.inCar = true;
-            unit.actor.collider.setEnabled(false);
-            unit.actor.goTo(undefined);
+            unit.actor.setSuspended(true, car.position);
             car.occupied = true;
             car.parked = false;
           }
@@ -212,15 +223,14 @@ export function createPolice(
           unit.inCar = false;
           const exitPoint = navigation.closest({ x: car.position.x + 1.6, y: 0.08, z: car.position.z }, 2.4)
             ?? { x: car.position.x + 1.6, y: 0.08, z: car.position.z };
-          unit.actor.collider.setEnabled(true);
-          unit.actor.warp(exitPoint);
+          unit.actor.setSuspended(false, exitPoint);
         }
       }
 
       if (car.parked || !car.occupied) {
         car.speed = 0;
         car.body.setNextKinematicTranslation(car.position);
-        car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
+        car.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -car.heading));
         continue;
       }
 
@@ -255,7 +265,7 @@ export function createPolice(
       const resolved = car.turn ? turnPose(car.turn, car.turn.distance) : lanePose(car.lane, car.distance);
       car.heading += Math.atan2(Math.sin(resolved.heading - car.heading), Math.cos(resolved.heading - car.heading)) * (1 - Math.exp(-12 * dt));
       car.body.setNextKinematicTranslation(resolved);
-      car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
+      car.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -car.heading));
       car.position.set(resolved.x, resolved.y, resolved.z);
     }
   }
@@ -371,9 +381,9 @@ export function createPolice(
         const pose = lanePose(car.lane, car.distance);
         car.body.setTranslation(pose, true);
         car.body.setNextKinematicTranslation(pose);
-        const q = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -pose.heading);
-        car.body.setRotation(q, true);
-        car.body.setNextKinematicRotation(q);
+        tempQuat.setFromAxisAngle(upAxis, -pose.heading);
+        car.body.setRotation(tempQuat, true);
+        car.body.setNextKinematicRotation(tempQuat);
         car.position.set(pose.x, pose.y, pose.z);
         car.previous.copy(car.position);
         car.heading = car.previousHeading = pose.heading;
@@ -381,7 +391,7 @@ export function createPolice(
         if (unit) {
           unit.inCar = true;
           unit.actor.reset();
-          unit.actor.collider.setEnabled(false);
+          unit.actor.setSuspended(true, pose);
         }
       }
       for (const unit of units) {

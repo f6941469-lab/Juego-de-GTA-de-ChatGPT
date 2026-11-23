@@ -86,8 +86,11 @@ const commentPool = [
   'Ojalá pongan más patrullas por Costa Palmera.',
 ];
 
+const EMPTY_EVENTS: readonly WorldEvent[] = [];
+
 export class Journal {
   private nextId = 1;
+  private socialAcc = 0;
   readonly events: WorldEvent[] = [];
   readonly posts: Post[] = [];
   readonly allClips: WitnessClip[] = [];
@@ -99,7 +102,11 @@ export class Journal {
     return event;
   }
 
-  since(id: number) { return this.events.filter((event) => event.id > id); }
+  since(id: number): readonly WorldEvent[] {
+    const len = this.events.length;
+    if (len === 0 || this.events[len - 1].id <= id) return EMPTY_EVENTS;
+    return this.events.filter((event) => event.id > id);
+  }
 
   post(author: string, event: WorldEvent, caption?: string) {
     const existing = this.posts.find((post) => post.event.id === event.id);
@@ -151,9 +158,21 @@ export class Journal {
   }
 
   tickSocial(dt: number) {
+    if (this.posts.length === 0) return;
+    this.socialAcc += dt;
+    if (this.socialAcc < 1.25) return;
+    const steps = Math.floor(this.socialAcc / 1.25);
+    this.socialAcc -= steps * 1.25;
     for (const post of this.posts) {
       if (post.recording !== 'unavailable') {
-        post.views += Math.floor(dt * 8);
+        post.views += steps * (5 + (post.id % 4));
+        post.likes += steps * (1 + (post.id % 2));
+        if (post.comments.length < 3 && post.views > 40) {
+          const nextComment = commentPool[(post.id + post.comments.length) % commentPool.length];
+          if (!post.comments.includes(nextComment)) post.comments.push(nextComment);
+        }
+      } else {
+        post.views += steps * 2;
       }
     }
   }
@@ -161,15 +180,9 @@ export class Journal {
   reset() {
     this.events.length = this.posts.length = this.allClips.length = 0;
     this.nextId = 1;
+    this.socialAcc = 0;
   }
 }
-
-export const products = [
-  { id: 'water', name: 'Agua mineral', detail: 'Botella · recupera 15 de salud', price: 8 },
-  { id: 'snack', name: 'Bocadillo tropical', detail: 'Una porción · recupera 30 de salud', price: 12 },
-  { id: 'ammo', name: 'Munición de práctica', detail: 'Caja de 12 · para tu pistola', price: 30 },
-] as const;
-export type Item = typeof products[number]['id'];
 
 export interface StoreLedger {
   till: number;

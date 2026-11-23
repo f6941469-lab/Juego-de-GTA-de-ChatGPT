@@ -30,10 +30,10 @@ El historial y los fotogramas de testigos sostienen el visor 3D aislado (`replay
 
 ## Optimización gráfica y ampliación Fases 3–8
 
-- **Sectores espaciales (`geometry.ts`):** `DistrictGeometry` agrupa cajas en sectores de `48 m` separados en lotes `core` (visibles hasta `118 m` con histéresis) y `detail` (visibles hasta `104 m`), desactivando `castsShadow` en detalle fino y follaje.
-- **Vegetación y avatares (`vegetation.ts`, `avatar.ts`, `actor.ts`):** Troncos de palmera reducidos a `6` secciones (`7` frondas, `7` pasos por espina) y arbustos a `5` piezas. Todos los avatares reutilizan `sharedBoxGeometry` (sin `dispose` por instancia) y reducen su paso de animación por encima de `42 m`.
-- **Luz interior agrupada (`feedback.ts`):** Las `9` tiendas comparten un único `PointLight` dinámico (`0xffd8a2`) posicionado en el comercio más cercano al foco, evitando multiplicar variantes/costes de shader por tienda.
-- **Resultado en Chrome 158 SwiftShader (`dist/` `960×640`, perfil Bajo `720×480`):** `F3` registra `328 llamadas · 237.161 triángulos · 26 personajes · 308 colisionadores · 75 entidades` (frente a `338.093` triángulos previos). No mide FPS en GPU física.
+- **Lotes globales `core` y sectores `detail` (`geometry.ts`, `buildings.ts`):** `DistrictGeometry` unifica la geometría estructural (`core`) en un solo `InstancedMesh` por acabado/material y agrupa el detalle fino y follaje (`detail`) en sectores de `64 m` (visibles hasta `84 m` / `96 m` con histéresis y umbral de `2 m`), simplificando micro-parteluces de pisos altos (`story >= 2`) y desactivando sombras en follaje/detalle.
+- **Avatares y vehículos en `1` `InstancedMesh` (`avatar.ts`, `actor.ts`, `traffic.ts`, `police.ts`):** Cada avatar consolida sus 16 articulaciones y accesorios en `1` único `InstancedMesh` con `sharedAvatarMaterial` opaco compartido (eliminando recompilaciones de shader a mitad de partida y limitando sombras a `< 26 m`), y cada vehículo civil, autobús, metro o patrulla usa `1` único `InstancedMesh` con material compartido.
+- **Luz interior agrupada y partículas (`feedback.ts`, `game.ts`):** Las `9` tiendas comparten un único `PointLight` dinámico (`0xffd8a2`), las `48` partículas se agrupan en un `particleGroup` oculto cuando no hay efectos activos y la calidad inicial por defecto pasa a `medium` (`1024²` sombras, DPR `1`).
+- **Resultado en Chrome 158 SwiftShader (`dist/` `960×640`, perfil Bajo `720×480`):** `F3` registra **`77 llamadas · 207.945 triángulos · 9.50 ms render (CPU) · 15.90 ms simulación (CPU) · 26 personajes · 308 colisionadores · 75 entidades · 0 rutas diferidas`** (frente a `328` llamadas y `338.093` triángulos previos). No mide FPS en GPU física.
 
 ## Comprobación reproducible
 
