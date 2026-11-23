@@ -1,49 +1,35 @@
 # Contratos de la escena Mercado Palma
 
-La entrega 0.5.0 amplía navegación y estado global sobre estos contratos de gameplay. Conserva el empaquetado portable mediante `scripts/build-portable.mjs`; ver [PORTABLE.md](PORTABLE.md). No se ejecuta una simulación distinta al abrir el HTML integrado.
+La entrega 0.5.0 amplía navegación, población, vehículos, comercio, policía y replay sobre el contrato de sesión único (`src/simulation/session.ts`). Conserva el empaquetado portable mediante `scripts/build-portable.mjs`; ver [PORTABLE.md](PORTABLE.md).
 
 ## Tiempo y física
 
-`createSession.step()` es el dueño del tick integrado: jugador.prepareStep → decisiones de civiles/policía → preparar actores/tráfico → Physics.step una vez → finish de todas las poses → armas/incidentes/feedback. `player.step()` conserva un wrapper para pruebas y uso con un único personaje. No combinar el wrapper con el tick de Session.
+`createSession.step()` es el dueño del tick integrado: `player.prepareStep` → decisiones de civiles/policía → preparar actores/tráfico/patrullas → `Physics.step(1/60)` una vez → `finishStep` de poses → armas/incidentes/grabación POV/feedback. `player.step()` conserva un wrapper para pruebas con un único personaje.
 
-Rapier mantiene autoridad para cuerpos, rayos, colisiones y obstrucciones de cámara. Cada actor conserva posición anterior/actual; el render interpola sin adelantar la física. Pausar detiene reloj, decisiones, munición, partículas y animaciones. Abrir teléfono/tienda bloquea entradas del jugador, pero el barrio sigue simulándose.
+Rapier mantiene autoridad para cuerpos, rayos, colisiones y obstrucciones de cámara. Pausar o reproducir un replay detiene la entrada del jugador en el presente. Abrir teléfono, tienda o diálogo bloquea entradas de combate/movimiento del jugador mientras el barrio sigue simulándose (los replays aislados se ejecutan sobre un grupo visual separado sin mutar el estado vivo).
 
-## Escena y navegación
+## Escena, tiendas y navegación
 
-La tienda sustituye exclusivamente el lote procedural `3:3:1`. Club Neón y los demás hitos permanecen. Entrada al sur; puerta central abierta, sin teleport. `shop.ts` es la fuente de posiciones de entrada, productos, mostrador y comerciante. Las paredes, techo, mostrador y estantes son cajas independientes. Los dos escaparates pertenecen a Feedback.
+`shop.ts` y `transit.ts` reemplazan los lotes de nueve comercios reales (`Mercado Palma` en `3:3:1`, `Dulcería Sol`, `Panadería Brisa`, `Cafetería Mar`, `Restaurante Bahía`, `Farmacia Verde`, `Ropa Palmera`, `Armería Norte` y `Minimercado Sur`) y dos estaciones transitables de metro (`Metro Sur` y `Metro Norte`), además de `4` paradas de autobús. Todos los comercios comparten interiores abiertos, mostrador, productos y puntos de actividad.
 
-Navigation usa una rejilla A* de celdas de 0,6 m sobre la parte transitable del distrito, inflada para cápsulas y derivada de las cajas que afectan a peatones. Reutiliza buffers y cola de prioridad. Session abre un presupuesto de dos rutas por tick y cada búsqueda admite 8192 visitas. La jerarquía de 48 zonas limita un corredor inicial, con reintento global dentro del presupuesto conjunto. La destrucción actualiza el rectángulo del obstáculo y sus enlaces; los actores solo descartan rutas que dejaron de ser transitables. Las reservas por tick y la cesión lateral evitan cruces frontales sin teletransportar. Contratos en [NAVIGATION.md](NAVIGATION.md). El zócalo de un escaparate roto continúa siendo sólido; quitar cristal no inventa una puerta a nivel de suelo.
+Navigation usa una rejilla A* de celdas de 0,6 m sobre el distrito, jerarquía de 48 zonas, 2 búsquedas por tick (máx. 8192 visitas conjuntas) y actualización localizada de obstáculos (`Feedback`: 18 escaparates de tiendas + 9 props urbanos como hidrantes/cajas).
 
-Actor comparte controlador, ruta, giro interpolado, salud y pose. Los civiles tienen rutinas con destinos, esperas y recuperación. El comerciante vuelve a su puesto. Los bloqueos tienen reintento y cambio de etapa; no hay rutas aleatorias. Agentes incapacitados permanecen en el suelo con colisión deshabilitada hasta reiniciar la escena.
+## Vida civil, eventos y percepción
 
-## Eventos y percepción
+`population.people` conserva 10 civiles base por compatibilidad y `allPeople` suma comerciantes de los 9 locales y residentes con rutina (`person:pedro`, `Valeria`, `Marcos`, hasta 21 civiles). Tienen trabajos, compras reales en tiendas, espera/subida en autobús y desvío al metro (`missedBus`), accesorios en mano (`coffee`, `bag`, `phone`, `briefcase`), conversaciones NPC↔NPC y Jugador↔NPC en español (`dialogue.ts`), seguimiento persistente (`stalkScore`, `stalkStage` 1 y 2) y eventos ambientales NPC-vs-NPC acotados.
 
-Journal conserva 96 eventos y 16 testimonios como máximo. Las posiciones se copian al emitir; el feed conserva el evento observado, autor y tiempo. No hay videos genéricos ni un botón de reproducción ficticio: `recording: unavailable` se presenta como grabación no disponible.
+`Journal` conserva eventos, testimonios y `WitnessClip` (`Palma Social`). Un testimonio sin fotogramas mantiene `recording: 'unavailable'`. `recorder.ts` muestrea cada `0.18 s` desde testigos y `streetCams` multiángulo y consolida segmentos progresivamente: si un testigo cae mientras graba, el clip parcial (incluida la cámara caída) sobrevive sin atribuir acciones posteriores a un NPC incapacitado. El visor `replay` renderiza sobre `replayGroup` aislado sin generar nuevo dinero, alertas ni daño.
 
-Los civiles aplican alcance, campo visual, rayos y demora de reacción. Disparos, roturas y colisiones pueden oírse a menor distancia tras obstáculos. Identificación y ubicación del incidente viajan con el aviso. Huir/llamar/testimoniar depende del perfil. Una pistola visible puede causar nervios sin generar por sí sola una denuncia. Las denuncias requieren amenaza/disparo/incidente percibido.
+## Policía
 
-La policía patrulla con dos agentes existentes. Un aviso o la observación directa activa respuesta a la ubicación del evento. Solo actualiza la última posición conocida si tiene visión del sospechoso; ambos agentes comparten esa observación. Perder visión lleva a búsqueda con tiempo límite y regreso a patrulla. No existen patrullas conducibles, disparos policiales, coberturas o refuerzos en esta entrega.
+Dos agentes a pie (`units[0..1]`) más dos patrullas conducibles en `RoadNetwork` con agentes embarcados (`units[2..3]`) que descienden al aproximarse. Mantienen conocimiento no omnisciente separado del jugador real: posición denunciada, última observación visual y `suspectVehicleId` (reducir huella visual fuera de vista acorta su detección a `11 m` frente a `19 m`). Responden con fuego recíproco (`onPlayerShot`) y colocan `barricades` sobre vías alcanzables.
 
 ## Comercio, armas y destrucción
 
-Economy valida ID de catálogo, existencias y dinero antes de modificar valores enteros. Session vuelve a comprobar distancia, línea de visión, arma guardada y disponibilidad del comerciante en cada compra. El inventario vive en simulación. El teléfono permite usar comida y trasladar cajas de munición a la reserva.
+`Economy` gestiona inventarios, cajas y stock por tienda (`stores`, `buyFrom`, `npcBuyFrom`, `robStore`), consumo de comida/bebida, munición y blindaje (`armor`). Cualquier amenaza sostenida sobre un comerciante activa el asalto en su local. Disparos en calle sin asalto previo generan alertas, daño y huida con el mismo sistema de incidentes. `Feedback` unifica los 18 escaparates y 9 props destructibles (`hydrant`/`crate`) con actualización inmediata de `Navigation`.
 
-Weapon controla cargador 8, reserva inicial 24, intervalo 0,26 s y recarga 1,3 s. Guardar cancela recarga. El rayo de cámara determina intención y otro desde la boca del arma impide disparar a través de un obstáculo cercano. El primer collider real recibe el impacto; las cápsulas de actores y los cristales comparten esta ruta. El propio jugador queda excluido.
+## Tráfico, transporte y recursos
 
-Apuntar de forma continua a la cápsula del comerciante inicia reconocimiento a los 0,7 s y entrega del dinero a los 3 s. Perder el objetivo interrumpe el progreso. El efectivo procede de la caja; una caja vacía no duplica dinero. Amenaza y asalto producen eventos independientes que reciben los demás sistemas.
+Tres coches (`traffic.cars`, `vehicle:traffic:0..2`), autobús (`vehicle:bus:0`) y metro lanzadera (`vehicle:metro:0`) recorren `RoadNetwork` (`25` cruces, `80` carriles). Con `F` el jugador sube/baja de autobús, metro o vehículos civiles, expulsando al conductor (`ejectFromVehicle`) con reacción coherente de conductor y testigos (`theft`). En conducción, `WASD` acelera/gira y `Espacio` frena.
 
-Romper cristal oculta la malla, elimina su collider y actualiza navegación. Pool compartido de 36 trazadores/destellos/fragmentos; los fragmentos son decorativos, tienen gravedad y expiran. No se presenta daño de otros materiales ni edificios como implementado.
-
-## Tráfico, sonido y recursos
-
-Tres coches con conductor visible y asiento ocupado recorren 80 carriles dirigidos entre 25 cruces, con destinos cambiantes, uniones curvas y reservas de intersección. Aceleran/frenan, respetan fases compartidas y hacen barridos de caja contra peatones, coches y geometría. Los neumáticos descansan en Y=0; collider y barrido comparten un desplazamiento vertical que cubre la carrocería. Son cuerpos cinemáticos con una caja de colisión aproximada, no una simulación de neumáticos o suspensión. El jugador no puede conducirlos. Las luces de semáforo pertenecen al mismo reloj de tráfico; la geometría estática queda apagada.
-
-Web Audio genera sonidos originales: pasos del jugador, motores, disparos, recarga, rotura, compras, impactos, avisos y señal de respuesta policial. Máximo ocho voces puntuales y cuatro osciladores continuos; atenuación por distancia y deduplicación. No hay voces humanas ni grabaciones ambientales. El mute está en el teléfono. El contexto se desbloquea al jugar y se suspende en pausa.
-
-Dispose libera controladores/cuerpos, mallas de instancias, geometrías, materiales, texturas, luz interior y audio. Los listeners nuevos usan AbortController. Pagehide cancela RAF/ResizeObserver y libera la escena. El reinicio reconstruye exclusivamente cristales eliminados y devuelve las entidades a sus puntos iniciales. Detención o salud cero reinician explícitamente la escena con $30 de gastos; no existe persistencia de partida.
-
-## Identidad y estado de zonas
-
-WorldState registra los objetos existentes con IDs estables. El estado vivo sigue en sus módulos originales y el registro conserva referencias a esas entidades. Cambiar la zona o la distancia al jugador conserva identidad, salud, ocupación y daño. La cuota es de 128 entidades y 60 instantáneas a un máximo de cuatro muestras por segundo. Las muestras copian poses y estados para separar historia y presente. Reiniciar la sesión restaura primero los sistemas y limpia después el historial.
-
-Los incidentes incluyen el ID de la zona de su posición inicial. Journal conserva la copia de esa posición y sus cuotas previas. Las decisiones civiles usan la distancia registrada y la urgencia para espaciar su evaluación. Rapier y la interpolación continúan al ritmo habitual. La población tiene diez civiles, seis de ellos con recorridos de otros barrios. Un cursor rotativo limita las decisiones a cuatro por tick. Los mismos actores perciben incidentes lejanos; la denuncia conserva lugar e identificación. El plazo policial de aproximación incorpora distancia sin revelar el movimiento posterior del jugador. La red vial comparte los IDs de los tres coches existentes.
+Web Audio sintetiza pasos, motores, disparos, recarga, roturas, compras y sirenas con voces acotadas. `Dispose` libera controladores, mallas instanciadas, geometrías compartidas, `PointLight` único agrupado y audio. Detención o salud cero reinician la escena (ofreciendo acceso al replay si existen clips capturados en sesión); `worldLimits.entities` es `256`.

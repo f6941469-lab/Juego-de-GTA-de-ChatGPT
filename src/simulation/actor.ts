@@ -1,5 +1,5 @@
 import { MathUtils, Scene, Vector3 } from 'three';
-import { createAvatar, type AvatarPose } from '../characters/avatar';
+import { createAvatar, type AvatarPose, type CarryItem } from '../characters/avatar';
 import { createCharacterCollider, type Physics, type Point3 } from '../physics/physics';
 import { Navigation } from './navigation';
 import { planarDistance } from './model';
@@ -23,9 +23,11 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
   let grounded = true;
   let movement = { x: 0, y: 0, z: 0 };
   let action: AvatarPose['action'] = 'relaxed';
+  let carryItem: CarryItem = 'none';
   let health = 100;
   let stun = 0;
   let opacity = 1;
+  let farAnimAcc = 0;
   const api = {
     position,
     collider: character.collider,
@@ -34,6 +36,12 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
     get stuck() { return stuck; },
     get arrived() { return !destination || planarDistance(position, destination) < 0.55; },
     action(value: AvatarPose['action']) { action = value; },
+    carry(value: CarryItem) { carryItem = value; },
+    warp(target: Point3) {
+      character.warp(target);
+      position.set(target.x, target.y, target.z);
+      previous.copy(position);
+    },
     face(target: Point3, dt: number) {
       const angle = Math.atan2(target.x - position.x, position.z - target.z);
       heading += Math.atan2(Math.sin(angle - heading), Math.cos(angle - heading)) * (1 - Math.exp(-10 * dt));
@@ -88,12 +96,21 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
       avatar.mesh.rotation.z = health <= 0 ? -Math.PI / 2 : 0;
       if (health <= 0) avatar.mesh.position.y += 0.25;
       if (cameraPosition) {
-        const distance = Math.hypot(visual.x - cameraPosition.x, visual.y + 1 - cameraPosition.y, visual.z - cameraPosition.z);
-        const visibility = MathUtils.smoothstep(distance, 0.5, 1.4) * (1 - MathUtils.smoothstep(distance, 64, 80));
+        const camDistance = Math.hypot(visual.x - cameraPosition.x, visual.y + 1 - cameraPosition.y, visual.z - cameraPosition.z);
+        const visibility = MathUtils.smoothstep(camDistance, 0.5, 1.4) * (1 - MathUtils.smoothstep(camDistance, 64, 80));
         opacity = dt > 0 ? MathUtils.damp(opacity, visibility, 18, dt) : visibility;
         avatar.setOpacity(opacity);
       }
-      avatar.animate({ effort: MathUtils.clamp(resolvedSpeed / 2, 0, 1), sprint: MathUtils.clamp((resolvedSpeed - 2) / 2, 0, 1), verticalSpeed: 0, grounded, action: stun > 0 ? 'hurt' : action, armed }, dt);
+      if (cameraPosition && distance > 42 && dt > 0) {
+        farAnimAcc += dt;
+        if (farAnimAcc < 0.08) return;
+        const stepDt = farAnimAcc;
+        farAnimAcc = 0;
+        avatar.animate({ effort: MathUtils.clamp(resolvedSpeed / 2, 0, 1), sprint: MathUtils.clamp((resolvedSpeed - 2) / 2, 0, 1), verticalSpeed: 0, grounded, action: stun > 0 ? 'hurt' : action, armed, carry: carryItem }, stepDt);
+        return;
+      }
+      farAnimAcc = 0;
+      avatar.animate({ effort: MathUtils.clamp(resolvedSpeed / 2, 0, 1), sprint: MathUtils.clamp((resolvedSpeed - 2) / 2, 0, 1), verticalSpeed: 0, grounded, action: stun > 0 ? 'hurt' : action, armed, carry: carryItem }, dt);
     },
     hurt(amount: number) {
       if (health <= 0) return;
@@ -102,7 +119,7 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
     },
     reset() {
       character.warp(spawn); character.collider.setEnabled(true); position.set(spawn.x, spawn.y, spawn.z); previous.copy(position);
-      heading = previousHeading = initialHeading; health = 100; action = 'relaxed'; stun = routeAge = stuck = resolvedSpeed = 0;
+      heading = previousHeading = initialHeading; health = 100; action = 'relaxed'; carryItem = 'none'; stun = routeAge = stuck = resolvedSpeed = farAnimAcc = 0;
       destination = undefined; path = []; passing = undefined; avatar.reset();
       opacity = 1; avatar.setOpacity(1);
     },

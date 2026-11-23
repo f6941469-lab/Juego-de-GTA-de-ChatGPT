@@ -1,14 +1,24 @@
 ---
 document_id: CORE-CHANGELOG
 status: active
-last_updated: 2026-11-21
-verified_against: "Mercado Palma 0.5.0"
-verification_scope: "typecheck + 32 pruebas + build; navegador en CURRENT_STATE.md"
+last_updated: 2026-11-23
+verified_against: "Mercado Palma 0.5.0 (Fases 3-8 y optimización)"
+verification_scope: "typecheck + 37 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
+
+## 2026-11-23 · Fases 3–8 y optimización gráfica/espacial (working tree en `main`)
+
+- **Optimización y mapa (`geometry.ts`, `vegetation.ts`, `avatar.ts`, `actor.ts`, `feedback.ts`, `district.ts`):** `DistrictGeometry` en sectores de `48 m` con lotes `core`/`detail` (`updateVisibility` con histéresis `< 104 m` / `< 118 m`), sombras desactivadas en follaje/detalle, reducción de malla de palmeras/arbustos, `sharedBoxGeometry` compartida en avatares, desaceleración de animación distante (`> 42 m`) y agrupación de las 9 luces interiores en un solo `PointLight` dinámico cercano al foco (`237.161` triángulos / `328` llamadas en `F3` Baja).
+- **9 tiendas reales y transporte (`shop.ts`, `transit.ts`, `district.ts`):** Sustituidas cajas cerradas por `9` comercios con interiores y comerciantes (`Mercado Palma`, `Dulcería Sol`, `Panadería Brisa`, `Cafetería Mar`, `Restaurante Bahía`, `Farmacia Verde`, `Ropa Palmera`, `Armería Norte`, `Minimercado Sur`), `4` paradas de bus y `2` estaciones transitables de metro (`Metro Sur`, `Metro Norte`).
+- **Fase 3 (`population.ts`, `dialogue.ts`, `world-state.ts`):** `worldLimits.entities = 256`; `21` civiles (`allPeople`, conservando `people.length === 10`), rutinas con trabajo, compras reales, accesorios en mano, charlas NPC↔NPC y Jugador↔NPC en español (`E`), acoso persistente (`stalkScore`/`stalkStage`), desvío a metro al perder bus y eventos NPC-vs-NPC acotados.
+- **Fase 4 (`traffic.ts`, `player.ts`, `input.ts`):** Conducción con `WASD` + freno `Espacio`, subir/bajar/robar con `F`, expulsión física del conductor (`ejectFromVehicle`), autobús y metro circulando y abordables.
+- **Fases 5–7 (`model.ts`, `feedback.ts`, `police.ts`):** Economía multi-tienda (`stores`, consumo, `armor`), destrucción de `18` escaparates y `9` props (`hydrant`/`crate`) actualizando `Navigation`, `2` patrullas conducibles en `RoadNetwork` con desembarco, `suspectVehicleId`, fuego recíproco y barricadas.
+- **Fase 8 (`recorder.ts`, `model.ts`, `session.ts`, `gameplay.ts`):** Grabación POV de testigos con segmentos progresivos (clips `partial` sobreviven a la muerte del testigo, incluida cámara caída) y `streetCams` multiángulo, `Palma Social` ampliado y visor `replay` 3D aislado (`replayGroup`).
+- **Verificación:** `npm run typecheck` (`0` errores), `npm test` (`8` archivos, `37/37` verdes), `npm run build`, `npm run check:portable`, `npm run check:itch`, y Chrome 158 SwiftShader WebGL 2 en `dist/`, `jugar/index.html` vía `file://` offline y `publicar/viceblock-itch.zip` en `iframe` móvil `390×844`.
 
 ## 0.5.0 · Base funcional de fase 2
 

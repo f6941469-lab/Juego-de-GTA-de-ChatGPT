@@ -48,13 +48,20 @@ type Batch = {
   geometry: BufferGeometry;
   material: MeshStandardMaterial;
   castsShadow: boolean;
+  detail: boolean;
+  sectorKey: string;
+  centerX: number;
+  centerZ: number;
   instances: Placement[];
 };
+
+const SECTOR_SIZE = 48;
 
 export class DistrictGeometry {
   private readonly boxGeometry = new BoxGeometry(1, 1, 1);
   private readonly batches = new Map<string, Batch>();
   private readonly materials = new Map<Finish, MeshStandardMaterial>();
+  private readonly detailGroups: Array<{ mesh: InstancedMesh; x: number; z: number; visible: boolean }> = [];
 
   box(
     finish: Finish,
@@ -76,13 +83,27 @@ export class DistrictGeometry {
     castsShadow: boolean,
     placement: Placement,
   ): void {
-    const key = `${geometry.id}:${finish}:${castsShadow}`;
+    const maxDim = Math.max(placement.width, placement.height, placement.depth);
+    const isSkyline = placement.z < -95 || placement.x < -70;
+    const isDetail = !isSkyline && (
+      finish === 'foliage'
+      || (finish !== 'asphalt' && finish !== 'pavement' && finish !== 'wall' && maxDim < 1.35)
+    );
+    const shadow = castsShadow && !isDetail && finish !== 'foliage';
+    const sx = isSkyline ? 99 : Math.floor(placement.x / SECTOR_SIZE);
+    const sz = isSkyline ? 99 : Math.floor(placement.z / SECTOR_SIZE);
+    const sectorKey = isSkyline ? 'sky' : `${sx}:${sz}`;
+    const key = `${sectorKey}:${geometry.id}:${finish}:${shadow}:${isDetail ? 'd' : 'c'}`;
     let batch = this.batches.get(key);
     if (!batch) {
       batch = {
         geometry,
         material: this.getMaterial(finish),
-        castsShadow,
+        castsShadow: shadow,
+        detail: isDetail,
+        sectorKey,
+        centerX: isSkyline ? -40 : (sx + 0.5) * SECTOR_SIZE,
+        centerZ: isSkyline ? -120 : (sz + 0.5) * SECTOR_SIZE,
         instances: [],
       };
       this.batches.set(key, batch);
@@ -95,8 +116,9 @@ export class DistrictGeometry {
     group.name = 'Constructed district';
     const transform = new Object3D();
     const color = new Color();
+    this.detailGroups.length = 0;
 
-    for (const { geometry, material, castsShadow, instances } of this.batches.values()) {
+    for (const { geometry, material, castsShadow, detail, centerX, centerZ, instances } of this.batches.values()) {
       const mesh = new InstancedMesh(geometry, material, instances.length);
       instances.forEach((placement, index) => {
         transform.position.set(placement.x, placement.y, placement.z);
@@ -111,10 +133,22 @@ export class DistrictGeometry {
       mesh.castShadow = castsShadow;
       mesh.receiveShadow = true;
       mesh.computeBoundingSphere();
+      if (detail) this.detailGroups.push({ mesh, x: centerX, z: centerZ, visible: true });
       group.add(mesh);
     }
     this.batches.clear();
     return group;
+  }
+
+  updateVisibility(focusX: number, focusZ: number): void {
+    for (const entry of this.detailGroups) {
+      const dist = Math.hypot(entry.x - focusX, entry.z - focusZ);
+      const next = entry.visible ? dist < 118 : dist < 104;
+      if (next !== entry.visible) {
+        entry.visible = next;
+        entry.mesh.visible = next;
+      }
+    }
   }
 
   setNightLighting(darkness: number): void {

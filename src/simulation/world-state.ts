@@ -1,7 +1,7 @@
 import type { Point3 } from '../physics/physics';
 import { districtBounds } from '../world/generation/layout';
 
-export const worldLimits = { zoneSize: 24, entities: 128, historyFrames: 60, sampleInterval: 0.25 } as const;
+export const worldLimits = { zoneSize: 24, entities: 256, historyFrames: 60, sampleInterval: 0.25 } as const;
 export type SimulationTier = 'near' | 'middle' | 'far';
 export type EntityKind = 'person' | 'vehicle' | 'seat' | 'shop' | 'damage';
 export interface WorldEntity {

@@ -43,13 +43,19 @@ El empaquetado ya está incorporado al proyecto y produce el archivo preparado e
 - [x] Red de 25 cruces y 80 carriles con destinos, giros continuos, reservas y luces en un solo lote.
 - [x] Probar circulación sobre el distrito real y denuncia alejada sin conocimiento policial automático.
 - [x] Probar continuidad de daños/identidad y restauración por reinicio.
-- [ ] Fase 3: ampliar actividades y objetos e incorporar conversación contextual en español.
+- [x] Fase 3: ampliar actividades y objetos e incorporar conversación contextual en español.
 
-## Requisitos incorporados al plan, todavía pendientes
+## Fases 3–8 y optimización implementadas
 
-- [ ] NPC activos desde el inicio, con objetivos, objetos de actividad, diálogo contextual en español, memoria e interrupciones por peligro.
-- [ ] Robo de coches vacíos/ocupados; conductor, pasajeros y testigos coherentes con el mismo sistema de incidentes que los disparos en la calle.
-- [ ] Nueve locales funcionales en total, incluido Mercado Palma; compra de jugador y NPC, turnos, presupuesto, stock y consumo de comida.
-- [ ] POV real de testigos, captura/envío interrumpibles y clips parciales que sobrevivan a la muerte del autor si ya fueron enviados.
-- [ ] Mantener identificados los contratos para narrativa/cámara/actores sin implementar todavía historia o cinemáticas.
-- [ ] Evaluar LLM local solo como mejora opcional del diálogo: calidad en español y pruebas con el juego en móviles físicos antes de incorporarlo. La base funcionará sin modelo y sin red.
+- [x] Optimización gráfica/espacial: sectores `48 m` (`core`/`detail`), vegetación reducida, `sharedBoxGeometry`, desaceleración distante y `PointLight` único agrupado.
+- [x] NPC activos desde el inicio (`21` civiles con `Pedro`), objetivos, objetos de actividad (`coffee`, `bag`, `phone`, `briefcase`), diálogo contextual en español (`E`), acoso persistente (`stalkStage`) y eventos NPC-vs-NPC.
+- [x] Conducción, robo de coches (`F`) con expulsión física del conductor, autobús circular (`4` paradas) y metro lanzadera (`Metro Sur` / `Metro Norte`).
+- [x] Nueve locales funcionales con interior y comerciantes propios (`Mercado Palma` y `8` tiendas nuevas), consumo de comida/bebida, protección (`armor`) y respuesta a disparos en la calle.
+- [x] Destrucción conectada en `18` escaparates y `9` props callejeros (`hydrant`/`crate`), más `2` patrullas policiales en `RoadNetwork` con desembarco, fuego recíproco y barricadas.
+- [x] Grabación POV de testigos y `streetCams` multiángulo con segmentos progresivos (clips `partial` sobreviven al testigo), `Palma Social` ampliado y visor 3D aislado sin mutar el presente.
+
+## Pendiente · Fase 9 y validación física
+
+- [ ] Implementar Guardar/Cargar partida por archivo JSON descargable ([.ai/PORTABLE.md](.ai/PORTABLE.md)).
+- [ ] Medir `WebGPU`, GPU física, temperatura, sesiones prolongadas y mezcla de audio en hardware real (PC y móvil).
+- [ ] Evaluar LLM local opcional solo si supera pruebas reales de español, RAM y frame time en hardware físico (la conversación base ya funciona sin modelo ni red).

@@ -156,10 +156,11 @@ async function startGame() {
         intro.lookAt(introFocus)
       }
       const animationDt = mode === 'playing' ? Math.min(dt, 0.1) : 0
-      player.render(alpha, animationDt)
+      if (session!.overlay !== 'replay') player.render(alpha, animationDt)
       session!.render(alpha, animationDt)
-      atmosphere.update(hour, startView ? intro.position : player.position, elapsed)
-      district.update(elapsed, hour)
+      const focus = startView ? intro.position : player.position
+      atmosphere.update(hour, focus, elapsed)
+      district.update(elapsed, hour, focus)
       const { x, y, z } = player.position
       ui.update({ x, z, heading: player.heading, hour })
       gameplayUI.update(session!, hour)
@@ -167,7 +168,7 @@ async function startGame() {
       const renderStart = debug ? performance.now() : 0
       display.render(worldScene, startView ? intro : camera)
       if (debug) {
-        const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics!.world.colliders.len(), 1 + session!.population.people.length + session!.police.units.length, simulationMs)
+        const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics!.world.colliders.len(), 1 + session!.population.allPeople.length + session!.police.units.length, simulationMs)
         if (reading) ui.setDebug(`${reading}\n${session!.world.count} entidades · ${session!.world.historyCount}/${worldLimits.historyFrames} muestras\n${session!.population.stats.decisions}/${populationLimits.decisionsPerStep} decisiones · ${session!.navigation.stats.lastVisited}/${navigationLimits.visitedPerSearch} celdas\n${session!.traffic.network.lanes.length} carriles · ${session!.navigation.stats.waits} esperas · ${session!.navigation.stats.deferred} rutas diferidas\n${display.backend} · ${display.renderer.domElement.width} × ${display.renderer.domElement.height}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
       }
       frameId = requestAnimationFrame(safeFrame)

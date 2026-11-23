@@ -24,13 +24,16 @@ La resolución se limita también al DPR del dispositivo. El límite se aplica a
 - Session conserva un paso fijo compartido para Rapier. FixedLoop limita la recuperación a 0,1 segundos por cuadro.
 - A* comparte su espacio de trabajo y cola de prioridad. Los actores solicitan hasta dos búsquedas por tick, cada una con 8192 celdas visitadas como máximo. Las peticiones que exceden la cuota se reintentan sin descartar la ruta vigente.
 - Las decisiones civiles se evalúan cada 0,1 segundos cerca, 0,25 a distancia intermedia y 0,6 lejos. Las reacciones activas usan 0,05 segundos. Un cursor rotativo limita a cuatro decisiones civiles por tick. Los actores mantienen movimiento físico e interpolación en el paso habitual.
-- WorldState admite 128 entidades y 60 muestras históricas a un máximo de cuatro muestras por segundo. Journal conserva sus cuotas de 96 incidentes y 16 testimonios. Feedback conserva 36 partículas y Web Audio sus voces acotadas.
+- `WorldState` admite `256` entidades y `60` muestras históricas a cuatro muestras por segundo. `Journal` conserva cuotas de eventos, testimonios y `WitnessClip` POV (`recorder.ts` muestrea cada `0,18 s`). `Feedback` conserva `36` partículas y Web Audio sus voces acotadas.
 
-El historial guarda poses, salud e IDs de ocupación. Constituye la base de la fase de replay. La reproducción y el guardado de partidas siguen en el plan. La red vial global y sus límites están en [NAVIGATION.md](NAVIGATION.md).
+El historial y los fotogramas de testigos sostienen el visor 3D aislado (`replayGroup`). La persistencia en disco (guardar/cargar JSON) queda en Fase 9.
 
-## Ampliación 0.5.0
+## Optimización gráfica y ampliación Fases 3–8
 
-Diez civiles con estado continuo. Sus mallas se atenúan de 64 a 80 m y se ocultan a 84 m, omitiendo animación distante. Los cuerpos siguen residentes. Las lámparas de 25 cruces usan un solo InstancedMesh y actualizan colores al cambiar de fase. No se añaden luces dinámicas ni efectos de pantalla. F3 expone decisiones, visitas A*, carriles y esperas.
+- **Sectores espaciales (`geometry.ts`):** `DistrictGeometry` agrupa cajas en sectores de `48 m` separados en lotes `core` (visibles hasta `118 m` con histéresis) y `detail` (visibles hasta `104 m`), desactivando `castsShadow` en detalle fino y follaje.
+- **Vegetación y avatares (`vegetation.ts`, `avatar.ts`, `actor.ts`):** Troncos de palmera reducidos a `6` secciones (`7` frondas, `7` pasos por espina) y arbustos a `5` piezas. Todos los avatares reutilizan `sharedBoxGeometry` (sin `dispose` por instancia) y reducen su paso de animación por encima de `42 m`.
+- **Luz interior agrupada (`feedback.ts`):** Las `9` tiendas comparten un único `PointLight` dinámico (`0xffd8a2`) posicionado en el comercio más cercano al foco, evitando multiplicar variantes/costes de shader por tienda.
+- **Resultado en Chrome 158 SwiftShader (`dist/` `960×640`, perfil Bajo `720×480`):** `F3` registra `328 llamadas · 237.161 triángulos · 26 personajes · 308 colisionadores · 75 entidades` (frente a `338.093` triángulos previos). No mide FPS en GPU física.
 
 ## Comprobación reproducible
 

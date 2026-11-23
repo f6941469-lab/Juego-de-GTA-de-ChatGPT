@@ -44,6 +44,13 @@
 .phone-guide { font: 600 1rem/1.5 var(--label); color: #c1d0b8; }
 .phone-guide h3 { color: #f6d99e; margin: 0 0 .6rem; font-size: 1.2rem; }
 .phone-guide p { margin: 0 0 1rem; }
+.interaction-panel.replay { top: auto; bottom: 1rem; left: 50%; right: auto; transform: translateX(-50%); width: min(34rem, calc(100% - 2rem)); max-height: 15rem; }
+.interaction-panel.replay .interaction-body { min-height: 4.5rem; padding: .85rem 1rem; }
+.replay-angles { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .5rem; }
+.replay-angle { background: #223b38; color: #f3e9d1; border: 1px solid #53786c; border-radius: .35rem; padding: .4rem .65rem; font: 600 .8rem/1.2 var(--label); cursor: pointer; }
+.replay-angle.selected { border-color: #ffd57e; background: #365a4f; color: #ffe7b1; }
+.talk-reply { background: #1f3938; border-left: 3px solid #8cd9bc; padding: .75rem .9rem; border-radius: .25rem; margin-bottom: .9rem; color: #fff1d3; font: 600 1rem/1.4 var(--label); }
+.social-meta { display: flex; gap: .8rem; font: 600 .76rem/1.3 var(--label); color: #9fc4b2; margin-top: .35rem; }
 @keyframes panel-in { from { opacity: 0; translate: 0 15px; } to { opacity: 1; translate: 0 0; } }
 @media (pointer: coarse) {
   .session-status { top: 5.3rem; font-size: .72rem; }

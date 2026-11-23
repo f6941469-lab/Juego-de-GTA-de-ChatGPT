@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 
+export type CarryItem = 'none' | 'coffee' | 'bag' | 'phone' | 'briefcase';
+
 export interface AvatarPose {
   effort: number;
   sprint: number;
@@ -8,14 +10,17 @@ export interface AvatarPose {
   action?: 'relaxed' | 'aim' | 'handsUp' | 'phone' | 'hurt';
   armed?: boolean;
   recoil?: number;
+  carry?: CarryItem;
 }
+
+const sharedBoxGeometry = new THREE.BoxGeometry();
 
 export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
   const mesh = new THREE.Group();
   mesh.name = 'Player avatar';
   scene.add(mesh);
 
-  const geometry = new THREE.BoxGeometry();
+  const geometry = sharedBoxGeometry;
   const materials: THREE.MeshStandardMaterial[] = [];
   const color = (hex: number, roughness = 0.85) => {
     const material = new THREE.MeshStandardMaterial({ color: hex, roughness });
@@ -117,6 +122,7 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
   let effort = 0;
   let airborne = 0;
   const upperWeights = { aim: 0, handsUp: 0, phone: 0, hurt: 0 };
+  const leftHand = arms[0].elbow;
   const hand = arms[1].elbow;
   const pistol = pivot(hand, 0, -0.25, 0);
   pistol.rotation.x = -Math.PI / 2;
@@ -124,13 +130,39 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
   block(pistol, hair, 0, -0.075, 0, 0.08, 0.16, 0.1);
   pistol.visible = false;
 
-  function animate({ effort: targetEffort, sprint, verticalSpeed, grounded, action = 'relaxed', armed = false, recoil = 0 }: AvatarPose, dt: number) {
+  const phoneProp = pivot(hand, 0, -0.24, -0.06);
+  block(phoneProp, hair, 0, 0, 0, 0.085, 0.15, 0.025);
+  block(phoneProp, shirtLight, 0, 0, -0.015, 0.065, 0.11, 0.01);
+  phoneProp.visible = false;
+
+  const coffeeProp = pivot(leftHand, 0, -0.25, -0.05);
+  block(coffeeProp, shoe, 0, 0, 0, 0.09, 0.13, 0.09);
+  block(coffeeProp, hair, 0, 0.075, 0, 0.1, 0.025, 0.1);
+  coffeeProp.visible = false;
+
+  const bagProp = pivot(leftHand, -0.05, -0.34, 0);
+  block(bagProp, piping, 0, 0, 0, 0.14, 0.24, 0.20);
+  block(bagProp, cream, 0, 0.13, 0, 0.03, 0.06, 0.12);
+  bagProp.visible = false;
+
+  const briefcaseProp = pivot(leftHand, -0.04, -0.35, 0);
+  block(briefcaseProp, pants, 0, 0, 0, 0.10, 0.25, 0.34);
+  block(briefcaseProp, hair, 0, 0.14, 0, 0.04, 0.04, 0.12);
+  briefcaseProp.visible = false;
+
+  const props = new Set([pistol, phoneProp, coffeeProp, bagProp, briefcaseProp]);
+
+  function animate({ effort: targetEffort, sprint, verticalSpeed, grounded, action = 'relaxed', armed = false, recoil = 0, carry = 'none' }: AvatarPose, dt: number) {
     effort = THREE.MathUtils.damp(effort, targetEffort, 13, dt);
     airborne = THREE.MathUtils.damp(airborne, grounded ? 0 : 1, 17, dt);
     for (const pose of ['aim', 'handsUp', 'phone', 'hurt'] as const) {
       upperWeights[pose] = THREE.MathUtils.damp(upperWeights[pose], action === pose ? 1 : 0, 12, dt);
     }
     pistol.visible = armed;
+    phoneProp.visible = !armed && (action === 'phone' || carry === 'phone');
+    coffeeProp.visible = carry === 'coffee';
+    bagProp.visible = carry === 'bag';
+    briefcaseProp.visible = carry === 'briefcase';
     phase += dt * (8.4 + sprint * 4.8);
 
     const stride = Math.sin(phase) * effort * (1 - airborne);
@@ -142,15 +174,21 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
     head.rotation.x = -torso.rotation.x * 0.65;
     head.rotation.z = -torso.rotation.z * 0.5;
 
+    const weight = upperWeights.aim + upperWeights.handsUp + upperWeights.phone + upperWeights.hurt;
     for (const { side, shoulder, elbow } of arms) {
       shoulder.rotation.x = -stride * side * (0.43 + sprint * 0.4) + airborne * 0.55;
       shoulder.rotation.z = side * (0.11 + airborne * 0.18);
       elbow.rotation.x = 0.12 + effort * (0.14 + sprint * 0.54) + airborne * 0.18;
-      const weight = Object.values(upperWeights).reduce((total, value) => total + value, 0);
-      shoulder.rotation.x = shoulder.rotation.x * (1 - weight) + upperWeights.aim * (1.5 + recoil)
-        + upperWeights.handsUp * 2.6 + upperWeights.phone * 0.8 + upperWeights.hurt * 0.4;
-      elbow.rotation.x = elbow.rotation.x * (1 - weight) + upperWeights.phone * 1.4
-        + (weight - upperWeights.phone) * 0.15;
+      if (side > 0 || action !== 'phone') {
+        shoulder.rotation.x = shoulder.rotation.x * (1 - weight) + upperWeights.aim * (1.5 + recoil)
+          + upperWeights.handsUp * 2.6 + upperWeights.phone * 0.8 + upperWeights.hurt * 0.4;
+        elbow.rotation.x = elbow.rotation.x * (1 - weight) + upperWeights.phone * 1.4
+          + (weight - upperWeights.phone) * 0.15;
+      }
+      if (side < 0 && carry === 'coffee' && weight < 0.2) {
+        shoulder.rotation.x = 0.42;
+        elbow.rotation.x = 0.85;
+      }
     }
     for (const { side, thigh, knee, ankle } of legs) {
       const swing = stride * side;
@@ -174,7 +212,7 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
   // One draw per articulated pivot: repeated static blocks share geometry/material.
   const palette = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
   materials.push(palette);
-  const groups: THREE.Object3D[] = [];
+  const groups: THREE.Group[] = [];
   mesh.traverse((object) => { if (object instanceof THREE.Group) groups.push(object); });
   for (const group of groups) {
     const parts = group.children.filter((child): child is THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial> => child instanceof THREE.Mesh);
@@ -184,7 +222,11 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
       part.updateMatrix(); batch.setMatrixAt(index, part.matrix); batch.setColorAt(index, part.material.color);
       part.removeFromParent();
     }
-    batch.castShadow = batch.receiveShadow = true; batch.computeBoundingSphere(); group.add(batch);
+    const cast = !props.has(group) && (group === hips || group === torso || group === head || arms.some((a) => a.shoulder === group) || legs.some((l) => l.thigh === group));
+    batch.castShadow = cast;
+    batch.receiveShadow = !props.has(group);
+    batch.computeBoundingSphere();
+    group.add(batch);
   }
 
   return {
@@ -203,7 +245,6 @@ export function createAvatar(scene: THREE.Scene, shirtColor = 0x247c81) {
     dispose() {
       mesh.traverse((object) => { if (object instanceof THREE.InstancedMesh) object.dispose(); });
       mesh.removeFromParent();
-      geometry.dispose();
       for (const material of materials) material.dispose();
     },
   };

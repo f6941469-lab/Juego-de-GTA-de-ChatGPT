@@ -1,12 +1,12 @@
-export type Command = 'interact' | 'equip' | 'reload' | 'phone' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
-export type InputContext = 'world' | 'phone' | 'shop';
+export type Command = 'interact' | 'vehicle' | 'equip' | 'reload' | 'phone' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
+export type InputContext = 'world' | 'phone' | 'shop' | 'talk' | 'replay';
 type Control = 'forward' | 'back' | 'left' | 'right' | 'run' | 'jump' | 'aim' | 'fire';
 const keys: Readonly<Record<string, Control>> = {
   KeyW: 'forward', KeyS: 'back', KeyA: 'left', KeyD: 'right',
   ShiftLeft: 'run', ShiftRight: 'run', Space: 'jump',
 };
 const commands: Readonly<Record<string, Command>> = {
-  KeyE: 'interact', Digit1: 'equip', KeyR: 'reload', ArrowUp: 'up',
+  KeyE: 'interact', KeyF: 'vehicle', Digit1: 'equip', KeyR: 'reload', ArrowUp: 'up',
   ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'confirm', Escape: 'back',
 };
 interface InputActions {

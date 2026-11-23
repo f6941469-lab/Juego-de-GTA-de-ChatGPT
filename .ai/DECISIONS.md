@@ -1,9 +1,9 @@
 ---
 document_id: CORE-DECISIONS
 status: active
-last_updated: 2026-11-21
-verified_against: "Mercado Palma 0.5.0"
-verification_scope: "typecheck + 32 pruebas + build; navegador en CURRENT_STATE.md"
+last_updated: 2026-11-23
+verified_against: "Mercado Palma 0.5.0 (Fases 3-8 y optimización)"
+verification_scope: "typecheck + 37 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
 ---
 
 # Registro de Decisiones de Arquitectura (`DECISIONS.md`)
@@ -11,6 +11,13 @@ verification_scope: "typecheck + 32 pruebas + build; navegador en CURRENT_STATE.
 Consolida las decisiones del documento raíz [DECISIONS.md](../DECISIONS.md) junto con decisiones arquitectónicas identificadas en código y propuestas futuras.
 
 ---
+
+## 2026-11-23 · Fases 3–8 y optimización de render/mapa sobre `Session`
+
+- **Sectores espaciales y luz única agrupada:** En lugar de crear nueve luces puntuales simultáneas (lo que multiplicaba compilaciones de shaders en WebGL 2/SwiftShader) o geometrías duplicadas por avatar, `DistrictGeometry` divide el mapa en sectores de `48 m` con lotes `core`/`detail`, los avatares comparten `sharedBoxGeometry` y `Feedback` mueve una sola `PointLight` interior a la tienda más cercana al foco.
+- **Compatibilidad retroactiva de contratos:** `population.people` conserva longitud `10` para preservar las aserciones históricas de fase 2 mientras `merchants` (`9`) y `allPeople` (`21` civiles) amplían tiendas y rutinas como `person:pedro`; `Economy` conserva `buy`/`till`/`stock`/`rob` delegando en el mapa de `stores`; `Journal.post` mantiene `recording: 'unavailable'` hasta que `recorder` adjunta fotogramas reales.
+- **Conducción y tránsito unificado:** Los 3 vehículos existentes de `RoadNetwork` se vuelven conducibles/robables (`F`), junto a `1` autobús circular y `1` metro lanzadera entre estaciones transitables; se evita reintroducir el `VehicleManager`/`SimulationEngine` anterior descartado.
+- **Grabación POV progresiva y replay aislado:** `recorder.ts` consolida segmentos conforme avanzan para que la muerte del testigo preserve clips parciales (incluida caída de cámara) sin atribuir acciones posteriores, y el visor `replay` renderiza poses reconstruidas en un `replayGroup` aislado para no alterar `Session` ni `Physics`.
 
 ## 0.5.0 · Extender la base global con trabajo acotado
 

@@ -17,13 +17,14 @@ import {
 import type { DistrictMap } from './generation/layout';
 import { addBench, addLamppost, addStreets } from './generation/streets';
 import { addPalm, addPlanter } from './generation/vegetation';
-import { addShop } from './generation/shop';
+import { addShop, addStoreStructure, allShops } from './generation/shop';
+import { addBusStops, addMetroStation, metroStations } from './generation/transit';
 
 export interface District {
   colliders: StaticBox[];
   spawn: { x: number; y: number; z: number };
   map: DistrictMap;
-  update(elapsed: number, hour?: number): void;
+  update(elapsed: number, hour?: number, focus?: { x: number; z: number }): void;
 }
 
 const specialLots = new Map<string, BuildingSpec>([
@@ -33,13 +34,20 @@ const specialLots = new Map<string, BuildingSpec>([
   ['2:2:0', { x: -12.1, z: -16.2, width: 8.25, depth: 10, floors: 3, palette: 3, style: 'deco', entrance: 'east', sign: 'CORAL' }],
 ]);
 
+const shopByLot = new Map(allShops.map((item) => [item.lotKey, item]));
+const metroByLot = new Map([
+  ['3:4:0', metroStations[0]],
+  ['0:1:0', metroStations[1]],
+]);
+
 const landmarkPins = [
   { x: -12.15, z: 20.8, name: 'Hotel Miramar' },
   { x: 15.15, z: 21, name: 'Club Neón' },
   { x: 15, z: -51.2, name: 'Torre Alba' },
   { x: 37, z: 23, name: 'Jardín Coral' },
   { x: 54.5, z: 7, name: 'Paseo del Mar' },
-  { x: 15, z: 34.2, name: 'Mercado Palma' },
+  ...allShops.map((store) => ({ x: store.centerX, z: store.centerZ, name: store.name })),
+  ...metroStations.map((station) => ({ x: station.center.x, z: station.center.z, name: station.name })),
 ];
 
 export function buildDistrict(scene: Scene, seed = 61865): District {
@@ -52,6 +60,7 @@ export function buildDistrict(scene: Scene, seed = 61865): District {
 
   const colliders = createTerrainColliders();
   makeCityBlocks(geometry, colliders, seed);
+  addBusStops(geometry, colliders);
   addDistantSkyline(geometry, makeRandom(seed ^ 0x43f27ab));
   addBoulevardGreenery(geometry, colliders, makeRandom(seed ^ 0x62cda31));
   const updateWater = addCoast(scene, geometry, seed);
@@ -66,10 +75,11 @@ export function buildDistrict(scene: Scene, seed = 61865): District {
       water: { x: (shoreline + maxX) / 2, z: 0, width: maxX - shoreline, depth: maxZ - minZ },
       landmarks: landmarkPins.map((landmark) => ({ ...landmark })),
     },
-    update(elapsed, hour = 17.25) {
+    update(elapsed, hour = 17.25, focus) {
       const projection = 0.5 + 2.4 * Math.sin((hour - 6) * Math.PI / 12);
       const daylight = Math.max(0, Math.min(1, projection));
       geometry.setNightLighting(1 - daylight);
+      if (focus) geometry.updateVisibility(focus.x, focus.z);
       updateWater(elapsed, daylight);
     },
   };
@@ -126,8 +136,19 @@ function makeCityBlocks(geometry: DistrictGeometry, colliders: StaticBox[], seed
 
       const count = back - front >= 19 ? 2 : 1;
       for (let lot = 0; lot < count; lot += 1) {
-        if (column === 3 && row === 3 && lot === 1) {
+        const lotKey = `${column}:${row}:${lot}`;
+        if (lotKey === '3:3:1') {
           addShop(geometry, colliders);
+          continue;
+        }
+        const store = shopByLot.get(lotKey);
+        if (store) {
+          addStoreStructure(geometry, colliders, store);
+          continue;
+        }
+        const metro = metroByLot.get(lotKey);
+        if (metro) {
+          addMetroStation(geometry, colliders, metro);
           continue;
         }
         const lotDepth = (back - front) / count;
@@ -136,7 +157,7 @@ function makeCityBlocks(geometry: DistrictGeometry, colliders: StaticBox[], seed
         const width = (right - left - 4.6) * (0.85 + random() * 0.15);
         const depth = lotDepth - 3.2 - random() * 1.7;
         const floors = isDowntown ? 5 + Math.floor(random() * 7) : 2 + Math.floor(random() * (column === 2 || column === 3 ? 4 : 3));
-        const specification = specialLots.get(`${column}:${row}:${lot}`) ?? {
+        const specification = specialLots.get(lotKey) ?? {
           x: (left + right) / 2 + (random() - 0.5) * 0.84,
           z: centerZ + (random() - 0.5) * 0.62,
           width,

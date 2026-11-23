@@ -42,6 +42,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   let aiming = false;
   let armed = false;
   let recoil = 0;
+  let inVehicle = false;
 
   // Wrap only differences so interpolation always follows the shortest arc.
   function turnDelta(from: number, to: number) {
@@ -49,6 +50,8 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   }
 
   function reset() {
+    inVehicle = false;
+    character.collider.setEnabled(true);
     character.warp(initialFeet);
     position.set(initialFeet.x, initialFeet.y, initialFeet.z);
     previousPosition.copy(position);
@@ -66,6 +69,13 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   function prepareStep(dt: number, input: MovementInput) {
     previousPosition.copy(position);
     previousHeading = heading;
+    if (inVehicle) {
+      pendingMovement = { x: 0, y: 0, z: 0 };
+      pendingGrounded = true;
+      pendingMoveY = 0;
+      resolvedSpeed = 0;
+      return;
+    }
     if (input.jump && !previousJump) bufferedJump = JUMP_BUFFER;
     previousJump = input.jump;
 
@@ -106,6 +116,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   }
 
   function finishStep(dt: number) {
+    if (inVehicle) return;
     const feet = character.readFeet();
     position.set(feet.x, feet.y, feet.z);
     resolvedSpeed = Math.hypot(pendingMovement.x, pendingMovement.z) / dt;
@@ -135,7 +146,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     const cameraDistance = follow.update(interpolated, dt, aiming, recoil);
     avatar.mesh.position.copy(interpolated);
     avatar.mesh.rotation.y = -(previousHeading + turnDelta(previousHeading, heading) * blend);
-    avatar.mesh.visible = cameraDistance > 0.75;
+    avatar.mesh.visible = !inVehicle && cameraDistance > 0.75;
     avatar.animate({
       effort: THREE.MathUtils.clamp(resolvedSpeed / WALK_SPEED, 0, 1),
       sprint: THREE.MathUtils.clamp((resolvedSpeed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0, 1),
@@ -156,10 +167,30 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     get heading() {
       return heading;
     },
+    get inVehicle() {
+      return inVehicle;
+    },
     step,
     prepareStep,
     finishStep,
     setWeapon(equipped: boolean, aim: boolean) { armed = equipped; aiming = equipped && aim; },
+    setInVehicle(active: boolean, point?: Point3, yaw?: number) {
+      inVehicle = active;
+      character.collider.setEnabled(!active);
+      horizontalVelocity.set(0, 0);
+      verticalSpeed = 0;
+      if (point) {
+        if (!active) character.warp(point);
+        position.set(point.x, point.y, point.z);
+        previousPosition.copy(position);
+      }
+      if (yaw !== undefined) heading = previousHeading = yaw;
+    },
+    syncVehiclePose(point: Point3, yaw: number) {
+      if (!inVehicle) return;
+      position.set(point.x, point.y, point.z);
+      heading = yaw;
+    },
     kick() { recoil = 0.13; },
     look: follow.look,
     render,

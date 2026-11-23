@@ -60,4 +60,15 @@ El ZIP final pasó los flujos completos en iframe sandbox de otro origen: escrit
 
 La entrega web de producción también pasó en ambos tamaños, sin errores. Informe `/tmp/viceblock-050-web/report.json`. Se inspeccionaron las vistas de calle y móvil; la captura web nocturna muestra el mercado a las 22:00. El smoke espera ahora el cierre del diálogo y la actualización del reloj antes de capturar la noche.
 
-La prueba del ZIP usa alojamiento local; no publica en una cuenta de itch.io. WebGPU en hardware utilizable, mediciones físicas y file:// mantienen los límites de validación documentados.
+La prueba del ZIP usa alojamiento local; no publica en una cuenta de itch.io. WebGPU en hardware utilizable y mediciones físicas mantienen los límites de validación documentados.
+
+## Actualización Fases 3–8 y optimización · 0.5.0
+
+Tipos, `37` pruebas en `8` archivos, `build`, `check:portable` y `check:itch` aprobados. `zipfile` de Python comprobó entrada única `index.html` y CRC sin errores.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.315.889 | `2284337c646dfa60cf20e95f43dea4f7d109682c4dc8af1ca07e54e2615979e5` |
+| `publicar/viceblock-itch.zip` | 1.191.380 | `607e32e3f3d8a36b29af29f018a8fa7bd89040a059e594a26af6787dc491a6a2` |
+
+En Google Chrome `158.0.8127.36` (SwiftShader WebGL 2, Playwright Python), servido en `iframe` sandbox de otro origen (`390×844` táctil): arrancó en `WebGL 2`, mostró HUD y `13` botones táctiles ajustados sin desbordar horizontalmente, respetó el foco inicial del padre, `0` solicitudes externas y `0` excepciones JS (`failed_urls: []`; al pulsar `#play-button` mediante script en contexto de otro origen Chrome registra el aviso estándar `focus-without-user-activation` y los 404 locales de `/favicon.ico`).

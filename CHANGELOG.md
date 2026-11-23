@@ -1,5 +1,13 @@
 # Historial de cambios
 
+## 0.5.0 · Fases 3–8 y optimización gráfica (working tree en `main`, 2026-11-23)
+
+- **Optimización del distrito y render:** Sectores espaciales de `48 m` (`core`/`detail`), sombras desactivadas en follaje y detalle fino, avatares con `sharedBoxGeometry`, desaceleración distante y un único `PointLight` interior agrupado (`237.161` triángulos / `328` llamadas en `F3` Baja).
+- **9 tiendas reales y transporte público:** Reemplazadas cajas cerradas por `9` locales transitables (`Mercado Palma`, `Dulcería Sol`, `Panadería Brisa`, `Cafetería Mar`, `Restaurante Bahía`, `Farmacia Verde`, `Ropa Palmera`, `Armería Norte`, `Minimercado Sur`), `4` paradas de autobús y `2` estaciones de metro (`Metro Sur`, `Metro Norte`).
+- **Vida civil ("Pedro"), charla y eventos:** `21` civiles activos con trabajos, compras reales, accesorios en mano, charlas NPC↔NPC y Jugador↔NPC en español (`E`), detección de seguimiento persistente (`Pedro`) con desvío al metro si pierde el bus y eventos callejeros acotados.
+- **Vehículos, destrucción y policía:** Conducción y robo con `F`, autobús y metro circulando, `18` escaparates y `9` props destructibles conectados a `Navigation`, más `2` patrullas policiales en `RoadNetwork` con desembarco, fuego recíproco y barricadas.
+- **Grabación POV y replay:** Testigos y cámaras urbanas graban segmentos progresivos (sobreviviendo de forma parcial si el testigo muere, incluida caída de cámara) reproducibles en un visor 3D aislado desde `Palma Social` o al finalizar arrestado/abatido.
+
 ## 0.5.0 · Ciudad compartida y rutas por barrios
 
 - Seis vecinos adicionales, diez civiles en total, con recorridos y reacciones a incidentes en otros barrios.

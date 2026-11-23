@@ -1,18 +1,21 @@
 # Viceblock 0.5.0 · Mercado Palma
 
-Viceblock es un juego 3D urbano para navegador. La escena inicial de Mercado Palma conecta exploración a pie, diez civiles con rutas por distintos barrios, tres coches autónomos con destinos, comercio, pistola, testigos, dos policías y escaparates que se rompen. La ciudad, los materiales y los personajes se generan con código original. La simulación comparte estado en todo el distrito y varios sistemas siguen siendo parciales; consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
+Viceblock es un juego 3D urbano para navegador en el distrito de Costa Palmera. Conecta exploración a pie y conducción (`F` + `WASD`), `9` comercios abiertos con interior, `21` civiles con rutinas y conversación en español (`Pedro`, seguimiento persistente y eventos callejeros), autobús y metro transitables, destrucción de escaparates y mobiliario, patrullas policiales coordinadas, red social `Palma Social` y visor replay 3D desde el POV de testigos. La ciudad, materiales y audio se generan con código original. Consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md).
 
 ## Sustitución del sistema anterior
 
-Esta versión usa íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y la tienda de Mara. El motor de simulación, interfaz y mapa de la integración anterior fueron sustituidos por esta entrega por petición del usuario. La conducción, los distritos adicionales y la policía avanzada anteriores quedan fuera de la versión activa; su código permanece en el historial de Git.
+Esta versión conserva íntegramente la escena de Mercado Palma de las primeras capturas: HUD de efectivo/salud, minimapa compacto, teléfono verde y `Session` (`src/simulation/session.ts`) como autoridad física única. El motor de simulación anterior queda archivado en el historial de Git.
 
-La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.5.0 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.5.0**. Ambas conservan la escena de Mercado Palma; la ampliación global de NPC, tiendas y vehículos está descrita en la hoja de ruta.
+La entrega portable se identifica como **MERCADO PALMA · VERSIÓN 0.5.0 · SIN CONEXIÓN**. La versión web/de desarrollo muestra **VERSIÓN 0.5.0**.
 
-## Ciudad compartida · fase 2
+## Ciudad viva · Fases 2–8 e interior comercial
 
-Los peatones buscan rutas entre zonas y ceden espacio al cruzarse. Seis vecinos nuevos viven fuera del bloque inicial y pueden percibir, huir o denunciar incidentes mediante las mismas reglas del mercado. Los tres coches recorren una red de 25 cruces y 80 carriles dirigidos, con destinos, semáforos y reservas de cruce.
-
-La simulación conserva las identidades y daños al desplazarse por el distrito. Las decisiones tienen una cuota de cuatro civiles por tick; las rutas, dos búsquedas de hasta 8192 celdas. Los personajes alejados dejan de dibujarse gradualmente mientras su estado continúa. F3 muestra estas cuotas. Las conversaciones, la conducción del jugador y las nueve tiendas corresponden a las siguientes fases.
+- **9 tiendas reales:** `Mercado Palma`, `Dulcería Sol`, `Panadería Brisa`, `Cafetería Mar`, `Restaurante Bahía`, `Farmacia Verde`, `Ropa Palmera`, `Armería Norte` y `Minimercado Sur`, cada una con interior abierto, mostrador, stock, caja y clientes NPC.
+- **Vida civil ("Pedro") y conversación:** Civiles con trabajos, objetos en mano (`café`, `bolsa`, `teléfono`, `maletín`), charlas entre ellos y con el jugador (`E`), reacción al sentirse seguidos reiteradamente y eventos urbanos acotados.
+- **Conducción, robo y tránsito público:** Sube/baja o roba vehículos con `F`, viaja en el autobús circular (`4` paradas) o en la lanzadera de metro entre `Metro Sur` y `Metro Norte`.
+- **Destrucción y policía coordinada:** `18` escaparates y `9` objetos callejeros destructibles actualizan la navegación en tiempo real; `2` patrullas conducen, desembarcan agentes, responden disparos y montan barricadas según evidencia real.
+- **Grabación POV y Palma Social:** Los testigos graban en segmentos progresivos (si caen, se conserva el tramo enviado incluida la caída de cámara); revisa el feed y el replay 3D multiángulo en el teléfono (`↑`) o tras un arresto/derrota.
+- **Optimización:** Sectores espaciales de `48 m` con lotes `core`/`detail`, avatares con geometría compartida y luz interior agrupada. Queda pendiente el guardado por archivo JSON (Fase 9) y perfilado en GPU física.
 
 ## Publicar en itch.io
 
@@ -30,7 +33,7 @@ Descarga el [ZIP de la rama main](https://github.com/f6941469-lab/Juego-de-GTA-d
 
 Abre **[jugar/index.html](jugar/index.html)** en un navegador con WebGPU o WebGL 2. Ese archivo integra JavaScript, estilos, fuentes, física WASM y licencias: puedes copiar únicamente ese HTML y jugar sin conexión, sin Node, npm o servidor. El `index.html` de la raíz es la plantilla para desarrollar; el archivo preparado para jugar está en la carpeta `jugar`.
 
-El contenido integrado se comprueba con red desactivada. La apertura directa mediante `file://` sigue pendiente de validación porque el Chromium administrado de este entorno la bloquea por política. No se requieren cambios de seguridad para el entregable; consulta [la comprobación y sus límites](.ai/PORTABLE.md).
+`jugar/index.html` se validó en Chrome `158` vía `file://` con red desactivada (`0` peticiones HTTP y `0` errores); en navegadores administrados que bloqueen `file://`, usa un servidor local (`npm run preview`); consulta [la comprobación y sus límites](.ai/PORTABLE.md).
 
 ## Desarrollar o preparar una nueva entrega
 
@@ -57,24 +60,23 @@ El archivo generado `jugar/index.html` se incluye en cada entrega. `npm run chec
 
 | Control | Acción |
 | --- | --- |
-| W, A, S, D | Moverse |
+| W, A, S, D | Moverse / Conducir |
 | Ratón | Girar la cámara. Haz clic en el juego para capturar el puntero |
 | Mayús | Correr |
-| Espacio | Saltar |
-| E | Hablar con Mara / comprar cerca del mostrador |
+| Espacio | Saltar / Frenar vehículo |
+| E | Hablar con NPC o comerciante / comprar en el mostrador |
+| F | Subir, bajar o robar coche / subir a autobús o metro |
 | 1 | Equipar o guardar pistola |
 | Botón derecho / izquierdo | Apuntar / disparar |
 | R | Recargar |
-| Flecha arriba | Abrir teléfono; guarda la pistola |
-| Flechas, Enter, Escape | Navegar, seleccionar y volver en teléfono o tienda |
+| Flecha arriba | Abrir teléfono (`Palma Social`, `Mochila`, `Guía`); guarda la pistola |
+| Flechas, Enter, Escape | Navegar, cambiar de cámara en replay y volver en teléfono o tienda |
 | Esc | Salir de la captura del puntero y pausar |
 | F3 | Mostrar u ocultar los datos de depuración |
 
-En una pantalla táctil, usa las flechas para moverte y arrastra sobre la escena para girar la cámara. Desde la pausa puedes cambiar la calidad gráfica y ajustar la hora. El navegador recuerda el perfil gráfico. Empieza con el perfil Bajo si el movimiento se siente entrecortado.
+En una pantalla táctil, usa las flechas y botones táctiles para moverte, hablar, entrar en vehículos, disparar o abrir el teléfono, y arrastra sobre la escena para girar la cámara. Desde la pausa puedes cambiar la calidad gráfica y ajustar la hora. El navegador recuerda el perfil gráfico. Empieza con el perfil Bajo si el movimiento se siente entrecortado.
 
-La entrada central del mercado está abierta. Acércate al mostrador de Mara y pulsa E con el arma guardada. Las compras van a la mochila del teléfono; selecciona un producto para usarlo. Mantener la mira sobre Mara durante tres segundos provoca un asalto. Los testigos pueden avisar a la policía, que busca a partir de lo observado. Los escaparates laterales reciben impactos y pierden su colisión al romperse.
-
-El teléfono muestra testimonios de incidentes percibidos por vecinos. La grabación de video figura como no disponible: todavía no hay replay. No se guardan partidas; reiniciar desde pausa, ser detenido o perder toda la salud comienza una nueva escena. Los coches aún no se pueden conducir.
+Acércate a cualquiera de las `9` tiendas con el arma guardada y pulsa `E` para comprar comida, munición o protección; desde la mochila del teléfono puedes usar tus productos. Mantener la mira sobre un comerciante durante tres segundos inicia un asalto. Los testigos avisan a la policía y graban el incidente desde su cámara POV para verlo luego en `Palma Social` o tras arresto/muerte. No se guardan partidas en disco aún (Fase 9); reiniciar desde pausa comienza una nueva sesión.
 
 ## Comprobar y compilar
 

@@ -14,12 +14,12 @@
 
 Los tres vehículos existentes reciben destinos cambiantes. Reservan una intersección completa al aproximarse con señal verde y la liberan al terminar el cruce. La fase del semáforo y sus luces usan el mismo reloj. Las 300 lámparas son un único InstancedMesh; el color solo cambia con la fase. Los coches siguen usando barridos Rapier, cajas cinemáticas y el paso único de Session.
 
-Las reservas no calculan todavía trayectorias simultáneas compatibles. No existen aparcamiento, transferencia de asientos, conducción del jugador ni respuestas avanzadas del conductor. El reinicio restaura carril, destino, poses y reservas; dispose libera recursos.
+Las reservas de peatones no calculan cruces complejos más allá del paso y cesión por tick. En la red vial (`RoadNetwork`), además de los 3 coches civiles (`vehicle:traffic:0..2`), circulan el autobús (`vehicle:bus:0`) entre `4` paradas, el metro lanzadera (`vehicle:metro:0`) entre `Metro Sur` y `Metro Norte`, y `2` patrullas policiales (`police.ts`). Los coches civiles admiten conducción manual del jugador y robo con expulsión del conductor (`F`). El reinicio restaura carriles, destinos, patrullas, transporte y reservas.
 
-## Residentes y carga
+## Residentes, vida civil y carga
 
-`city-residents.ts` aporta seis perfiles y recorridos de barrio deterministas. Sus puntos se ajustan a una celda libre cercana; no aparecen nuevos NPC al cruzar zonas. Junto a Mara/Luz/Tomás/Sol hay diez civiles, con un máximo de cuatro decisiones por tick y cursor rotativo. La cadencia cercana/intermedia/lejana y la urgencia siguen modulando la frecuencia. La huida de un vecino usa destinos de su barrio.
+`city-residents.ts` junto a `population.ts` aporta los `10` civiles base (`people`), los `8` comerciantes de los locales nuevos (`extraMerchants`) y los `3` ciudadanos con rutina (`Pedro`, `Valeria`, `Marcos`, `21` civiles en `allPeople`). Sus puntos se ajustan a celdas libres de las 48 zonas; esperan autobús y se desvían al metro si lo pierden. La cadencia cercana/intermedia/lejana y la cuota de `4` decisiones/tick siguen vigentes.
 
-El estado y los cuerpos continúan a distancia; el render atenúa personajes entre 64 y 80 m y los oculta a 84 m. No hay streaming físico ni simulación por horarios. Un aviso distante prolonga el plazo de aproximación policial según distancia, hasta 70 s, conservando la posición denunciada y las reglas de visión.
+El estado y los cuerpos continúan a distancia; `DistrictGeometry` aplica visibilidad por sectores de `48 m` (`core`/`detail`), mientras los avatares atenúan y omiten animación distante (`> 42 m`). `Feedback` actualiza localmente `Navigation` al destruir cualquiera de los `18` escaparates o `9` props callejeros (`hydrant`/`crate`), y `police.ts` añade `barricades` en el operativo.
 
-`tests/city-simulation.test.ts` verifica cambios locales frente a reconstrucción, cuotas, cruce físico entre peatones, red y curvas dentro de las calles, reservas, circulación por otras avenidas sobre colliders reales, continuidad/reset y denuncia de un disparo real lejos del mercado.
+`tests/city-simulation.test.ts` y `tests/fases-3-8.test.ts` verifican cambios locales frente a reconstrucción, cuotas, cruce físico, rutas reales sobre colliders, 9 tiendas + bus/metro, rutina de Pedro + diálogo + acoso, robo/conducción, destrucción, patrullas y grabación POV multiángulo.

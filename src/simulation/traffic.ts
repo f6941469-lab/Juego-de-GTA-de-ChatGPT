@@ -1,11 +1,40 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import { BoxGeometry, Group, MathUtils, Mesh, MeshBasicMaterial, InstancedMesh, Object3D, Color, MeshStandardMaterial, Quaternion, Scene, Vector3 } from 'three';
-import type { Physics } from '../physics/physics';
+import { BoxGeometry, Color, Group, InstancedMesh, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, Quaternion, Scene, Vector3 } from 'three';
+import type { Physics, Point3 } from '../physics/physics';
+import { busStops, metroStations } from '../world/generation/transit';
 import type { Journal } from './model';
-import { RoadNetwork, joinRoads, lanePose, turnPose, type RoadLane, type RoadTurn } from './road-network';
+import { RoadNetwork, joinRoads, lanePose, turnPose, type RoadLane, type RoadNode, type RoadTurn } from './road-network';
 
 const COLLIDER_OFFSET_Y = 0.25;
 export const trafficPhase = (now: number) => now % 16 < 8 ? 'vertical' : now % 16 >= 9 && now % 16 < 15 ? 'horizontal' : 'red';
+
+export interface PlayerDriveInput {
+  throttle: number;
+  steer: number;
+  brake: boolean;
+}
+
+export interface ManagedVehicle {
+  id: string;
+  kind: 'car' | 'bus' | 'metro';
+  seatId: string;
+  driverId: string | undefined;
+  occupiedSeats: number;
+  passengerIds: string[];
+  color: number;
+  mesh: Group;
+  body: RAPIER.RigidBody;
+  collider: RAPIER.Collider;
+  position: Vector3;
+  previous: Vector3;
+  heading: number;
+  previousHeading: number;
+  speed: number;
+  health: number;
+  controlledByPlayer: boolean;
+  parkedTimer: number;
+  stoppedAtId?: string;
+}
 
 export function createTraffic(scene: Scene, physics: Physics, journal: Journal) {
   const network = new RoadNetwork();
@@ -14,14 +43,18 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
   const materials: MeshStandardMaterial[] = [];
   const material = (color: number, emissive = 0) => { const result = new MeshStandardMaterial({ color, roughness: 0.65, emissive, emissiveIntensity: 0.8 }); materials.push(result); return result; };
   const dark = material(0x27333b); const glass = material(0x769fa5); const tire = material(0x24252c); const skin = material(0xc58e66); const light = material(0xfbe2a1, 0xe9bd69); const brake = material(0xb52939, 0xb52939);
+  const busPaint = material(0x3a8c84); const metroPaint = material(0xd99b43);
   function block(group: Group, mat: MeshStandardMaterial, x: number, y: number, z: number, w: number, h: number, d: number) {
     const mesh = new Mesh(geometry, mat); mesh.position.set(x, y, z); mesh.scale.set(w, h, d); mesh.castShadow = true; mesh.receiveShadow = true; group.add(mesh); return mesh;
   }
+
+  const carColors = [0xe6b06f, 0x71aaa6, 0xb46d83];
   const seeds = [[0, 45, 0, 7, 0], [0, 7, 28, 7, 7.65], [28, 7, 28, 45, 21.65]];
   const cars = seeds.map(([fromX, fromZ, toX, toZ, distance], index) => {
     const lane = network.lanes.find(lane => lane.from.x === fromX && lane.from.z === fromZ && lane.to.x === toX && lane.to.z === toZ)!;
     const pose = lanePose(lane, distance); const mesh = new Group(); scene.add(mesh);
-    const paint = material([0xe6b06f, 0x71aaa6, 0xb46d83][index]);
+    const hex = carColors[index];
+    const paint = material(hex);
     block(mesh, paint, 0, 0, 0, 1.65, 0.55, 3.5);
     block(mesh, glass, 0, 0.5, -0.05, 1.4, 0.55, 1.7);
     block(mesh, paint, 0, 0.8, 0, 1.48, 0.12, 1.8);
@@ -31,16 +64,126 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
       block(mesh, brake, side * 0.58, 0.05, 1.77, 0.35, 0.15, 0.06);
       for (const z of [-1.05, 1.05]) block(mesh, tire, side * 0.83, -0.23, z, 0.18, 0.48, 0.52).name = 'Wheel';
     }
-    // An occupied driver's seat belongs to this car, never a duplicate pedestrian.
-    block(mesh, dark, 0.34, 0.35, 0, 0.38, 0.4, 0.35);
-    block(mesh, skin, 0.34, 0.61, -0.1, 0.25, 0.25, 0.25);
+    const driverSeatMesh = block(mesh, dark, 0.34, 0.35, 0, 0.38, 0.4, 0.35);
+    const driverHeadMesh = block(mesh, skin, 0.34, 0.61, -0.1, 0.25, 0.25, 0.25);
     const body = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(pose.x, pose.y, pose.z));
     const collider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(0.86, 0.63, 1.83).setTranslation(0, COLLIDER_OFFSET_Y, 0), body);
     const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -pose.heading); body.setRotation(rotation, true);
     const position = new Vector3(pose.x, pose.y, pose.z);
-    return { lane, initialLane: lane, route: [] as RoadLane[], turn: undefined as (RoadTurn & { next: RoadLane; distance: number }) | undefined, destination: (index * 7) % destinations.length, reserved: false, id: `vehicle:traffic:${index}`, seatId: `seat:traffic:${index}:driver`, mesh, body, collider, position, previous: position.clone(), heading: pose.heading, previousHeading: pose.heading, distance, initialDistance: distance, speed: 0, cooldown: 0, driverId: `person:driver:${index}`, occupiedSeats: 1 };
+    return {
+      kind: 'car' as const,
+      color: hex,
+      lane, initialLane: lane,
+      route: [] as RoadLane[],
+      turn: undefined as (RoadTurn & { next: RoadLane; distance: number }) | undefined,
+      destination: (index * 7) % destinations.length,
+      reserved: false,
+      id: `vehicle:traffic:${index}`,
+      seatId: `seat:traffic:${index}:driver`,
+      driverId: `person:driver:${index}`,
+      initialDriverId: `person:driver:${index}`,
+      occupiedSeats: 1,
+      passengerIds: [] as string[],
+      mesh, driverSeatMesh, driverHeadMesh,
+      body, collider, position, previous: position.clone(),
+      heading: pose.heading, previousHeading: pose.heading,
+      distance, initialDistance: distance,
+      speed: 0, cooldown: 0, health: 100,
+      controlledByPlayer: false,
+      abandoned: false,
+      parkedTimer: 0,
+      stoppedAtId: undefined as string | undefined,
+    };
   });
+
+  // City Bus cycling through busStops on RoadNetwork
+  const busRouteNodes: RoadNode[] = [
+    network.nodes.get('road:28:45')!,
+    network.nodes.get('road:28:7')!,
+    network.nodes.get('road:28:-28')!,
+    network.nodes.get('road:0:-28')!,
+    network.nodes.get('road:-22:-28')!,
+    network.nodes.get('road:-22:7')!,
+    network.nodes.get('road:-22:45')!,
+    network.nodes.get('road:0:45')!,
+  ];
+  const busStartLane = network.lanes.find((l) => l.from === busRouteNodes[7] && l.to === busRouteNodes[0])!;
+  const busPose = lanePose(busStartLane, 4);
+  const busMesh = new Group(); scene.add(busMesh);
+  block(busMesh, busPaint, 0, 0.35, 0, 2.05, 1.35, 5.4);
+  block(busMesh, glass, 0, 0.72, -2.1, 1.85, 0.55, 1.1);
+  for (const side of [-1, 1]) {
+    block(busMesh, glass, side * 1.03, 0.72, 0.1, 0.05, 0.55, 3.4);
+    for (const z of [-1.7, 1.7]) block(busMesh, tire, side * 0.96, -0.22, z, 0.22, 0.52, 0.58);
+  }
+  const busBody = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(busPose.x, busPose.y, busPose.z));
+  const busCollider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(1.05, 0.9, 2.75).setTranslation(0, 0.4, 0), busBody);
+  const busPos = new Vector3(busPose.x, busPose.y, busPose.z);
+  const bus = {
+    kind: 'bus' as const,
+    color: 0x3a8c84,
+    id: 'vehicle:bus:0',
+    seatId: 'seat:bus:0:driver',
+    driverId: 'person:bus:driver' as string | undefined,
+    occupiedSeats: 1,
+    passengerIds: [] as string[],
+    mesh: busMesh,
+    body: busBody,
+    collider: busCollider,
+    position: busPos,
+    previous: busPos.clone(),
+    heading: busPose.heading,
+    previousHeading: busPose.heading,
+    lane: busStartLane,
+    initialLane: busStartLane,
+    route: [] as RoadLane[],
+    turn: undefined as (RoadTurn & { next: RoadLane; distance: number }) | undefined,
+    distance: 4,
+    routeStopIndex: 0,
+    dwellTimer: 0,
+    stopCooldown: 0,
+    reserved: false,
+    speed: 0,
+    health: 150,
+    controlledByPlayer: false,
+    parkedTimer: 0,
+    stoppedAtId: undefined as string | undefined,
+  };
+
+  // Metro Shuttle connecting Metro Sur (trackX: 15, trackZ: 58.9) & Metro Norte (trackX: -58.5, trackZ: -49.1)
+  const metroMesh = new Group(); scene.add(metroMesh);
+  block(metroMesh, metroPaint, 0, 0.65, 0, 6.2, 1.4, 1.85);
+  block(metroMesh, glass, 0, 0.85, 0, 5.2, 0.55, 1.9);
+  const metroPos = new Vector3(metroStations[0].trackX, 0.1, metroStations[0].trackZ);
+  const metroBody = physics.world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(metroPos.x, metroPos.y, metroPos.z));
+  const metroCollider = physics.world.createCollider(RAPIER.ColliderDesc.cuboid(3.1, 0.75, 0.95).setTranslation(0, 0.65, 0), metroBody);
+  const metro = {
+    kind: 'metro' as const,
+    color: 0xd99b43,
+    id: 'vehicle:metro:0',
+    seatId: 'seat:metro:0:driver',
+    driverId: 'person:metro:driver' as string | undefined,
+    occupiedSeats: 1,
+    passengerIds: [] as string[],
+    mesh: metroMesh,
+    body: metroBody,
+    collider: metroCollider,
+    position: metroPos,
+    previous: metroPos.clone(),
+    heading: 0,
+    previousHeading: 0,
+    speed: 0,
+    health: 999,
+    controlledByPlayer: false,
+    parkedTimer: 0,
+    stationIndex: 0,
+    phase: 'dwell' as 'dwell' | 'depart' | 'transit' | 'arrive',
+    timer: 5.5,
+    stoppedAtId: metroStations[0].id as string | undefined,
+  };
+
   const shape = new RAPIER.Cuboid(0.89, 0.63, 1.86);
+  const busShape = new RAPIER.Cuboid(1.07, 0.9, 2.75);
   const signalMaterial = new MeshBasicMaterial();
   const signals = new InstancedMesh(geometry, signalMaterial, network.nodes.size * 12);
   const transform = new Object3D();
@@ -60,6 +203,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
   signals.name = 'Señales de la red vial';
   scene.add(signals);
   let previousPhase = '';
+
   function plan(car: typeof cars[number]) {
     for (let attempt = 0; attempt < destinations.length; attempt++) {
       car.destination = (car.destination + 7) % destinations.length;
@@ -67,81 +211,260 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
       if (route.length) { car.route = route; return; }
     }
   }
+
+  function planBus() {
+    bus.routeStopIndex = (bus.routeStopIndex + 1) % busRouteNodes.length;
+    const nextNode = busRouteNodes[bus.routeStopIndex];
+    const route = network.route(bus.lane.to, nextNode, bus.lane.from);
+    if (route.length) bus.route = route;
+  }
+
+  function stepRoadVehicle(
+    veh: {
+      id: string; lane: RoadLane; route: RoadLane[]; turn: (RoadTurn & { next: RoadLane; distance: number }) | undefined;
+      reserved: boolean; position: Vector3; heading: number; distance: number; speed: number;
+      body: RAPIER.RigidBody; collider: RAPIER.Collider; driverId?: string;
+    },
+    vehShape: RAPIER.Cuboid,
+    maxSpeed: number,
+    dt: number,
+    now: number,
+    forceStop: boolean,
+    replan: () => void,
+    onImpact?: () => void,
+  ) {
+    let clearance = 8;
+    const direction = { x: Math.sin(veh.heading), y: 0, z: -Math.cos(veh.heading) };
+    const origin = { x: veh.position.x, y: veh.position.y + COLLIDER_OFFSET_Y, z: veh.position.z };
+    const hit = physics.world.castShape(origin, veh.body.rotation(), direction, vehShape, 0.08, 8, true,
+      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, veh.collider);
+    if (hit) clearance = Math.max(0, hit.time_of_impact - 0.3);
+    if (!veh.route.length && !veh.turn) replan();
+    const left = veh.lane.length - veh.distance;
+    if (!veh.turn && left < 8 && !veh.reserved) {
+      const green = trafficPhase(now) === (veh.lane.axis === 'z' ? 'vertical' : 'horizontal');
+      veh.reserved = green && network.reserve(veh.lane.to, veh.id);
+    }
+    if (!veh.turn && !veh.reserved) clearance = Math.min(clearance, Math.max(0, left - 0.25));
+    const turning = !!veh.turn || (left < 6 && veh.route[0]?.axis !== veh.lane.axis);
+    const target = forceStop ? 0 : Math.min(turning ? Math.min(3.1, maxSpeed) : maxSpeed, Math.sqrt(2 * 6 * Math.max(0, clearance - 0.15)));
+    veh.speed += MathUtils.clamp(target - veh.speed, -7 * dt, 2.1 * dt);
+    const advance = Math.min(veh.speed * dt, Math.max(0, clearance - 0.05));
+    const travel = Math.min(advance, veh.turn ? veh.turn.length - veh.turn.distance : left);
+    const pose = veh.turn ? turnPose(veh.turn, veh.turn.distance + travel) : lanePose(veh.lane, veh.distance + travel);
+    const delta = { x: pose.x - veh.position.x, y: 0, z: pose.z - veh.position.z };
+    const collision = physics.world.castShape(origin, veh.body.rotation(), delta, vehShape, 0.03, 1, true,
+      RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, veh.collider);
+    const fraction = collision ? Math.max(0, collision.time_of_impact - 0.01) : 1;
+    if (fraction < 0.9 && veh.speed > 2 && onImpact) onImpact();
+    if (veh.turn) {
+      veh.turn.distance += travel * fraction;
+      if (veh.turn.distance >= veh.turn.length - 0.001) {
+        network.release(veh.lane.to, veh.id);
+        veh.lane = veh.turn.next; veh.distance = 0; veh.turn = undefined; veh.reserved = false;
+      }
+    } else {
+      veh.distance = Math.min(veh.lane.length, veh.distance + travel * fraction);
+      if (veh.distance >= veh.lane.length - 0.001 && veh.reserved && veh.route.length) {
+        const next = veh.route.shift()!;
+        veh.turn = { ...joinRoads(veh.lane, next), next, distance: 0 };
+      }
+    }
+    const resolved = veh.turn ? turnPose(veh.turn, veh.turn.distance) : lanePose(veh.lane, veh.distance);
+    veh.heading += Math.atan2(Math.sin(resolved.heading - veh.heading), Math.cos(resolved.heading - veh.heading)) * (1 - Math.exp(-14 * dt));
+    veh.body.setNextKinematicTranslation(resolved);
+    veh.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -veh.heading));
+    if (fraction < 1) veh.speed *= fraction;
+  }
+
   let time = 0;
+  let playerInput: PlayerDriveInput = { throttle: 0, steer: 0, brake: false };
+
   return {
-    cars, network,
+    cars,
+    bus,
+    metro,
+    network,
+    get allVehicles(): ManagedVehicle[] {
+      return [...cars, bus, metro];
+    },
+    setPlayerDrive(input: PlayerDriveInput) {
+      playerInput = input;
+    },
+    nearestBoardable(point: Point3, maxDist = 3.2): ManagedVehicle | undefined {
+      let best: ManagedVehicle | undefined;
+      let bestDist = maxDist;
+      for (const veh of [...cars, bus, metro]) {
+        const d = Math.hypot(veh.position.x - point.x, veh.position.z - point.z);
+        if (d < bestDist) {
+          bestDist = d;
+          best = veh;
+        }
+      }
+      return best;
+    },
     prepare(dt: number, now: number) {
       time = now;
+
+      // 1. Traffic cars (autonomous or player-driven)
       for (const car of cars) {
-        car.previous.copy(car.position); car.previousHeading = car.heading; car.cooldown = Math.max(0, car.cooldown - dt);
-        let clearance = 8;
-        const direction = { x: Math.sin(car.heading), y: 0, z: -Math.cos(car.heading) };
-        const origin = { x: car.position.x, y: car.position.y + COLLIDER_OFFSET_Y, z: car.position.z };
-        const hit = physics.world.castShape(origin, car.body.rotation(), direction, shape, 0.08, 8, true,
-          RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, car.collider);
-        if (hit) clearance = Math.max(0, hit.time_of_impact - 0.3);
-        if (!car.route.length && !car.turn) plan(car);
-        const left = car.lane.length - car.distance;
-        if (!car.turn && left < 8 && !car.reserved) {
-          const green = trafficPhase(now) === (car.lane.axis === 'z' ? 'vertical' : 'horizontal');
-          car.reserved = green && network.reserve(car.lane.to, car.id);
-        }
-        if (!car.turn && !car.reserved) clearance = Math.min(clearance, Math.max(0, left - 0.25));
-        const turning = !!car.turn || (left < 6 && car.route[0]?.axis !== car.lane.axis);
-        const target = Math.min(turning ? 3.1 : 5.4, Math.sqrt(2 * 6 * Math.max(0, clearance - 0.15)));
-        car.speed += MathUtils.clamp(target - car.speed, -7 * dt, 2.1 * dt);
-        const advance = Math.min(car.speed * dt, Math.max(0, clearance - 0.05));
-        const travel = Math.min(advance, car.turn ? car.turn.length - car.turn.distance : left);
-        const pose = car.turn ? turnPose(car.turn, car.turn.distance + travel) : lanePose(car.lane, car.distance + travel);
-        const delta = { x: pose.x - car.position.x, y: 0, z: pose.z - car.position.z };
-        const collision = physics.world.castShape(origin, car.body.rotation(), delta, shape, 0.03, 1, true,
-          RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, car.collider);
-        const fraction = collision ? Math.max(0, collision.time_of_impact - 0.01) : 1;
-        if (fraction < 0.9 && car.speed > 2 && car.cooldown === 0) {
-          journal.publish('collision', car.position, now, car.driverId, false); car.cooldown = 3;
-        }
-        if (car.turn) {
-          car.turn.distance += travel * fraction;
-          if (car.turn.distance >= car.turn.length - 0.001) {
+        car.previous.copy(car.position);
+        car.previousHeading = car.heading;
+        car.cooldown = Math.max(0, car.cooldown - dt);
+        car.driverSeatMesh.visible = car.occupiedSeats > 0;
+        car.driverHeadMesh.visible = car.occupiedSeats > 0;
+
+        if (car.controlledByPlayer) {
+          if (car.reserved) {
             network.release(car.lane.to, car.id);
-            car.lane = car.turn.next; car.distance = 0; car.turn = undefined; car.reserved = false;
+            car.reserved = false;
           }
-        } else {
-          car.distance = Math.min(car.lane.length, car.distance + travel * fraction);
-          if (car.distance >= car.lane.length - 0.001 && car.reserved && car.route.length) {
-            const next = car.route.shift()!;
-            car.turn = { ...joinRoads(car.lane, next), next, distance: 0 };
+          const accel = playerInput.throttle > 0 ? 11 : playerInput.throttle < 0 ? -7 : 0;
+          if (playerInput.brake) {
+            car.speed = MathUtils.damp(car.speed, 0, 9, dt);
+          } else if (accel !== 0) {
+            car.speed = MathUtils.clamp(car.speed + accel * dt, -6.5, 14.5);
+          } else {
+            car.speed = MathUtils.damp(car.speed, 0, 2.2, dt);
+          }
+          if (Math.abs(car.speed) > 0.25 && playerInput.steer !== 0) {
+            const sign = car.speed >= 0 ? 1 : -1;
+            car.heading += playerInput.steer * sign * Math.min(1, Math.abs(car.speed) / 3) * 2.15 * dt;
+          }
+          const stepDist = car.speed * dt;
+          const dx = Math.sin(car.heading) * stepDist;
+          const dz = -Math.cos(car.heading) * stepDist;
+          const origin = { x: car.position.x, y: car.position.y + COLLIDER_OFFSET_Y, z: car.position.z };
+          const hit = Math.abs(stepDist) > 0.0005
+            ? physics.world.castShape(origin, car.body.rotation(), { x: dx, y: 0, z: dz }, shape, 0.02, 1, true, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, car.collider)
+            : null;
+          const frac = hit ? Math.max(0, hit.time_of_impact - 0.02) : 1;
+          if (frac < 0.9 && Math.abs(car.speed) > 3.5 && car.cooldown === 0) {
+            journal.publish('collision', car.position, now, 'player', true);
+            car.cooldown = 2.5;
+            car.speed *= 0.2;
+          }
+          const nextPos = { x: car.position.x + dx * frac, y: 0.47, z: car.position.z + dz * frac };
+          car.body.setNextKinematicTranslation(nextPos);
+          car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
+          continue;
+        }
+
+        if (car.abandoned) {
+          car.speed = MathUtils.damp(car.speed, 0, 5, dt);
+          car.body.setNextKinematicTranslation(car.position);
+          car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
+          continue;
+        }
+
+        stepRoadVehicle(car, shape, 5.4, dt, now, false, () => plan(car), () => {
+          if (car.cooldown === 0) {
+            journal.publish('collision', car.position, now, car.driverId ?? car.id, false);
+            car.cooldown = 3;
+          }
+        });
+      }
+
+      // 2. City Bus (stops cleanly at busStops)
+      bus.previous.copy(bus.position);
+      bus.previousHeading = bus.heading;
+      bus.stopCooldown = Math.max(0, bus.stopCooldown - dt);
+      if (bus.dwellTimer > 0) {
+        bus.dwellTimer = Math.max(0, bus.dwellTimer - dt);
+        bus.speed = 0;
+        if (bus.dwellTimer === 0) bus.stoppedAtId = undefined;
+        bus.body.setNextKinematicTranslation(bus.position);
+        bus.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -bus.heading));
+      } else {
+        if (bus.stopCooldown === 0) {
+          for (const stop of busStops) {
+            if (Math.hypot(bus.position.x - stop.roadStop.x, bus.position.z - stop.roadStop.z) < 2.2) {
+              bus.dwellTimer = 6.0;
+              bus.stopCooldown = 10.0;
+              bus.stoppedAtId = stop.id;
+              bus.speed = 0;
+              break;
+            }
           }
         }
-        const resolved = car.turn ? turnPose(car.turn, car.turn.distance) : lanePose(car.lane, car.distance);
-        car.heading += Math.atan2(Math.sin(resolved.heading - car.heading), Math.cos(resolved.heading - car.heading)) * (1 - Math.exp(-14 * dt));
-        car.body.setNextKinematicTranslation(resolved);
-        car.body.setNextKinematicRotation(new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -car.heading));
-        if (fraction < 1) car.speed *= fraction;
+        stepRoadVehicle(bus, busShape, 4.6, dt, now, bus.dwellTimer > 0, planBus);
       }
+
+      // 3. Metro Shuttle (arrives/dwells at Metro Sur & Metro Norte)
+      metro.previous.copy(metro.position);
+      metro.previousHeading = metro.heading;
+      metro.timer = Math.max(0, metro.timer - dt);
+      const currentSt = metroStations[metro.stationIndex];
+      const nextSt = metroStations[(metro.stationIndex + 1) % metroStations.length];
+      if (metro.phase === 'dwell') {
+        metro.stoppedAtId = currentSt.id;
+        metro.speed = 0;
+        metro.position.set(currentSt.trackX, 0.1, currentSt.trackZ);
+        if (metro.timer === 0) {
+          metro.phase = 'depart';
+          metro.stoppedAtId = undefined;
+          metro.timer = 1.6;
+        }
+      } else if (metro.phase === 'depart') {
+        const dir = metro.stationIndex === 0 ? 1 : -1;
+        metro.position.x = currentSt.trackX + dir * (1.6 - metro.timer) * 6;
+        metro.speed = 6;
+        if (metro.timer === 0) {
+          metro.phase = 'transit';
+          metro.timer = 9.0;
+        }
+      } else if (metro.phase === 'transit') {
+        metro.position.set(0, -12, 0); // Underground between stations
+        metro.speed = 12;
+        if (metro.timer === 0) {
+          metro.stationIndex = (metro.stationIndex + 1) % metroStations.length;
+          metro.phase = 'arrive';
+          metro.timer = 1.6;
+        }
+      } else if (metro.phase === 'arrive') {
+        const destSt = metroStations[metro.stationIndex];
+        const dir = metro.stationIndex === 0 ? -1 : 1;
+        metro.position.set(destSt.trackX + dir * metro.timer * 6, 0.1, destSt.trackZ);
+        metro.speed = 4;
+        if (metro.timer === 0) {
+          metro.phase = 'dwell';
+          metro.timer = 6.5;
+          metro.stoppedAtId = destSt.id;
+        }
+      }
+      metro.body.setNextKinematicTranslation(metro.position);
     },
-    finish() { for (const car of cars) { const p = car.body.translation(); car.position.set(p.x, p.y, p.z); } },
+    finish() {
+      for (const car of cars) { const p = car.body.translation(); car.position.set(p.x, p.y, p.z); }
+      const bp = bus.body.translation(); bus.position.set(bp.x, bp.y, bp.z);
+    },
     render(alpha: number) {
       const phase = trafficPhase(time);
       if (phase !== previousPhase) {
-        const dark = new Color(0x121c22), red = new Color(0xff4b57), green = new Color(0x69dfb1);
+        const darkC = new Color(0x121c22), red = new Color(0xff4b57), green = new Color(0x69dfb1);
         for (const head of signalHeads) {
           const open = phase === (head.axis === 'z' ? 'vertical' : 'horizontal');
-          for (let lamp = 0; lamp < 3; lamp++) signals.setColorAt(head.offset + lamp, lamp === (open ? 2 : 0) ? (open ? green : red) : dark);
+          for (let lamp = 0; lamp < 3; lamp++) signals.setColorAt(head.offset + lamp, lamp === (open ? 2 : 0) ? (open ? green : red) : darkC);
         }
         signals.instanceColor!.needsUpdate = true; previousPhase = phase;
       }
-      for (const car of cars) {
-        car.mesh.position.lerpVectors(car.previous, car.position, alpha);
-        car.mesh.rotation.y = -(car.previousHeading + Math.atan2(Math.sin(car.heading - car.previousHeading), Math.cos(car.heading - car.previousHeading)) * alpha);
+      for (const veh of [...cars, bus, metro]) {
+        veh.mesh.visible = veh.position.y > -5;
+        if (!veh.mesh.visible) continue;
+        veh.mesh.position.lerpVectors(veh.previous, veh.position, alpha);
+        veh.mesh.rotation.y = -(veh.previousHeading + Math.atan2(Math.sin(veh.heading - veh.previousHeading), Math.cos(veh.heading - veh.previousHeading)) * alpha);
       }
     },
     reset() {
       network.reset();
       time = 0; previousPhase = '';
+      playerInput = { throttle: 0, steer: 0, brake: false };
       for (const [index, car] of cars.entries()) {
         car.destination = (index * 7) % destinations.length;
         car.lane = car.initialLane; car.route = []; car.turn = undefined; car.reserved = false;
+        car.controlledByPlayer = false; car.abandoned = false;
+        car.driverId = car.initialDriverId; car.occupiedSeats = 1; car.passengerIds.length = 0;
+        car.health = 100; car.driverSeatMesh.visible = true; car.driverHeadMesh.visible = true;
         car.distance = car.initialDistance; const pose = lanePose(car.lane, car.distance);
         car.body.setTranslation(pose, true); car.body.setNextKinematicTranslation(pose);
         const q = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -pose.heading);
@@ -149,7 +472,26 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
         car.position.set(pose.x, pose.y, pose.z); car.previous.copy(car.position);
         car.heading = car.previousHeading = pose.heading; car.speed = car.cooldown = 0;
       }
+      bus.lane = bus.initialLane; bus.route = []; bus.turn = undefined; bus.reserved = false;
+      bus.distance = 4; bus.routeStopIndex = 0; bus.dwellTimer = 0; bus.stopCooldown = 0;
+      bus.stoppedAtId = undefined; bus.passengerIds.length = 0; bus.occupiedSeats = 1; bus.speed = 0;
+      const bp = lanePose(bus.lane, bus.distance);
+      bus.body.setTranslation(bp, true); bus.body.setNextKinematicTranslation(bp);
+      const bq = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -bp.heading);
+      bus.body.setRotation(bq, true); bus.body.setNextKinematicRotation(bq);
+      bus.position.set(bp.x, bp.y, bp.z); bus.previous.copy(bus.position);
+      bus.heading = bus.previousHeading = bp.heading;
+
+      metro.stationIndex = 0; metro.phase = 'dwell'; metro.timer = 5.5;
+      metro.stoppedAtId = metroStations[0].id; metro.passengerIds.length = 0; metro.speed = 0;
+      metro.position.set(metroStations[0].trackX, 0.1, metroStations[0].trackZ);
+      metro.previous.copy(metro.position);
+      metro.body.setTranslation(metro.position, true); metro.body.setNextKinematicTranslation(metro.position);
     },
-    dispose() { for (const car of cars) { car.mesh.removeFromParent(); physics.world.removeRigidBody(car.body); } signals.removeFromParent(); signals.dispose(); signalMaterial.dispose(); network.reset(); geometry.dispose(); materials.forEach((mat) => mat.dispose()); },
+    dispose() {
+      for (const veh of [...cars, bus, metro]) { veh.mesh.removeFromParent(); physics.world.removeRigidBody(veh.body); }
+      signals.removeFromParent(); signals.dispose(); signalMaterial.dispose();
+      network.reset(); geometry.dispose(); materials.forEach((mat) => mat.dispose());
+    },
   };
 }

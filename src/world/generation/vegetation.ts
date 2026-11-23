@@ -25,29 +25,29 @@ export function addPalm(geometry: DistrictGeometry, x: number, z: number, random
     z + Math.sin(bearing) * lean * fraction ** 2,
   );
 
-  for (let section = 0; section < 9; section += 1) {
-    const start = point(section / 9);
-    const end = point((section + 1) / 9);
+  for (let section = 0; section < 6; section += 1) {
+    const start = point(section / 6);
+    const end = point((section + 1) / 6);
     const axis = end.clone().sub(start);
     const center = start.addScaledVector(axis, 0.5);
-    const size = (0.31 - section * 0.014) * scale;
+    const size = (0.31 - section * 0.02) * scale;
     const rotation = new Euler().setFromQuaternion(new Quaternion().setFromUnitVectors(up, axis.clone().normalize()));
     geometry.add(trunk, 'wall', true, {
       x: center.x, y: center.y, z: center.z, width: size, height: axis.length() + 0.01, depth: size,
-      rotation, color: section % 3 === 0 ? '#8a7365' : '#a18b72',
+      rotation, color: section % 2 === 0 ? '#8a7365' : '#a18b72',
     });
   }
 
   const top = point(1);
-  geometry.add(crown, 'wall', true, {
+  geometry.add(crown, 'wall', false, {
     x: top.x, y: top.y - 0.13, z: top.z, width: 0.65 * scale, height: 0.9 * scale, depth: 0.63 * scale,
     color: '#586649',
   });
-  for (let branch = 0; branch < 10; branch += 1) {
+  for (let branch = 0; branch < 7; branch += 1) {
     const size = (1.37 + random() * 0.47) * scale;
-    geometry.add(leaf, 'foliage', true, {
+    geometry.add(leaf, 'foliage', false, {
       x: top.x, y: top.y, z: top.z, width: size, height: size, depth: size,
-      rotation: new Euler((random() - 0.4) * 0.38, bearing + branch * Math.PI * 2 / 10, (random() - 0.5) * 0.24, 'YXZ'),
+      rotation: new Euler((random() - 0.4) * 0.38, bearing + branch * Math.PI * 2 / 7, (random() - 0.5) * 0.24, 'YXZ'),
       color: branch % 3 === 0 ? '#709a54' : '#43856a',
     });
   }
@@ -56,11 +56,11 @@ export function addPalm(geometry: DistrictGeometry, x: number, z: number, random
 export function addPlanter(geometry: DistrictGeometry, x: number, z: number, random: () => number, size = 1): void {
   geometry.box('pavement', '#b7a893', x, 0.16, z, 2.16 * size, 0.22, 1.75 * size, true);
   geometry.box('pavement', '#74695e', x, 0.274, z, 1.92 * size, 0.019, 1.52 * size);
-  for (let shrub = 0; shrub < 8; shrub += 1) {
-    const radius = (0.32 + random() * 0.27) * size;
+  for (let shrub = 0; shrub < 5; shrub += 1) {
+    const radius = (0.34 + random() * 0.27) * size;
     const offsetX = (random() - 0.5) * 1.45 * size;
     const offsetZ = (random() - 0.5) * 1.19 * size;
-    geometry.add(crown, 'wall', shrub > 4, {
+    geometry.add(crown, 'wall', false, {
       x: x + offsetX, y: 0.27 + radius * 0.31, z: z + offsetZ,
       width: radius * 1.8, height: radius, depth: radius * 1.49,
       color: shrub % 4 === 0 ? '#bd5969' : (shrub % 2 === 0 ? '#629167' : '#468270'),
@@ -83,10 +83,10 @@ function makePalmFrond(): BufferGeometry {
   }
 
   const spine = (t: number) => new Vector3(0, Math.sin(t * Math.PI) * 0.35 - 0.26 * t * t, t * 1.8);
-  for (let index = 0; index < 11; index += 1) {
-    const t = (index + 0.15) / 11;
+  for (let index = 0; index < 7; index += 1) {
+    const t = (index + 0.15) / 7;
     const root = spine(t);
-    const end = spine(Math.min(1, t + 0.1));
+    const end = spine(Math.min(1, t + 1 / 7));
     const expansion = Math.sin(Math.PI * t ** 0.83);
     for (const side of [-1, 1]) {
       const tip = end.clone().add(new Vector3(side * (0.06 + expansion * 0.41), -0.09 - expansion * 0.1, 0.20));

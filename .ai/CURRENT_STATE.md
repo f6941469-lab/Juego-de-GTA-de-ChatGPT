@@ -1,29 +1,30 @@
-# Estado activo — Mercado Palma 0.5.0
+# Estado activo — Mercado Palma 0.5.0 (Fases 3–8 y optimización)
 
-Entrega de 2026-11-21 sobre la versión itch.io que el usuario confirmó funcional. Se completa la base funcional de fase 2 conservando la presentación de Mercado Palma y Session como autoridad del único paso físico.
+Entrega de desarrollo sobre `main` que conserva a `Session` (`src/simulation/session.ts`) como dueño del único paso físico (`1/60 s`) e integra optimización gráfica/espacial, 9 tiendas transitables, vida civil ("Pedro"), transporte público y conducción/robo, destrucción conectada, respuesta policial en patrullas y grabación POV multiángulo con visor replay aislado.
 
 ## Implementado
 
-- Diez civiles: los cuatro originales y seis residentes con IDs y recorridos de otros barrios. La huida usa destinos locales y los incidentes comparten percepción, memoria y avisos.
-- Navigation con jerarquía de 48 zonas de rejilla, A* reutilizable y actualización del área de un obstáculo cambiado. Reservas de paso y cesión mediante movimiento físico.
-- RoadNetwork de 25 cruces y 80 carriles dirigidos. Los mismos tres coches reciben destinos cambiantes, uniones curvas y reservas; continúan los barridos Rapier y los ocupantes existentes.
-- Cuotas de cuatro decisiones civiles y dos búsquedas por tick, con 8192 visitas conjuntas por búsqueda. Los personajes se atenúan a 64–80 m y se ocultan a 84 m, conservando cuerpos y estado. Las 300 lámparas de tráfico usan un solo lote.
-- Plazo policial de aproximación según distancia, conservando la posición denunciada y la exigencia de visión para actualizarla. Un disparo real fuera del mercado genera un aviso del vecino local sin revelar la posición posterior del jugador.
-- El HTML y el ZIP dedicado se regeneran como 0.5.0, sin nuevas dependencias ni cambios al formato de itch.io.
+- **Optimización y mapa completado (`geometry.ts`, `vegetation.ts`, `avatar.ts`, `actor.ts`, `feedback.ts`):** `DistrictGeometry` en sectores espaciales de `48 m` con lotes `core`/`detail` (`updateVisibility` por histéresis `< 104 m` / `< 118 m`), sombras desactivadas en follaje/detalle, `sharedBoxGeometry` compartida entre avatares, desaceleración de animación distante (`> 42 m`) y `1` único `PointLight` interior dinámico siguiendo la tienda más cercana al foco (`F3` baja a `237.161` triángulos y `328` llamadas en Baja).
+- **Nueve comercios reales y transporte (`shop.ts`, `transit.ts`, `district.ts`):** `Mercado Palma`, `Dulcería Sol`, `Panadería Brisa`, `Cafetería Mar`, `Restaurante Bahía`, `Farmacia Verde`, `Ropa Palmera`, `Armería Norte` y `Minimercado Sur` reemplazan cajas cerradas con interiores, mostradores y cajas propias. Se añaden `4` paradas de autobús y `2` estaciones transitables de metro (`Metro Sur` y `Metro Norte`).
+- **Fase 3 · Vida civil ("Pedro"), diálogo y eventos (`population.ts`, `dialogue.ts`, `world-state.ts`):** `worldLimits.entities` ampliado a `256`. Se conservan los `10` civiles base (`population.people`) y se agregan `8` comerciantes y `3` vecinos con rutina (`person:pedro`, `Valeria`, `Marcos`, `21` civiles en `allPeople`, `25` NPCs totales). Incluyen trabajos, compras reales, objetos en mano (`coffee`, `bag`, `phone`, `briefcase`), charlas NPC↔NPC y Jugador↔NPC en español (`E`), detección de acoso persistente (`stalkScore`/`stalkStage` 1–2), reencaminado al metro al perder el bus y eventos NPC-vs-NPC acotados.
+- **Fase 4 · Vehículos, robo y tránsito (`traffic.ts`, `player.ts`, `input.ts`):** Conducción con `WASD`, freno `Espacio`, entrada/salida/robo con `F` (`KeyF -> 'vehicle'`), expulsión física del conductor (`ejectFromVehicle`) con reacciones de conductor/testigos, autobús circular (`vehicle:bus:0`) y metro lanzadera (`vehicle:metro:0`).
+- **Fases 5–7 · Economía, destrucción y patrullas (`model.ts`, `feedback.ts`, `police.ts`):** `Economy` multi-tienda con stock, cajas, consumo y blindaje (`armor`); `18` escaparates y `9` props destructibles (`hydrant`/`crate`) actualizando `Navigation`; `2` patrullas conducibles en `RoadNetwork` con agentes que descienden, descripción vehicular no omnisciente (`suspectVehicleId`), fuego recíproco y barricadas dinámicas.
+- **Fase 8 · Grabación POV, Palma Social y Replay aislado (`recorder.ts`, `gameplay.ts`):** Captura POV de testigos y cámaras urbanas (`streetCams`) con envío progresivo de segmentos (clips parciales sobreviven a la muerte del testigo, incluida cámara caída), feed `Palma Social` ampliado y visor `replay` 3D aislado con cambio de ángulo desde el móvil o tras arresto/muerte.
+- `jugar/index.html` y `publicar/viceblock-itch.zip` regenerados con el empaquetado actual sin dependencias nuevas.
 
-Contratos en [SIMULATION.md](SIMULATION.md), [NAVIGATION.md](NAVIGATION.md) y [RENDERING.md](RENDERING.md). La siguiente fase es vida civil con actividades, objetos y conversación contextual. Aparcamiento, transferencias de asientos, conducción/robo, nueve tiendas y replay continúan en ROADMAP.md. No se han incorporado horarios, streaming físico, LLM ni guardado en disco.
+Contratos en [SIMULATION.md](SIMULATION.md), [NAVIGATION.md](NAVIGATION.md) y [RENDERING.md](RENDERING.md). Pendientes para cierre de fase 9 y hardware real: guardado/carga en archivo JSON, perfilado WebGPU/FPS en GPU física y escucha de audio en hardware real.
 
-## Verificación de 0.5.0
+## Verificación reciente
 
-Tipos, 32 pruebas en siete archivos, build web/portable/ZIP, check:portable y check:itch aprobados. La librería estándar ZIP de Python comprobó entrada única, CRC e igualdad del HTML final. Los hashes y tamaños están en PORTABLE.md e ITCH.md.
+- `npm run typecheck`: aprobado (`0` errores).
+- `npm test`: `8` archivos, **`37/37` pruebas aprobadas** (`tests/fases-3-8.test.ts`, `city-simulation.test.ts`, `simulation.test.ts`, `world-state.test.ts`, `district.test.ts`, `player.test.ts`, `input.test.ts`, `fixed-loop.test.ts`).
+- `npm run build`, `npm run check:portable`, `npm run check:itch`: aprobados (ver tamaños y SHA-256 en [PORTABLE.md](PORTABLE.md) e [ITCH.md](ITCH.md)).
+- Navegador (`Google Chrome 158.0.8127.36` + SwiftShader WebGL 2, Playwright Python):
+  - `dist/` (`960×640`, perfil Bajo `720×480`): arranca con `WebGL 2`, `F3` registra `328 llamadas · 237.161 triángulos · 26 personajes · 308 colisionadores · 75 entidades`, teléfono (`↑` / `Esc`) operativo, `0` excepciones JS (`failed_urls: []`, dos 404 de `/favicon.ico` del servidor estático local).
+  - `jugar/index.html` (`960×640`, `file://`, red desactivada): arranca como `portable` en `WebGL 2`, `0` solicitudes HTTP(S) y `0` errores de consola/JS.
+  - `publicar/viceblock-itch.zip` (`iframe` sandbox de otro origen, móvil `390×844`): CRC limpio, entrada única `index.html`, HUD y `13` botones táctiles sin desbordamiento (`fits_mobile_after: true`), foco inicial respetado, `0` excepciones JS y `0` solicitudes externas.
 
-La suite nueva verifica cambios locales frente a reconstrucción, cruce físico de peatones, red/curvas/reservas, circulación sobre colliders del distrito real, cuotas y actividad distante, continuidad de daños e identidad, reinicio y denuncia de un disparo real alejado.
-
-La prueba web de producción pasó en Chromium 156.0.8078.79/SwiftShader con backend WebGL 2, escritorio 960×640 y táctil 390×844, sin errores de JavaScript o consola. Informe `/tmp/viceblock-050-web/report.json`.
-
-El ZIP final pasó también la prueba completa en iframe sandbox de otro origen, escritorio y táctil: cero errores de JavaScript/consola, solicitudes externas o rutas faltantes. Informe `/tmp/viceblock-050-itch/report.json`. Se inspeccionaron las capturas de calle y móvil y la noche de la entrega web. El paquete conserva un único index compilado en su raíz.
-
-La aceptación WebGPU en hardware utilizable y las mediciones físicas continúan pendientes por el fallo Dawn/SwiftShader reproducido también fuera del juego. La apertura file:// continúa bloqueada por la política del navegador del entorno. El estado por zonas dura la sesión; no equivale a guardar una partida.
+Aceptación `WebGPU` en hardware físico y mediciones sostenidas de FPS en GPU/móvil siguen pendientes. El estado por zonas continúa en sesión (sin JSON en disco).
 
 ## Registro de 0.4.1
 

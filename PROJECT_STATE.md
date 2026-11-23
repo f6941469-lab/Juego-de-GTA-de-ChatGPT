@@ -1,22 +1,19 @@
 # Estado del proyecto — Viceblock 0.5.0
 
-La versión activa es la entrega Mercado Palma de las primeras capturas, restaurada íntegramente sobre main por petición del usuario. Session controla un distrito compacto con diez civiles distribuidos y tres coches autónomos con destinos, comerciante, pistola, testigos, dos policías a pie, teléfono y dos escaparates destructibles. El HUD, mapa, presentación y controles son los de esa entrega.
+La versión activa conserva la escena Mercado Palma (`src/simulation/session.ts` como autoridad física única a 60 Hz) e integra las ampliaciones de Fases 2–8 junto con optimización gráfica/espacial: `9` tiendas transitables, `21` civiles (`allPeople`) con rutinas/objetos/diálogo en español (`Pedro`, acoso y eventos callejeros), conducción/robo con `F`, autobús y metro, destrucción de `18` escaparates y `9` props, `2` patrullas policiales coordinadas y grabación POV multiángulo con `Palma Social` y replay 3D aislado.
 
-La conducción y los distritos del sistema anterior no forman parte del runtime activo. Su historial y documentación se conservan. No se trata de la integración anterior con otro HUD.
+El motor/HUD anterior permanece descartado en el historial de Git. Consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md) para el alcance y verificaciones y [.ai/SIMULATION.md](.ai/SIMULATION.md) para contratos activos.
 
-Consulta [.ai/CURRENT_STATE.md](.ai/CURRENT_STATE.md) para el alcance y verificaciones y [.ai/SIMULATION.md](.ai/SIMULATION.md) para contratos activos.
+El empaquetado portable sigue generando `jugar/index.html` y `publicar/viceblock-itch.zip` sin dependencias nuevas; ver [.ai/PORTABLE.md](.ai/PORTABLE.md) e [.ai/ITCH.md](.ai/ITCH.md).
 
-La primera implementación del plan añade `jugar/index.html`, generado reproduciblemente con JS/CSS/fuentes/WASM/licencias integrados y sin dependencias nuevas. El modo web de desarrollo se conserva. El límite de validación `file://` y el contrato futuro de partidas están en [.ai/PORTABLE.md](.ai/PORTABLE.md). El mismo empaquetado integra la ampliación 0.5.0 descrita a continuación; las nueve tiendas y el replay siguen pendientes.
+## Entrega 0.5.0 · Fases 3–8 y optimización
 
-## Entrega 0.5.0 · Fase 2 funcional
+- **Rendimiento y mapa:** Sectores de `48 m` con lotes `core`/`detail` (`updateVisibility`), sombras desactivadas en follaje/detalle, vegetación reducida, `sharedBoxGeometry` en avatares, desaceleración distante (`> 42 m`) y `1` único `PointLight` agrupado que sigue al comercio más cercano al foco (`328` llamadas y `237.161` triángulos en `F3` Baja).
+- **Nueve comercios y transporte:** `Mercado Palma` más `8` locales nuevos con interior y comerciante independiente; `4` paradas de autobús y `2` estaciones transitables de metro (`Metro Sur`, `Metro Norte`).
+- **Vida civil, tráfico y policía:** Rutinas de trabajo/compras/bus/metro, charla con NPCs (`E`), seguimiento persistente (`Pedro`), conducción/expulsión de conductores (`F`), `2` patrullas en `RoadNetwork` con desembarco, fuego recíproco y barricadas.
+- **Grabación POV y replay:** Muestreo de testigos y `streetCams` multiángulo con envío progresivo (los clips parciales sobreviven si cae el testigo) y visor 3D aislado desde `Palma Social` o al terminar arrestado/abatido.
 
-Navegación jerárquica sobre 48 zonas de rejilla, actualizaciones de obstáculos localizadas, conservación de rutas todavía válidas y reservas con cesión de paso. Se incorporan seis residentes con IDs y recorridos propios, además de los cuatro del mercado. Máximo cuatro decisiones civiles y dos búsquedas de rutas por tick.
-
-Los mismos tres coches usan 80 carriles sobre 25 intersecciones, destinos cambiantes y semáforos instanciados. No hay conducción del jugador todavía. Los personajes se atenúan a 64–80 m y se ocultan a 84 m; sus cuerpos y estado continúan simulándose. No se ha incorporado streaming físico.
-
-Las pruebas ejercitan rutas por el distrito real, cruce de peatones, tráfico por otras calles, continuidad de identidad/daño y denuncia de un disparo alejado sin conocimiento policial de la posición posterior del jugador. La fase 3 ampliará actividades, objetos y conversación contextual; fases posteriores añaden aparcamiento, robo, nueve tiendas y replay.
-
-Tipos, 32 pruebas, build y comprobaciones reproducibles aprobados. Web y ZIP real dentro de iframe de otro origen verificados en escritorio/táctil con WebGL 2/SwiftShader, sin errores ni recursos externos. La aceptación WebGPU en hardware utilizable y las mediciones físicas siguen pendientes. Resultados y hashes en `.ai/CURRENT_STATE.md`, `.ai/ITCH.md` y `.ai/PORTABLE.md`.
+Tipos, `37` pruebas en `8` archivos, `build`, `check:portable` y `check:itch` aprobados. Chrome `158` (`WebGL 2` SwiftShader) validó `dist/`, `jugar/index.html` vía `file://` offline y `publicar/viceblock-itch.zip` en `iframe` móvil `390×844` sin excepciones JS. Siguen pendientes Guardar/Cargar JSON (Fase 9), aceptación `WebGPU` en hardware físico y mediciones reales de FPS/audio. Resultados y hashes en `.ai/CURRENT_STATE.md`, `.ai/ITCH.md` y `.ai/PORTABLE.md`.
 
 ## Base global de 0.4.0
 

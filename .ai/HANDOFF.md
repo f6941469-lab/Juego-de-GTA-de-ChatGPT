@@ -1,20 +1,21 @@
-# Continuación — Mercado Palma 0.5.0
+# Continuación — Mercado Palma 0.5.0 (Fases 3–8)
 
-El usuario confirmó que 0.4.1 funciona en itch.io y autorizó continuar el plan. La base funcional de fase 2 queda implementada en 0.5.0. Mantener el runtime de Mercado Palma; no restaurar el motor/HUD anterior.
+Fases 3–8 y la optimización espacial/gráfica están implementadas en `main` conservando `Session` (`src/simulation/session.ts`) y la presentación de Mercado Palma. No restaurar el motor/HUD anterior.
 
 ## Contratos que se conservan
 
-- Session prepara a jugador/actores/tráfico, avanza Rapier una vez y lee poses. Render interpolado.
-- Navigation: jerarquía de 48 zonas, dos búsquedas de hasta 8192 visitas conjuntas por tick, actualización de obstáculo local, rutas vigentes conservadas y reservas/cesión físicas. Ver NAVIGATION.md.
-- Diez civiles con IDs estables y seis recorridos de barrio nuevos. Cursor rotativo: cuatro decisiones civiles por tick con cadencia por distancia/urgencia. Sus cuerpos siguen residentes; fade/cull visual distante.
-- RoadNetwork: 25 cruces, 80 carriles, mismos tres coches/ocupantes, destinos y reservas de cruce completo. No hay aparcamiento ni conducción/robo.
-- Un aviso distante conserva la posición del incidente y aumenta el plazo de aproximación; las posiciones posteriores exigen visión policial.
+- `Session` prepara jugador/actores/tráfico/policía, avanza Rapier una sola vez (`1/60 s`) y lee poses; el render interpola (`alpha`).
+- `Navigation`: jerarquía de 48 zonas, 2 búsquedas/tick (máx. 8192 visitas conjuntas), actualización de obstáculos locales (18 escaparates + 9 props) y reservas/cesión físicas.
+- Población: `population.people` conserva los 10 civiles originales por compatibilidad; `merchants` (9) y `allPeople` (21 civiles, 25 NPCs con policía) añaden comerciantes de los 9 locales y a `Pedro`/`Valeria`/`Marcos` con rutinas, accesorios en mano, charla en español, acoso persistente y eventos NPC-vs-NPC acotados.
+- `RoadNetwork` y tránsito: 25 cruces, 80 carriles, 3 coches `traffic.cars` (conducibles y robables con `F`), autobús circular (`4` paradas), metro lanzadera (`Metro Sur` / `Metro Norte`) y `2` coches patrulla con desembarco de agentes, fuego recíproco y barricadas.
+- `Recorder` y `Palma Social`: captura POV de testigos y cámaras urbanas con envío progresivo (sobrevive como clip `partial` si el testigo cae) y reproducción 3D aislada (`replayGroup`) sin mutar el presente.
+- `npm run build` genera `dist/`, `jugar/index.html` y `publicar/viceblock-itch.zip`. Comprobar siempre con `npm run typecheck`, `npm test`, `npm run check:portable` y `npm run check:itch`.
 
-`npm run build` genera dist, `jugar/index.html` y `publicar/viceblock-itch.zip`. El ZIP contiene exclusivamente el HTML compilado como index en la raíz. Preservar el formato que funciona en itch.io y comprobarlo con check:portable, check:itch y `tests/itch-smoke.mjs`. No publicar el ZIP fuente de GitHub como juego HTML.
+## Siguiente unidad (Fase 9 y hardware real)
 
-La siguiente unidad del plan es fase 3: actividades/objetivos y objetos desde el inicio, conversación contextual en español e interrupciones por peligro. Mantener las cuotas, la percepción y los IDs; sin incorporar LLM todavía. Colas, nueve tiendas, transferencias de asientos, robo y replay corresponden a fases posteriores. El estado por zonas sigue siendo de la sesión, sin guardado en disco ni streaming físico.
-
-Tipos, 32 pruebas, build y comparación reproducible aprobados. Smoke web de producción y ZIP real en iframe de otro origen aprobados en escritorio y táctil, cero errores y recursos externos. Rutas de informes y aceptación de la entrega en CURRENT_STATE.md, PORTABLE.md e ITCH.md. Reproducir navegador con los comandos de abajo usando `/tmp/viceblock-050-web` o `/tmp/viceblock-050-itch` como salida. No usar SwiftShader como medida de FPS de hardware. WebGPU físico y file:// siguen pendientes por los límites ya documentados.
+- Guardar/cargar partida mediante archivo JSON descargable/cargable sin depender de `IndexedDB` bajo `file://`.
+- Validación de `WebGPU` y mediciones reales de FPS/memoria/audio en GPU física y dispositivos móviles reales (`SwiftShader` solo valida flujos funcionales).
+- `tests/browser-smoke.mjs` y `tests/itch-smoke.mjs` requieren el paquete `playwright` de Node si se ejecutan con Node; en este entorno Linux sin `playwright` de Node se verificó con Python Playwright + `/usr/bin/google-chrome` (`158.0.8127.36`, WebGL 2 SwiftShader) en `dist/`, `file://` offline (`jugar/index.html`) e `iframe` móvil (`publicar/viceblock-itch.zip`).
 
 ## Registro de continuación de 0.4.1
 

@@ -1,12 +1,11 @@
 # Limitaciones activas — Mercado Palma 0.5.0
 
-Consultar [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) y [CURRENT_STATE.md](CURRENT_STATE.md). Diez civiles y tres coches por destinos sobre la red vial global. No hay conducción del jugador, aparcamiento, otros distritos, persecuciones policiales en coche ni replay. La fase 3 ampliará actividades, objetos y conversaciones.
+Consultar [../KNOWN_ISSUES.md](../KNOWN_ISSUES.md) y [CURRENT_STATE.md](CURRENT_STATE.md). Tras implementar Fases 3–8 y la optimización gráfica/espacial, quedan abiertas estas limitaciones técnicas:
 
-Las reservas actuales son de celdas peatonales y de cruces viales completos. No incluyen colas/puertas comerciales ni transferencia de asientos. La simulación distante mantiene cuerpos físicos; solo se reducen decisiones y representación visual. Los horarios y el streaming físico siguen pendientes. El estado por zonas dura la sesión, no se guarda en disco.
-
-El ZIP dedicado de itch.io contiene el HTML compilado como único index en la raíz. El usuario confirmó que funciona en itch.io tras 0.4.1. Se mantiene la comprobación del paquete en un iframe de otro origen: [ITCH.md](ITCH.md).
-
-La apertura file:// continúa bloqueada por política del Chromium administrado; ver [PORTABLE.md](PORTABLE.md). WebGPU en Dawn/SwiftShader falla también con un triángulo independiente; su aceptación en hardware utilizable, el perfilado físico, la temperatura y la escucha del audio siguen pendientes. Ver [RENDERING.md](RENDERING.md).
+- **Sin guardado en disco (Fase 9):** El estado de `WorldState` dura la sesión y se restablece al reiniciar o tras detención/salud cero; exportar/cargar JSON por archivo sigue pendiente según [PORTABLE.md](PORTABLE.md).
+- **WebGPU y perfilado en hardware físico:** WebGPU bajo Dawn/SwiftShader falla también con una escena mínima fuera del juego; su aceptación, el rendimiento sostenido en GPU/móvil reales y la escucha de audio procedural siguen pendientes. Las pruebas en Chrome 158 SwiftShader validan flujos funcionales y reducción geométrica (`237.161` triángulos / `328` llamadas en Baja), no fluidez a 60 FPS en hardware real.
+- **Límites de simulación acotada:** Los cuerpos de los 25 NPCs totales y 5 vehículos activos (`3` coches, `1` autobús, `1` metro + `2` patrullas) siguen residentes (sin streaming físico); la destrucción estructural de edificios completos queda fuera de alcance (se destruyen 18 escaparates y 9 props urbanos). El diálogo contextual usa texto preparado en español (`dialogue.ts`), sin modelo LLM local ni voz sintetizada.
+- **Publicación y entorno:** `publicar/viceblock-itch.zip` contiene un único `index.html` compilado validado en iframe de otro origen ([ITCH.md](ITCH.md)), y `jugar/index.html` arrancó vía `file://` en Chrome 158 sin red; las pruebas automáticas `tests/browser-smoke.mjs` e `itch-smoke.mjs` en Node requieren `playwright` externo (no preinstalado en Node en este entorno). En servidor HTTP sin favicon, Chrome registra 404 por `/favicon.ico`.
 
 ## Registro histórico del sistema sustituido
 
