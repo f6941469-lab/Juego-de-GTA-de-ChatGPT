@@ -6,7 +6,7 @@ import "./dialog.css";
 import { gameConfig, type Quality } from "../config/game";
 import { createMinimap, type PlayerMapPosition } from "./minimap";
 
-export type GameMode = "loading" | "start" | "playing" | "paused" | "error";
+export type GameMode = "loading" | "start" | "cinematic" | "playing" | "paused" | "error";
 type PanelMode = "settings" | "controls" | "paused";
 
 export interface UIActions {
@@ -15,6 +15,7 @@ export interface UIActions {
   onHour(hour: number): void;
   onReset(): void;
   onPause?(): void;
+  onReplayPrologue?(): void;
 }
 
 function requiredElement<T extends HTMLElement>(id: string): T {
@@ -92,6 +93,10 @@ export function createUI(actions: UIActions) {
   requiredElement("resume-button").addEventListener("click", closeDialog);
   pause.addEventListener("click", () => actions.onPause?.());
   requiredElement("reset-button").addEventListener("click", actions.onReset);
+  document.getElementById("replay-prologue-button")?.addEventListener("click", () => {
+    if (dialog.open) dialog.close();
+    actions.onReplayPrologue?.();
+  });
 
   dialog.addEventListener("cancel", (event) => {
     event.preventDefault();
@@ -109,8 +114,9 @@ export function createUI(actions: UIActions) {
     const previousMode = mode;
     mode = nextMode;
     const inWorld = mode === "playing" || mode === "paused";
+    const inCinematic = mode === "cinematic";
     hud.hidden = !inWorld;
-    entry.hidden = inWorld;
+    entry.hidden = inWorld || inCinematic;
     canvas.tabIndex = mode === "playing" ? 0 : -1;
     play.disabled = mode !== "start";
     openSettings.disabled = mode === "loading" || mode === "error";

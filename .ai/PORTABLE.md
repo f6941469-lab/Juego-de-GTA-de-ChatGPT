@@ -85,4 +85,14 @@ Tipos, `37` pruebas Vitest en `8` archivos, `build` (`dist/`, `jugar/index.html`
 En Google Chrome `158.0.8127.36` (SwiftShader WebGL 2, Playwright Python):
 - `jugar/index.html` abierto directamente mediante `file://` con red desactivada (`960×640`): arrancó en `WebGL 2` con `data-delivery="portable"`, `0` solicitudes HTTP(S) y `0` errores de consola/JS.
 - `dist/` (`960×640`, Baja `720×480`): arrancó en `20,63 s` con `WebGL 2`, `F3` midió **`77` llamadas, `207.945` triángulos, `9.50 ms` render CPU y `15.90 ms` simulación CPU**, teléfono abierto con `↑` y cerrado con `Esc`, `0` excepciones JS (`failed_urls: []`, dos 404 de `/favicon.ico` del servidor estático local).
-- Queda pendiente en Fase 9 implementar Guardar/Cargar partida por archivo JSON y validar WebGPU/FPS en hardware físico.
+## Actualización Cinemática de apertura · 0.5.0
+
+Tipos, `40` pruebas Vitest en `9` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.374.415 | `555736727757d5a352699b3ac6bd76b6bfa60360e055a250671653f25d983033` |
+| `publicar/viceblock-itch.zip` | 1.210.944 | `6d6d760b84b2c868ddc71efa91c6cbc76571572294e3d805332aafad70cad098` |
+
+En Google Chrome `158` (`WebGL 2` SwiftShader, `960×640`): arranque de portada, lanzamiento de la cinemática de apertura (`Prólogo — Un Coche, Dos Ladrones`) al pulsar `#play-button`, salto limpio al mundo abierto con HUD y aviso narrativo de Valeria, `0` errores de consola/JS.
+

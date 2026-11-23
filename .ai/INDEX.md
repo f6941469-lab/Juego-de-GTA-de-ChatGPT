@@ -17,6 +17,7 @@
 11. [ITCH.md](ITCH.md) describe el ZIP de publicación, la configuración de carga y la prueba del juego en un iframe de otro origen.
 
 12. [NAVIGATION.md](NAVIGATION.md): jerarquía peatonal, cambios locales, reservas y red vial global, incorporados en 0.5.0.
+13. [../STORY_AND_CINEMATICS.md](../STORY_AND_CINEMATICS.md): guion del prólogo de apertura (*Un Coche, Dos Ladrones*), biblia de personajes, motor `src/cinematics/` y guía de cimientos narrativos para que futuras IAs continúen la historia.
 
 ## Historial archivado
 

@@ -1,0 +1,193 @@
+.cinematic-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+  user-select: none;
+}
+
+.cinematic-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: clamp(2.8rem, 9.5vh, 5.8rem);
+  background: #08090f;
+  will-change: transform;
+  z-index: 2;
+}
+.cinematic-bar-top {
+  top: 0;
+  transform-origin: top center;
+}
+.cinematic-bar-bottom {
+  bottom: 0;
+  transform-origin: bottom center;
+}
+
+.cinematic-fade {
+  position: absolute;
+  inset: 0;
+  background: #08090f;
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.cinematic-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff9e8;
+  opacity: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.cinematic-top-bar {
+  position: absolute;
+  top: max(.85rem, env(safe-area-inset-top));
+  left: clamp(1rem, 3vw, 2.5rem);
+  right: clamp(1rem, 3vw, 2.5rem);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cinematic-chapter-tag {
+  font: 600 .82rem/1 var(--label);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgb(255 248 234 / 72%);
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+.cinematic-chapter-tag::before {
+  content: "";
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.cinematic-skip {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .45rem .85rem;
+  border: 1px solid rgb(255 248 234 / 28%);
+  border-radius: .25rem;
+  background: rgb(14 15 24 / 75%);
+  color: var(--paper);
+  font: 600 .86rem/1 var(--label);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.cinematic-skip:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+.cinematic-skip kbd {
+  font: 600 .72rem/1 var(--mono);
+  padding: .15rem .34rem;
+  border-radius: .18rem;
+  background: rgb(255 248 234 / 14%);
+}
+
+.cinematic-title-card {
+  position: absolute;
+  left: clamp(1.4rem, 6vw, 5.5rem);
+  top: clamp(5.5rem, 17vh, 10rem);
+  z-index: 4;
+  max-width: min(36rem, 86vw);
+  transition: opacity .35s ease, transform .35s ease;
+  opacity: 0;
+  transform: translateY(10px);
+}
+.cinematic-title-card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.cinematic-title-eyebrow {
+  margin: 0 0 .35rem;
+  color: var(--accent);
+  font: 600 .95rem/1.1 var(--label);
+  letter-spacing: .28em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 75%);
+}
+.cinematic-title-main {
+  margin: 0;
+  color: var(--paper);
+  font: 400 clamp(2rem, 5vw, 3.8rem)/.92 var(--display);
+  letter-spacing: -.03em;
+  text-shadow: 0 6px 24px rgb(0 0 0 / 78%);
+}
+.cinematic-title-sub {
+  margin: .45rem 0 0;
+  color: rgb(255 248 234 / 82%);
+  font: 600 .95rem/1.2 var(--label);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 75%);
+}
+
+.cinematic-subtitle-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(44rem, 90vw);
+  text-align: center;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.cinematic-subtitle-wrap.visible {
+  opacity: 1;
+}
+
+.cinematic-subtitle-box {
+  display: inline-block;
+  padding: .62rem 1.15rem .72rem;
+  border-radius: .35rem;
+  background: rgb(10 11 18 / 84%);
+  border: 1px solid rgb(255 248 234 / 16%);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 55%);
+}
+
+.cinematic-speaker {
+  display: block;
+  margin-bottom: .22rem;
+  font: 600 .82rem/1 var(--label);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+
+.cinematic-dialogue {
+  margin: 0;
+  color: var(--paper);
+  font: 500 clamp(.98rem, 1.45vw, 1.2rem)/1.38 system-ui, sans-serif;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 70%);
+}
+
+.cinematic-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  z-index: 6;
+  background: rgb(255 248 234 / 14%);
+}
+.cinematic-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #56d8d4, var(--accent), #ff6b8b);
+}

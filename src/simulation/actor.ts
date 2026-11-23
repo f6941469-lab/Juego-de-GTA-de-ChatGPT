@@ -176,6 +176,9 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
       avatar.mesh.visible = true;
       opacity = 1; avatar.setOpacity(1);
     },
+    setVisible(visible: boolean) {
+      avatar.mesh.visible = visible && !suspended;
+    },
     dispose() { character.dispose(); avatar.dispose(); },
   };
   return api;

@@ -43,6 +43,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
   let armed = false;
   let recoil = 0;
   let inVehicle = false;
+  let hiddenForCinematic = false;
 
   // Wrap only differences so interpolation always follows the shortest arc.
   function turnDelta(from: number, to: number) {
@@ -146,7 +147,7 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     const cameraDistance = follow.update(interpolated, dt, aiming, recoil);
     avatar.mesh.position.copy(interpolated);
     avatar.mesh.rotation.y = -(previousHeading + turnDelta(previousHeading, heading) * blend);
-    avatar.mesh.visible = !inVehicle && cameraDistance > 0.75;
+    avatar.mesh.visible = !hiddenForCinematic && !inVehicle && cameraDistance > 0.75;
     avatar.animate({
       effort: THREE.MathUtils.clamp(resolvedSpeed / WALK_SPEED, 0, 1),
       sprint: THREE.MathUtils.clamp((resolvedSpeed - WALK_SPEED) / (RUN_SPEED - WALK_SPEED), 0, 1),
@@ -173,6 +174,10 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
     step,
     prepareStep,
     finishStep,
+    setCinematicHidden(hidden: boolean) {
+      hiddenForCinematic = hidden;
+      if (hidden) avatar.mesh.visible = false;
+    },
     setWeapon(equipped: boolean, aim: boolean) { armed = equipped; aiming = equipped && aim; },
     setInVehicle(active: boolean, point?: Point3, yaw?: number) {
       inVehicle = active;

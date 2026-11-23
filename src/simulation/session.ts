@@ -779,6 +779,22 @@ export function createSession(
       traffic.render(alpha);
       police.render(alpha);
     },
+    setCinematicMode(active: boolean) {
+      const show = !active;
+      const actors = allActors();
+      for (let i = 0; i < actors.length; i++) {
+        actors[i].setVisible(show);
+      }
+      for (const vehicle of traffic.allVehicles) {
+        vehicle.mesh.visible = show;
+      }
+      for (const patrolCar of police.patrolCars) {
+        patrolCar.mesh.visible = show;
+      }
+    },
+    announce(text: string) {
+      tell(text, true);
+    },
     reset,
     dispose() {
       population.dispose();

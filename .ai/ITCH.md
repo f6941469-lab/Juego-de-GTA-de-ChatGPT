@@ -72,3 +72,13 @@ Tipos, `37` pruebas en `8` archivos, `build`, `check:portable` y `check:itch` ap
 | `publicar/viceblock-itch.zip` | 1.193.459 | `37eb4c0106654e2d03442a4cc66c853b9987d7b58b7190606f4263cfe0995dc0` |
 
 En Google Chrome `158.0.8127.36` (SwiftShader WebGL 2, Playwright Python), servido en `iframe` sandbox de otro origen (`390×844` táctil): arrancó en `WebGL 2`, mostró HUD y `13` botones táctiles ajustados sin desbordar horizontalmente, respetó el foco inicial del padre, `0` solicitudes externas y `0` excepciones JS (`failed_urls: []`; al pulsar `#play-button` mediante script en contexto de otro origen Chrome registra el aviso estándar `focus-without-user-activation` y los 404 locales de `/favicon.ico`).
+
+## Actualización Cinemática de apertura · 0.5.0
+
+Tipos, `40` pruebas en `9` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.374.415 | `555736727757d5a352699b3ac6bd76b6bfa60360e055a250671653f25d983033` |
+| `publicar/viceblock-itch.zip` | 1.210.944 | `6d6d760b84b2c868ddc71efa91c6cbc76571572294e3d805332aafad70cad098` |
+

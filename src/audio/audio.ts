@@ -58,9 +58,117 @@ export function createAudio() {
       siren.gain.gain.setTargetAtTime(police && !muted ? 0.025 : 0, context.currentTime, 0.2);
       siren.oscillator.frequency.setTargetAtTime(620 + Math.sin(time * 7) * 170, context.currentTime, 0.05);
     },
+    playCinematic(kind: 'lockpick' | 'door' | 'sting' | 'siren_burst' | 'punch' | 'body_fall' | 'engine_rev' | 'tire_screech' | 'montage_beat' | 'whoosh' | 'chime', point?: Point3) {
+      if (!context || context.state !== 'running' || muted || voices >= 8) return;
+      const now = context.currentTime;
+      const gain = context.createGain();
+      const pan = context.createStereoPanner();
+      pan.pan.value = point ? Math.max(-0.7, Math.min(0.7, (point.x - listener.x) / 18)) : 0;
+      gain.connect(pan).connect(master!);
+
+      const useNoise = kind === 'punch' || kind === 'body_fall' || kind === 'tire_screech' || kind === 'whoosh';
+      const source = useNoise ? context.createBufferSource() : context.createOscillator();
+      const filter = context.createBiquadFilter();
+
+      let duration = 0.25;
+      let volume = 0.34;
+      if (source instanceof AudioBufferSourceNode) {
+        source.buffer = noise!;
+        filter.type = kind === 'tire_screech' ? 'bandpass' : 'lowpass';
+        if (kind === 'punch') {
+          filter.frequency.setValueAtTime(1100, now);
+          filter.frequency.exponentialRampToValueAtTime(120, now + 0.2);
+          duration = 0.22;
+          volume = 0.85;
+        } else if (kind === 'body_fall') {
+          filter.frequency.setValueAtTime(280, now);
+          duration = 0.24;
+          volume = 0.65;
+        } else if (kind === 'tire_screech') {
+          filter.frequency.setValueAtTime(1850, now);
+          filter.Q.value = 5;
+          duration = 0.38;
+          volume = 0.32;
+        } else {
+          // whoosh
+          filter.frequency.setValueAtTime(400, now);
+          filter.frequency.exponentialRampToValueAtTime(2200, now + 0.14);
+          duration = 0.18;
+          volume = 0.42;
+        }
+      } else {
+        filter.type = 'lowpass';
+        filter.frequency.value = 2600;
+        if (kind === 'lockpick') {
+          source.type = 'square';
+          source.frequency.setValueAtTime(1650, now);
+          source.frequency.exponentialRampToValueAtTime(2400, now + 0.06);
+          duration = 0.07;
+          volume = 0.18;
+        } else if (kind === 'door') {
+          source.type = 'triangle';
+          source.frequency.setValueAtTime(145, now);
+          source.frequency.exponentialRampToValueAtTime(52, now + 0.14);
+          duration = 0.16;
+          volume = 0.45;
+        } else if (kind === 'sting') {
+          source.type = 'sawtooth';
+          source.frequency.setValueAtTime(110, now);
+          source.frequency.exponentialRampToValueAtTime(68, now + 0.45);
+          filter.frequency.value = 540;
+          duration = 0.48;
+          volume = 0.36;
+        } else if (kind === 'siren_burst') {
+          source.type = 'triangle';
+          source.frequency.setValueAtTime(540, now);
+          source.frequency.linearRampToValueAtTime(860, now + 0.28);
+          source.frequency.linearRampToValueAtTime(560, now + 0.56);
+          duration = 0.6;
+          volume = 0.28;
+        } else if (kind === 'engine_rev') {
+          source.type = 'sawtooth';
+          source.frequency.setValueAtTime(68, now);
+          source.frequency.exponentialRampToValueAtTime(195, now + 0.38);
+          source.frequency.exponentialRampToValueAtTime(125, now + 0.62);
+          filter.frequency.value = 620;
+          duration = 0.65;
+          volume = 0.42;
+        } else if (kind === 'montage_beat') {
+          source.type = 'triangle';
+          source.frequency.setValueAtTime(220, now);
+          source.frequency.setValueAtTime(330, now + 0.11);
+          source.frequency.setValueAtTime(440, now + 0.22);
+          duration = 0.38;
+          volume = 0.34;
+        } else {
+          // chime
+          source.type = 'sine';
+          source.frequency.setValueAtTime(660, now);
+          source.frequency.exponentialRampToValueAtTime(990, now + 0.26);
+          duration = 0.32;
+          volume = 0.26;
+        }
+      }
+
+      source.connect(filter).connect(gain);
+      gain.gain.setValueAtTime(Math.max(0.001, volume), now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      voices++;
+      source.onended = () => {
+        voices--;
+        source.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+        pan.disconnect();
+      };
+      source.start(now);
+      source.stop(now + duration);
+    },
     setMuted(value: boolean) { muted = value; if (master && context) master.gain.setTargetAtTime(value ? 0 : 0.28, context.currentTime, 0.03); },
     pause(value: boolean) { if (context) void (value ? context.suspend() : context.resume()).catch(() => {}); },
     dispose() { motors.forEach((motor) => { motor.oscillator.stop(); motor.oscillator.disconnect(); motor.gain.disconnect(); }); siren?.oscillator.stop(); void context?.close(); },
   };
 }
-export type GameAudio = ReturnType<typeof createAudio>;
+export type GameAudio = Omit<ReturnType<typeof createAudio>, 'playCinematic'> & {
+  playCinematic?: ReturnType<typeof createAudio>['playCinematic'];
+};

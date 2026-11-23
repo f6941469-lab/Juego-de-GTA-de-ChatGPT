@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.5.0 · Cinemática de apertura y cimientos narrativos (2026-11-23)
+
+- **Prólogo in-engine *«Un Coche, Dos Ladrones»*:** Al iniciar partida se reproduce una cinemática de `71 s` con `17` planos de cámara, iluminación de estudio de 3 puntos, luces policiales estroboscópicas, audio procedural, subtítulos codificados por hablante, animaciones detalladas (`Leo`, `Valeria`, `Agente Morales`), vehículos con puertas articuladas, montaje de 3 aventuras (*Paseo del Mar*, *Club Neón*, *Mercado Palma*) y transición fluida a la cámara del mundo abierto. Puede saltarse con `Espacio`/`Esc` y repetirse desde el menú de Pausa.
+- **Guía narrativa para IAs ([STORY_AND_CINEMATICS.md](STORY_AND_CINEMATICS.md)):** Documentación completa del guion, biblia de personajes, motor `src/cinematics/`, coordenadas verificadas de rodaje y receta paso a paso para construir futuros capítulos.
+
 ## 0.5.0 · Fases 3–8 y optimización contra tirones (2026-11-23)
 
 - **Optimización del distrito, avatares y vehículos:** Lotes `core` unificados globalmente, sectores `detail` de `64 m`, simplificación de micro-parteluces en pisos altos, cada avatar y cada vehículo/patrulla consolidado en `1` único `InstancedMesh` con material compartido opaco (evitando recompilaciones de shader a mitad de partida), salto de `computeColliderMovement` en actores estáticos/embarcados, caché de `prompt`/`allActors` y `PointLight` único agrupado (**`77` llamadas y `207.945` triángulos** en `F3` Baja frente a `328` llamadas y `338.093` triángulos).

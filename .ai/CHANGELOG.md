@@ -2,13 +2,20 @@
 document_id: CORE-CHANGELOG
 status: active
 last_updated: 2026-11-23
-verified_against: "Mercado Palma 0.5.0 (Fases 3-8 y optimización)"
-verification_scope: "typecheck + 37 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
+verified_against: "Mercado Palma 0.5.0 (Prólogo cinemático, Fases 3-8 y optimización)"
+verification_scope: "typecheck + 40 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
+
+## 2026-11-23 · Cinemática de apertura y cimientos narrativos (`src/cinematics/`, `STORY_AND_CINEMATICS.md`)
+
+- **Motor de cinemáticas data-driven (`types.ts`, `actor-rig.ts`, `vehicles.ts`, `lighting.ts`, `overlay.ts`, `director.ts`):** Rigs articulados en `1` `InstancedMesh` por actor (`Leo`, `Valeria`, `Agente Morales`) con `19` presets de pose, `6` props de mano y seguimiento ocular; vehículos articulados con puertas pivotantes y barra de luces policiales; iluminación de estudio de 3 puntos (`6` *moods*) con focos estroboscópicos y partículas; audio procedural (`audio.playCinematic`); overlay panorámico `2.35:1` con subtítulos, tarjetas de escena y salto (`Espacio`/`Esc`).
+- **Prólogo *«Un Coche, Dos Ladrones»* (`opening-story.ts`):** `71,0 s`, `17` planos de cámara y `17` líneas de diálogo (robo con ganzúa, discusión con Valeria, llegada policial, farsa de novios, nocaut de Valeria, huida y montaje en *Paseo del Mar*, *Club Neón* y *Mercado Palma*) con barrido sin cortes a la cámara jugable y registro de `NarrativeState`.
+- **Documentación para IAs (`STORY_AND_CINEMATICS.md`):** Guion detallado, biblia de personajes, coordenadas libres de colisiones y receta paso a paso para ampliar la historia con nuevos capítulos.
+- **Verificación:** `npm run typecheck` (`0` errores), `npm test` (`9` archivos, `40/40` verdes), `npm run build`, `npm run check:portable`, `npm run check:itch` y comprobación en Chrome 158 headless (`0` errores JS).
 
 ## 2026-11-23 · Fases 3–8, vida civil autónoma y optimización contra tirones (`main`)
 

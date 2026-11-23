@@ -1,5 +1,7 @@
 import { PerspectiveCamera, Scene, Vector3, Mesh, InstancedMesh, type Material, type BufferGeometry, Texture } from 'three'
 import { createAudio } from './audio/audio'
+import { createCinematicDirector, type CinematicDirector } from './cinematics/director'
+import { OPENING_SEQUENCE } from './cinematics/opening-story'
 import { gameConfig } from './config/game'
 import type { Quality } from './config/game'
 import { FixedLoop } from './core/fixed-loop'
@@ -22,15 +24,17 @@ async function startGame() {
   const canvas = document.querySelector<HTMLCanvasElement>('#game-canvas')
   if (!canvas) throw new Error('Falta el lienzo del juego')
 
-  let mode: 'loading' | 'start' | 'playing' | 'paused' | 'error' = 'loading'
+  let mode: 'loading' | 'start' | 'cinematic' | 'playing' | 'paused' | 'error' = 'loading'
   let hour = gameConfig.initialHour
   let debug = false
   let alpha = 1
   let elapsed = 0
   let lastTime = performance.now()
+  let prologuePlayed = false
   let video: Awaited<ReturnType<typeof createRenderer>> | undefined
   let player: ReturnType<typeof createPlayer>
   let session: Session | undefined
+  let cinematics: CinematicDirector | undefined
   let physics: Physics | undefined
   let scene: Scene | undefined
   let resizeObserver: ResizeObserver | undefined
@@ -48,6 +52,10 @@ async function startGame() {
     onPause: pause,
     onQuality: setQuality,
     onHour: (value) => { hour = ((value % 24) + 24) % 24 },
+    onReplayPrologue: () => {
+      if (!cinematics || !player || !session) return
+      startPrologue()
+    },
     onReset: () => {
       if (!player) return
       session?.reset()
@@ -81,9 +89,12 @@ async function startGame() {
     void saveQuality(quality)
   }
 
-  function play() {
-    if (mode !== 'start' && mode !== 'paused') return
+  function enterOpenWorld(announceNotice?: string) {
     mode = 'playing'
+    hour = gameConfig.initialHour
+    player?.setCinematicHidden(false)
+    session?.setCinematicMode(false)
+    if (announceNotice) session?.announce(announceNotice)
     loop.reset()
     lastTime = performance.now()
     ui.setMode(mode)
@@ -91,6 +102,30 @@ async function startGame() {
     input.capture()
     audio.unlock()
     audio.pause(false)
+  }
+
+  function startPrologue() {
+    if (!cinematics || !player || !session) return
+    prologuePlayed = true
+    mode = 'cinematic'
+    session.closeOverlay()
+    input.setActive(false)
+    player.setCinematicHidden(true)
+    session.setCinematicMode(true)
+    ui.setMode(mode)
+    audio.unlock()
+    audio.pause(false)
+    lastTime = performance.now()
+    cinematics.start(OPENING_SEQUENCE)
+  }
+
+  function play() {
+    if (mode === 'start' && !prologuePlayed && cinematics) {
+      startPrologue()
+      return
+    }
+    if (mode !== 'start' && mode !== 'paused') return
+    enterOpenWorld()
   }
 
   function pause() {
@@ -107,6 +142,7 @@ async function startGame() {
     scene = worldScene
     const camera = new PerspectiveCamera(58, 1, 0.08, 650)
     const intro = new PerspectiveCamera(54, 1, 0.08, 650)
+    const cinematicCamera = new PerspectiveCamera(50, 1, 0.08, 650)
     const display = await createRenderer(canvas)
     video = display
     const district = buildDistrict(worldScene, gameConfig.seed)
@@ -119,6 +155,15 @@ async function startGame() {
     if (disposed) { physics.dispose(); return }
     player = createPlayer(worldScene, camera, physics, district.spawn)
     session = createSession(worldScene, camera, physics, district.colliders, player, audio, (context) => input.setContext(context))
+    cinematics = createCinematicDirector({
+      scene: worldScene,
+      camera: cinematicCamera,
+      audio,
+      onFinish: (sequence) => {
+        player.render(1, 0)
+        enterOpenWorld(sequence.completionNotice)
+      },
+    })
     ui.setWorld(district.map)
     const activeQuality = quality ?? gameConfig.defaultQuality
     display.setQuality(activeQuality)
@@ -128,9 +173,10 @@ async function startGame() {
       const width = Math.max(1, canvas.clientWidth)
       const height = Math.max(1, canvas.clientHeight)
       display.resize(width, height)
-      camera.aspect = intro.aspect = width / height
+      camera.aspect = intro.aspect = cinematicCamera.aspect = width / height
       camera.updateProjectionMatrix()
       intro.updateProjectionMatrix()
+      cinematicCamera.updateProjectionMatrix()
     }
     resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(canvas)
@@ -147,26 +193,32 @@ async function startGame() {
           session!.step(step, input.read())
           hour = (hour + step * 24 / gameConfig.secondsPerDay) % 24
         })
+      } else if (mode === 'cinematic') {
+        cinematics!.update(dt)
       }
       const simulationMs = debug ? performance.now() - simulationStart : 0
 
       const startView = mode === 'start'
+      const inCinematic = mode === 'cinematic'
       if (startView) {
         intro.position.set(-3.3 + Math.sin(elapsed * 0.16) * 0.65, 6.3, 41)
         intro.lookAt(introFocus)
       }
       const animationDt = mode === 'playing' ? Math.min(dt, 0.1) : 0
-      if (session!.overlay !== 'replay') player.render(alpha, animationDt)
-      session!.render(alpha, animationDt)
-      const focus = startView ? intro.position : player.position
-      atmosphere.update(hour, focus, elapsed)
-      district.update(elapsed, hour, focus)
+      if (!inCinematic) {
+        if (session!.overlay !== 'replay') player.render(alpha, animationDt)
+        session!.render(alpha, animationDt)
+      }
+      const activeHour = inCinematic ? cinematics!.hour : hour
+      const focus = inCinematic ? cinematics!.focus : startView ? intro.position : player.position
+      atmosphere.update(activeHour, focus, elapsed)
+      district.update(elapsed, activeHour, focus)
       const { x, y, z } = player.position
-      ui.update({ x, z, heading: player.heading, hour })
-      gameplayUI.update(session!, hour)
+      ui.update({ x, z, heading: player.heading, hour: activeHour })
+      if (!inCinematic) gameplayUI.update(session!, hour)
 
       const renderStart = debug ? performance.now() : 0
-      display.render(worldScene, startView ? intro : camera)
+      display.render(worldScene, inCinematic ? cinematicCamera : startView ? intro : camera)
       if (debug) {
         const reading = stats.sample(dt, performance.now() - renderStart, display.renderer, physics!.world.colliders.len(), 1 + session!.population.allPeople.length + session!.police.units.length, simulationMs)
         if (reading) ui.setDebug(`${reading}\n${session!.world.count} entidades · ${session!.world.historyCount}/${worldLimits.historyFrames} muestras\n${session!.population.stats.decisions}/${populationLimits.decisionsPerStep} decisiones · ${session!.navigation.stats.lastVisited}/${navigationLimits.visitedPerSearch} celdas\n${session!.traffic.network.lanes.length} carriles · ${session!.navigation.stats.waits} esperas · ${session!.navigation.stats.deferred} rutas diferidas\n${display.backend} · ${display.renderer.domElement.width} × ${display.renderer.domElement.height}\nPosición: ${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}`)
@@ -208,6 +260,7 @@ async function startGame() {
     resizeObserver?.disconnect()
     input.dispose()
     gameplayUI.dispose()
+    cinematics?.dispose()
     audio.dispose()
     session?.dispose()
     player?.dispose()
