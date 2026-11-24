@@ -6,7 +6,7 @@ import { allShops, shop } from '../world/generation/shop';
 import { busStops, metroStations } from '../world/generation/transit';
 import { createActor, type Actor } from './actor';
 import { cityResidents } from './city-residents';
-import { npcPairLine, stalkWarningLine, type NpcJob } from './dialogue';
+import { armedWarningLine, chaseReactionLine, dodgeCarLine, npcPairLine, stalkWarningLine, type NpcJob } from './dialogue';
 import { Economy, eyes, Journal, planarDistance, type WorldEvent } from './model';
 import type { Navigation } from './navigation';
 import type { ManagedVehicle } from './traffic';
@@ -255,38 +255,44 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     return best;
   }
 
-  // Assigns an autonomous life sequence across stores, bus stops, metro stations and landmarks
-  function advanceAutonomousLife(person: Civilian, index: number) {
+  // Assigns an autonomous life sequence adapted to time of day across stores, bus stops, metro stations and landmarks
+  function advanceAutonomousLife(person: Civilian, index: number, hour = 17) {
     person.stop++;
     if (person.stop < person.route.length) return;
     person.stop = 0;
     person.cycleCount++;
+    const isNight = hour >= 20 || hour < 6;
+    const isMorning = hour >= 6 && hour < 11.5;
     const pick = (index + person.cycleCount) % 4;
     if (pick === 0) {
-      // Visit one of the 9 stores to browse and buy
-      const store = allShops[(index * 2 + person.cycleCount) % allShops.length];
+      const morningStores = [allShops[2], allShops[3], allShops[0]];
+      const nightStores = [allShops[4], allShops[8], allShops[0]];
+      const pool = isMorning ? morningStores : isNight ? nightStores : allShops;
+      const store = pool[(index * 2 + person.cycleCount) % pool.length];
       person.shopId = store.id;
       person.route = [store.entrance, store.products, store.counter, store.entrance];
       person.activityLabel = `yendo a comprar a ${store.name}`;
     } else if (pick === 1) {
-      // Take the bus or metro across the district
       const stop = busStops[(index + person.cycleCount) % busStops.length];
       const nextStore = allShops[(index + person.cycleCount + 3) % allShops.length];
       person.route = [stop.waitPoint, nextStore.entrance];
       person.activityLabel = `camino a ${stop.name}`;
     } else if (pick === 2) {
-      // Visit a leisure spot or workplace landmark
-      const spot = cityLeisureSpots[(index + person.cycleCount) % cityLeisureSpots.length];
+      const spotIdx = isNight
+        ? (3 + ((index + person.cycleCount) % 2))
+        : isMorning
+          ? (2 + ((index + person.cycleCount) % 2))
+          : ((index + person.cycleCount) % cityLeisureSpots.length);
+      const spot = cityLeisureSpots[spotIdx % cityLeisureSpots.length];
       const walkPoint = navigation.closest(spot.point, 3.6) ?? spot.point;
       person.route = [...person.initialRoute.slice(0, 2), walkPoint];
-      person.activityLabel = `pasando por ${spot.name}`;
+      person.activityLabel = isNight ? `saliendo por ${spot.name}` : `pasando por ${spot.name}`;
     } else {
-      // Return through home neighborhood route + nearest metro/store
       const metro = metroStations[(index + person.cycleCount) % metroStations.length];
       person.route = person.initialRoute.length >= 2
         ? [...person.initialRoute, metro.platform]
         : [metro.platform, allShops[0].entrance];
-      person.activityLabel = `recorriendo su barrio`;
+      person.activityLabel = isNight ? 'volviendo a casa en metro' : 'recorriendo su barrio';
     }
   }
 
@@ -299,6 +305,9 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     armed: boolean,
     economy?: Economy,
     transit?: { bus: ManagedVehicle & { stoppedAtId?: string }; metro: ManagedVehicle & { stoppedAtId?: string } },
+    hour = 17,
+    policeStars = 0,
+    fastVehicles?: readonly { position: Point3; heading: number; speed: number }[],
   ) {
     const { actor } = person;
     person.timer = Math.max(0, person.timer - decisionDt);
@@ -312,6 +321,63 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       const audible = ['shot', 'glass', 'collision', 'altercation', 'theft'].includes(event.kind)
         && distance < (sees(person, event.position, false) ? 26 : 9);
       if (visible || audible) notice(person, event, visible && event.identified);
+    }
+
+    // Active fast-vehicle evasion only when a speeding vehicle's actual forward corridor threatens this pedestrian
+    if (
+      fastVehicles && person.role !== 'cashier' && !actor.suspended
+      && ['routine', 'browsing', 'chatting', 'nervous'].includes(person.state)
+    ) {
+      for (const veh of fastVehicles) {
+        if (Math.abs(veh.speed) < 4.5) continue;
+        const dx = actor.position.x - veh.position.x;
+        const dz = actor.position.z - veh.position.z;
+        const fx = Math.sin(veh.heading);
+        const fz = -Math.cos(veh.heading);
+        const forward = dx * fx + dz * fz;
+        const lateral = dx * (-fz) + dz * fx;
+        if (forward > 0.4 && forward < 5.5 && Math.abs(lateral) < 1.85) {
+          const side = lateral >= 0 ? 1 : -1;
+          const dodgePoint = {
+            x: actor.position.x + (-fz) * side * 2.6,
+            y: 0.08,
+            z: actor.position.z + fx * side * 2.6,
+          };
+          const safeSpot = navigation.closest(dodgePoint, 2.5);
+          if (safeSpot) actor.goTo(safeSpot, 4.1);
+          person.state = 'nervous';
+          person.timer = 1.6;
+          person.activityLabel = 'esquivando un coche';
+          if (person.chatCooldown <= 0) {
+            person.chatCooldown = 7;
+            speak(person, dodgeCarLine(person.name, index), now, player);
+          }
+          return;
+        }
+      }
+    }
+
+    // Organic civilian reaction to active multi-star police chases passing nearby
+    if (
+      policeStars >= 2 && person.role !== 'cashier' && !actor.suspended
+      && ['routine', 'browsing', 'chatting', 'waiting_bus', 'waiting_metro'].includes(person.state)
+    ) {
+      const distPlayer = planarDistance(actor.position, player);
+      if (distPlayer < 13 && sees(person, player, false)) {
+        if (person.chatCooldown <= 0) {
+          person.chatCooldown = 14;
+          speak(person, chaseReactionLine(person.name, policeStars, person.personality), now, player);
+        }
+        if (person.personality === 'record' && distPlayer > 5) {
+          actor.face(player, decisionDt);
+          actor.action('phone');
+          person.activityLabel = 'grabando la persecución policial';
+          return;
+        }
+        person.state = 'fleeing';
+        person.fearUntil = now + 7;
+        person.activityLabel = 'apartándose de la persecución';
+      }
     }
 
     // Persistent stalking detection on all mobile citizens
@@ -352,7 +418,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
         person.state = 'routine';
         person.ridingVehicleId = undefined;
         person.activityLabel = 'bajando del transporte';
-        advanceAutonomousLife(person, index);
+        advanceAutonomousLife(person, index, hour);
       }
       return;
     }
@@ -375,7 +441,9 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       if (person.recordingEvent) actor.face(person.recordingEvent.position, decisionDt);
       if (person.timer === 0 && person.memory) {
         const { event, identified } = person.memory;
-        journal.publish('report', event.position, now, person.id, identified, event.id);
+        if (event.kind !== 'collision' || event.source === 'player') {
+          journal.publish('report', event.position, now, person.id, identified, event.id);
+        }
         journal.post(person.name, event);
         person.recordingEvent = undefined;
         person.state = 'fleeing';
@@ -385,7 +453,9 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       actor.action(person.role === 'cashier' ? 'handsUp' : 'phone');
       if (person.timer === 0 && person.memory) {
         const { event, identified } = person.memory;
-        journal.publish('report', event.position, now, person.id, identified, event.id);
+        if (event.kind !== 'collision' || event.source === 'player') {
+          journal.publish('report', event.position, now, person.id, identified, event.id);
+        }
         if (person.personality === 'record' && identified) journal.post(person.name, event);
         person.state = person.role === 'cashier' ? 'recovering' : 'fleeing';
         person.timer = 9;
@@ -427,7 +497,13 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       actor.face(player, decisionDt);
       actor.action('handsUp');
       person.timer = 2;
+      if (person.chatCooldown <= 0) {
+        person.chatCooldown = 10;
+        speak(person, armedWarningLine(person.name), now, player);
+      }
     } else if (person.state === 'nervous') {
+      if (armed && planarDistance(actor.position, player) < 5) actor.action('handsUp');
+      actor.face(player, decisionDt);
       if (person.timer === 0) person.state = 'routine';
     } else if (person.role === 'cashier') {
       const storeDef = allShops.find((s) => s.id === person.shopId) ?? allShops[0];
@@ -442,10 +518,11 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       actor.goTo(undefined);
       if (person.timer === 0) {
         person.state = 'routine';
-        advanceAutonomousLife(person, index);
+        advanceAutonomousLife(person, index, hour);
       }
     } else if (person.state === 'waiting_bus') {
       person.activityLabel = 'esperando el autobús';
+      if (planarDistance(actor.position, player) < 3.0) actor.face(player, decisionDt);
       if (transit && transit.bus.stoppedAtId === person.transitTargetId) {
         actor.setSuspended(true, transit.bus.position);
         person.state = 'riding';
@@ -587,6 +664,9 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       world?: WorldState,
       economy?: Economy,
       transit?: { bus: ManagedVehicle & { stoppedAtId?: string }; metro: ManagedVehicle & { stoppedAtId?: string } },
+      hour = 17,
+      policeStars = 0,
+      fastVehicles?: readonly { position: Point3; heading: number; speed: number }[],
     ) {
       stats.decisions = 0;
       if (now >= speechUntil) speechText = '';
@@ -627,7 +707,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
                 b.actor.face(a.actor.position, 0.4);
                 if (a.state === 'routine') { a.state = 'chatting'; a.timer = 3.4; a.activityLabel = `conversando con ${b.name}`; }
                 if (b.state === 'routine') { b.state = 'chatting'; b.timer = 3.4; b.activityLabel = `conversando con ${a.name}`; }
-                const line = npcPairLine(a.name, a.job, a.state === 'waiting_bus' ? 'wait_bus' : a.state === 'waiting_metro' ? 'wait_metro' : 'walk', journal.events.at(-1));
+                const line = npcPairLine(a.name, a.job, a.state === 'waiting_bus' ? 'wait_bus' : a.state === 'waiting_metro' ? 'wait_metro' : 'walk', journal.events.at(-1), hour);
                 speak(a, line, now, player);
                 break;
               }
@@ -663,7 +743,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
         const tier = world?.tier(person.id) ?? 'near';
         const urgent = !['routine', 'browsing', 'waiting_bus', 'waiting_metro'].includes(person.state);
         person.nextDecision = now + (urgent ? 0.05 : tier === 'far' ? 0.6 : tier === 'middle' ? 0.25 : 0.1);
-        stepSinglePerson(person, index, decisionDt, now, player, armed, economy, transit);
+        stepSinglePerson(person, index, decisionDt, now, player, armed, economy, transit, hour, policeStars, fastVehicles);
       }
     },
     reset() {

@@ -7,18 +7,18 @@ import { createSkyMaterial } from '../../shaders/sky';
 const shadowExtent = 63;
 const worldUp = new Vector3(0, 1, 0);
 const palette = {
-  noonSun: new Color('#fff3da'),
-  duskSun: new Color('#ffb376'),
-  moon: new Color('#a6c2ff'),
-  noonSky: new Color('#cae2ff'),
-  duskSky: new Color('#e2dbfd'),
-  nightSky: new Color('#7594e0'),
-  noonBounce: new Color('#a49a86'),
-  duskBounce: new Color('#a798a9'),
-  nightBounce: new Color('#3b425b'),
-  dayHaze: new Color('#afcdde'),
-  duskHaze: new Color('#c89390'),
-  nightHaze: new Color('#283b65'),
+  noonSun: new Color('#fff5e0'),
+  duskSun: new Color('#ff9f5a'),
+  moon: new Color('#9cbdff'),
+  noonSky: new Color('#bfe0ff'),
+  duskSky: new Color('#f2c8d8'),
+  nightSky: new Color('#5e82d9'),
+  noonBounce: new Color('#b5a388'),
+  duskBounce: new Color('#b68c9b'),
+  nightBounce: new Color('#2f3954'),
+  dayHaze: new Color('#a8d0e6'),
+  duskHaze: new Color('#d68b84'),
+  nightHaze: new Color('#1f3259'),
 };
 
 function smoothstep(low: number, high: number, value: number): number {
@@ -27,12 +27,12 @@ function smoothstep(low: number, high: number, value: number): number {
 }
 
 export function createAtmosphere(scene: Scene, initialHour = 17.25) {
-  const sun = new DirectionalLight(palette.noonSun, 2.5);
+  const sun = new DirectionalLight(palette.noonSun, 2.65);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
-  sun.shadow.normalBias = 0.10;
-  sun.shadow.bias = -0.00024;
-  sun.shadow.radius = 1.9;
+  sun.shadow.normalBias = 0.09;
+  sun.shadow.bias = -0.00022;
+  sun.shadow.radius = 2.2;
 
   const camera = sun.shadow.camera;
   camera.left = camera.bottom = -shadowExtent;
@@ -41,8 +41,8 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
   camera.far = 290;
   camera.updateProjectionMatrix();
 
-  const ambient = new HemisphereLight(palette.noonSky, palette.noonBounce, 1.45);
-  const fog = new FogExp2(palette.dayHaze, 0.0075);
+  const ambient = new HemisphereLight(palette.noonSky, palette.noonBounce, 1.48);
+  const fog = new FogExp2(palette.dayHaze, 0.0056);
   scene.fog = fog;
 
   const skyShader = createSkyMaterial(fog.color);
@@ -76,14 +76,14 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
 
     const sunStrength = smoothstep(0.003, 0.115, sunDirection.y);
     const moonStrength = smoothstep(0.12, 0.4, moonDirection.y);
-    sun.intensity = sunStrength * (2.25 + twilight * 0.38) + moonStrength * 0.42;
+    sun.intensity = sunStrength * (2.55 + twilight * 0.52) + moonStrength * 0.54;
     sun.color.copy(palette.noonSun).lerp(palette.duskSun, twilight).lerp(palette.moon, 1 - sunStrength);
-    ambient.intensity = 0.66 + daylight * 0.81;
+    ambient.intensity = 0.62 + daylight * 0.86;
     ambient.color.copy(palette.noonSky).lerp(palette.duskSky, twilight).lerp(palette.nightSky, 1 - daylight);
     ambient.groundColor.copy(palette.noonBounce).lerp(palette.duskBounce, twilight).lerp(palette.nightBounce, 1 - daylight);
     fog.color.copy(palette.dayHaze).lerp(palette.duskHaze, twilight).lerp(palette.nightHaze, 1 - daylight);
-    fog.density = 0.0068 + twilight * 0.00165 + (1 - daylight) * 0.0017;
-    scene.environmentIntensity = 0.12 + 0.32 * daylight;
+    fog.density = 0.0054 + twilight * 0.00145 + (1 - daylight) * 0.0015;
+    scene.environmentIntensity = 0.22 + 0.48 * daylight;
 
     lightDirection.copy(sunDirection.y >= 0 ? sunDirection : moonDirection);
     lightDirection.y = Math.max(0.24, lightDirection.y);

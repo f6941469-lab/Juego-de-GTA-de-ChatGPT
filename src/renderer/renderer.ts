@@ -25,7 +25,7 @@ export async function createRenderer(canvas: HTMLCanvasElement) {
   canvas.dataset.renderer = backend;
   renderer.outputColorSpace = SRGBColorSpace;
   renderer.toneMapping = ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 1.14;
   renderer.shadowMap.type = PCFShadowMap;
 
   const reflection = createSkyReflection();

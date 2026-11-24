@@ -96,6 +96,28 @@ export function createSession(
     },
   );
 
+  police.setOnStarsChanged((stars, label) => {
+    if (stars === 0) {
+      tell(
+        journal.allClips.length > 0
+          ? 'Has evadido a la policía · mira Palma Social (↑) para ver los ángulos grabados'
+          : 'Has evadido a la policía · barrio despejado',
+        true,
+      );
+      return;
+    }
+    const glyph = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+    if (stars >= 4) {
+      tell(`${glyph} ${label} · Helicóptero y SWAT desplegados`, true);
+    } else if (stars === 3) {
+      tell(`${glyph} ${label} · Barricadas y refuerzos en camino`, true);
+    } else if (stars === 2) {
+      tell(`${glyph} ${label} · Patrullas en persecución`, true);
+    } else {
+      tell(`${glyph} ${label}`, true);
+    }
+  });
+
   let cachedPopVersion = -1;
   let cachedActors: Actor[] = [];
   let cachedWalkers: Array<{ owner: number; position: Point3; readonly active: boolean }> = [];
@@ -406,7 +428,7 @@ export function createSession(
       if (npc) {
         activeTalkNpc = npc;
         npc.actor.face(player.position, 0.5);
-        talkReply = playerDialogueReply(npc, 'greet', journal.events.at(-1));
+        talkReply = playerDialogueReply(npc, 'greet', journal.events.at(-1), police.stars);
         context('talk');
         return;
       }
@@ -462,6 +484,11 @@ export function createSession(
       actor.hurt(35);
       audio.play('impact', impact);
       hitUntil = now + 0.18;
+      if (policeActorSet.has(actor)) {
+        police.reportEscalation(player.position, 55, true, 3);
+      } else {
+        police.reportEscalation(player.position, 42, true, 2);
+      }
     } else if (!feedback.windows.some((w) => w.collider.handle === hit.collider.handle)) {
       audio.play('impact', impact);
     }
@@ -611,7 +638,7 @@ export function createSession(
     select,
     openReplayWith,
     closeOverlay() { context('world'); },
-    step(dt: number, controls: MovementInput & { aim: boolean; fire: boolean }) {
+    step(dt: number, controls: MovementInput & { aim: boolean; fire: boolean }, currentHour = 17.25) {
       if (overlay === 'replay') {
         const clip = replayClips[replayAngle];
         if (replayPlaying && clip && clip.frames.length > 1) {
@@ -648,11 +675,19 @@ export function createSession(
         player.prepareStep(dt, input);
       }
 
-      population.step(dt, now, player.position, weapon.equipped, world, economy, { bus: traffic.bus, metro: traffic.metro });
+      population.step(
+        dt,
+        now,
+        player.position,
+        weapon.equipped,
+        world,
+        economy,
+        { bus: traffic.bus, metro: traffic.metro },
+        currentHour,
+        police.stars,
+        traffic.allVehicles,
+      );
       police.step(dt, now, player.position, weapon.equipped, currentVehicle?.id);
-      if (previousPoliceState !== 'patrol' && police.state === 'patrol' && journal.allClips.length > 0) {
-        tell('Escapaste de la policía · mira Palma Social (↑) para ver los ángulos grabados', true);
-      }
       previousPoliceState = police.state;
 
       const actors = allActors();
@@ -675,6 +710,7 @@ export function createSession(
             if (actor.health > 0 && !actor.suspended && actor.collider.isEnabled() && planarDistance(actor.position, currentVehicle.position) < 1.55) {
               actor.hurt(45);
               audio.play('impact', actor.position);
+              police.reportEscalation(currentVehicle.position, policeActorSet.has(actor) ? 55 : 34, true, policeActorSet.has(actor) ? 3 : 2);
             }
           }
         }

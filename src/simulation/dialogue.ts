@@ -30,6 +30,7 @@ export function npcPairLine(
   speakerJob: NpcJob,
   activity: string,
   recentEvent?: WorldEvent,
+  hour = 17,
 ): string {
   if (recentEvent) {
     if (recentEvent.kind === 'shot' || recentEvent.kind === 'robbery') {
@@ -48,7 +49,38 @@ export function npcPairLine(
   if (activity === 'shop') {
     return `${speakerName}: Vine a comprar algo rápido antes de seguir con ${jobLabels[speakerJob]}.`;
   }
+  if (hour >= 20 || hour < 6) {
+    return `${speakerName}: Qué buena pinta tienen los neones esta noche por el bulevar.`;
+  }
+  if (hour < 11) {
+    return `${speakerName}: Primero un café bien cargado antes de ir a ${jobLabels[speakerJob]}.`;
+  }
   return `${speakerName}: Voy camino a ${jobLabels[speakerJob]}, hoy la avenida está movida.`;
+}
+
+export function dodgeCarLine(name: string, index: number): string {
+  const lines = [
+    `${name}: ¡Eh, cuidado! ¡Casi me atropellas!`,
+    `${name}: ¡Frena, loco! ¡Esto es un paso de peatones!`,
+    `${name}: ¡Mira por dónde conduces!`,
+  ];
+  return lines[index % lines.length];
+}
+
+export function chaseReactionLine(name: string, stars: number, personality: 'flee' | 'call' | 'record'): string {
+  if (personality === 'record') {
+    return stars >= 4
+      ? `${name}: ¡Hasta hay un helicóptero! ¡Esto va directo a Palma Social!`
+      : `${name}: ¡Miren esa persecución! Lo estoy grabando todo.`;
+  }
+  if (stars >= 4) {
+    return `${name}: ¡Vienen los SWAT y un helicóptero, salgan de la calle!`;
+  }
+  return `${name}: ¡Apartaos, la policía persigue a alguien por la avenida!`;
+}
+
+export function armedWarningLine(name: string): string {
+  return `${name}: ¡Baja esa pistola, por favor! ¡No quiero problemas!`;
 }
 
 export function stalkWarningLine(name: string, level: 1 | 2): string {
@@ -68,9 +100,13 @@ export function playerDialogueReply(
   },
   topic: DialogueTopic['id'],
   recentEvent?: WorldEvent,
+  policeStars = 0,
 ): string {
   if (npc.stalkScore >= 18) {
     return 'No quiero hablar contigo, llevas siguiéndome demasiado rato. Aléjate.';
+  }
+  if (policeStars >= 2) {
+    return '¡No te acerques a mí con la policía detrás! Sigue corriendo.';
   }
   if (topic === 'greet') {
     return `Hola. Soy ${npc.name}. Ahora mismo estoy en ${npc.activityLabel}.`;

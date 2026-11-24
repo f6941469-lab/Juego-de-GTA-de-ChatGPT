@@ -5,6 +5,15 @@
 .weapon-state b { font-size: 1.2rem; }
 .police-state { color: #c2d3bb; font-size: .72rem; }
 .police-state[data-alert="true"] { color: #ff9a88; }
+.wanted-stars { display: inline-flex; justify-content: flex-end; gap: .18rem; margin-top: .32rem; font-size: 1.25rem; line-height: 1; }
+.wanted-star { color: rgb(255 248 234 / 18%); text-shadow: 0 2px 4px rgb(0 0 0 / 60%); transition: color .15s, transform .15s; }
+.wanted-star.active { color: #ffd45e; text-shadow: 0 0 10px rgb(255 184 72 / 75%), 0 2px 4px #0b1018; }
+.wanted-stars[data-mode="pursue"] .wanted-star.active { animation: star-siren .65s infinite alternate; }
+.wanted-stars[data-mode="evade"] .wanted-star.active { animation: star-evade .9s infinite; }
+.wanted-evade-bar { width: 8.4rem; height: 4px; margin: .28rem 0 0 auto; border-radius: 99px; background: rgb(255 248 234 / 16%); overflow: hidden; }
+.wanted-evade-bar > div { height: 100%; background: linear-gradient(90deg, #56d8d4, #ffd45e); transition: width .2s linear; }
+@keyframes star-siren { from { color: #ff5666; text-shadow: 0 0 12px #ff3b4f; } to { color: #6bb5ff; text-shadow: 0 0 12px #3b82f6; } }
+@keyframes star-evade { 0%, 100% { opacity: 1; color: #ffd45e; } 50% { opacity: .28; color: #fff4d6; } }
 .interaction-prompt { position: absolute; bottom: 6.2rem; left: 50%; transform: translateX(-50%); text-align: center; color: #fff0cf; font: 600 1.05rem/1.4 var(--label); letter-spacing: .06em; text-shadow: 0 2px 4px #18202c; max-width: 80%; }
 .game-notice { position: absolute; top: 5.1rem; left: var(--hud-gap); max-width: min(26rem, 65vw); color: #f4e3c7; background: #142e30eb; padding: .7rem 1rem; border-left: 3px solid #8cd9bc; border-radius: .2rem; font: 600 .95rem/1.4 var(--label); }
 .reticle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 7px; height: 7px; border: 1px solid #fff4dc; border-radius: 50%; box-shadow: 0 0 3px #152626; opacity: .5; }

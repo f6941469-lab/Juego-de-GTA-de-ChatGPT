@@ -2,13 +2,20 @@
 document_id: CORE-CHANGELOG
 status: active
 last_updated: 2026-11-23
-verified_against: "Mercado Palma 0.5.0 (Prólogo cinemático, Fases 3-8 y optimización)"
-verification_scope: "typecheck + 40 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
+verified_against: "Mercado Palma 0.5.0 (Gráficos PBR, NPCs avanzados, Policía 5★ y Prólogo)"
+verification_scope: "typecheck + 42 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
+
+## 2026-11-23 · Mejora gráfica PBR, comportamiento NPC y sistema policial de 5 estrellas (`main`)
+
+- **Gráficos y shaders (`geometry.ts`, `reflection.ts`, `atmosphere.ts`, `sky.ts`, `water.ts`, `renderer.ts`, `traffic.ts`, `avatar.ts`):** Texturas procedurales `128×128` con `bumpMap` (estuco, baldosas de acera, asfalto), cristal reflectivo y pintura automotriz brillante sin sumar llamadas de dibujo, sonda celeste `256×128`, nubes TSL con borde solar, océano TSL turquesa/Fresnel mejorado y atmósfera/exposición `ACESFilmic 1.14`.
+- **Comportamiento NPC (`population.ts`, `dialogue.ts`):** Rutinas por franja horaria (mañana/tarde/noche), esquiva direccional de vehículos rápidos, reacciones ante persecuciones de `>= 2★`, advertencias y manos arriba ante arma cercana, mirada social al esperar/comprar y exclusión de choques menores entre coches de la IA como avisos contra el jugador.
+- **Sistema policial de 5 estrellas (`police.ts`, `session.ts`, `gameplay.ts`, `gameplay.css`, `minimap.ts`):** Escalado `0★–5★` con patrullas estroboscópicas (`2★+`), barricadas y refuerzos SWAT (`3★+`), helicóptero policial 3D con foco de búsqueda (`4★–5★`), enfriamiento de evasión acelerado al cambiar de vehículo, HUD de 5 estrellas animadas y radar policial en tiempo real en el minimapa.
+- **Verificación:** `npm run typecheck` (`0` errores), `npm test` (`10` archivos, `42/42` verdes), `npm run build`, `npm run check:portable`, `npm run check:itch` y Chrome 158 headless (`0` errores JS).
 
 ## 2026-11-23 · Cinemática de apertura y cimientos narrativos (`src/cinematics/`, `STORY_AND_CINEMATICS.md`)
 

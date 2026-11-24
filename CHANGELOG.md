@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 0.5.0 · Mejora gráfica PBR, comportamiento NPC y policía de 5 estrellas (2026-11-23)
+
+- **Gráficos mejorados sin perder fluidez:** Texturas procedurales con relieve (`bumpMap`) en edificios de estuco, aceras con baldosas y asfalto, cristal reflectivo, pintura automotriz brillante, sonda celeste `256×128`, cielo y agua TSL con mejor luz dorada/Fresnel y niebla más nítida.
+- **Comportamiento avanzado de los NPCs:** Rutinas según la hora del día (mañana, tarde y noche), esquiva activa de vehículos rápidos en trayectoria de colisión, reacciones realistas ante persecuciones policiales (`>= 2★`) y armas cercanas, mirada social natural y diálogos ampliados.
+- **Sistema policial de 5 estrellas (`1★–5★`):** Escalado táctico completo con patrullas estroboscópicas, barricadas, refuerzos SWAT (`3★+`), helicóptero policial 3D con foco de búsqueda (`4★–5★`), barra de evasión, HUD de 5 estrellas animadas y radar policial en el minimapa.
+
 ## 0.5.0 · Cinemática de apertura y cimientos narrativos (2026-11-23)
 
 - **Prólogo in-engine *«Un Coche, Dos Ladrones»*:** Al iniciar partida se reproduce una cinemática de `71 s` con `17` planos de cámara, iluminación de estudio de 3 puntos, luces policiales estroboscópicas, audio procedural, subtítulos codificados por hablante, animaciones detalladas (`Leo`, `Valeria`, `Agente Morales`), vehículos con puertas articuladas, montaje de 3 aventuras (*Paseo del Mar*, *Club Neón*, *Mercado Palma*) y transición fluida a la cámara del mundo abierto. Puede saltarse con `Espacio`/`Esc` y repetirse desde el menú de Pausa.

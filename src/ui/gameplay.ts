@@ -41,22 +41,42 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
 
   function update(session: Session, hour: number) {
     const { economy, weapon, police } = session;
-    const labels = {
-      patrol: 'BARRIO TRANQUILO',
-      respond: 'AVISO · UNIDADES EN CAMINO',
-      pursue: 'IDENTIFICADO · PERSECUCIÓN',
-      search: 'BÚSQUEDA · ÚLTIMA UBICACIÓN',
-    };
     const vehLabel = session.currentVehicle
       ? (session.currentVehicle.kind === 'bus' ? 'EN AUTOBÚS' : session.currentVehicle.kind === 'metro' ? 'EN METRO' : 'CONDUCIENDO')
       : weapon.equipped
         ? `PISTOLA <b>${weapon.rounds}</b> / ${weapon.reserve}${weapon.reloadTime > 0 ? ' · RECARGANDO' : ''}`
         : 'MANOS LIBRES';
-    const key = [economy.money, session.health, session.armor, weapon.equipped, weapon.rounds, weapon.reserve, weapon.reloadTime > 0, police.state, session.currentVehicle?.id ?? ''].join('|');
+    const cooldownPct = Math.round(police.cooldownProgress * 100);
+    const key = [
+      economy.money,
+      session.health,
+      session.armor,
+      weapon.equipped,
+      weapon.rounds,
+      weapon.reserve,
+      weapon.reloadTime > 0,
+      police.state,
+      police.stars,
+      police.evading,
+      police.evading ? Math.floor(cooldownPct / 5) : 0,
+      session.currentVehicle?.id ?? '',
+    ].join('|');
     if (key !== statusKey) {
       statusKey = key;
       const armorText = session.armor > 0 ? ` · Prot. ${session.armor}` : '';
-      status.innerHTML = `<div class="wallet">$${economy.money}<span>Salud ${session.health}${armorText}</span></div><div class="weapon-state">${vehLabel}</div><div class="police-state" data-alert="${police.state !== 'patrol'}">${labels[police.state]}</div>`;
+      const starsMarkup = [1, 2, 3, 4, 5]
+        .map((n) => `<span class="wanted-star${n <= police.stars ? ' active' : ''}" aria-hidden="true">★</span>`)
+        .join('');
+      const wantedMode = police.stars === 0 ? 'calm' : police.evading ? 'evade' : 'pursue';
+      const statusText = police.stars === 0
+        ? 'BARRIO TRANQUILO'
+        : police.evading
+          ? `${police.starLabel} · EVADIENDO`
+          : `${police.starLabel} · PERSECUCIÓN`;
+      const evadeBar = police.evading
+        ? `<div class="wanted-evade-bar"><div style="width:${cooldownPct}%"></div></div>`
+        : '';
+      status.innerHTML = `<div class="wallet">$${economy.money}<span>Salud ${session.health}${armorText}</span></div><div class="weapon-state">${vehLabel}</div><div class="wanted-stars" data-mode="${wantedMode}" aria-label="Nivel de búsqueda ${police.stars} de 5 estrellas">${starsMarkup}</div><div class="police-state" data-alert="${police.stars > 0}">${statusText}</div>${evadeBar}`;
     }
 
     prompt.textContent = session.overlay === 'world' ? session.prompt : '';

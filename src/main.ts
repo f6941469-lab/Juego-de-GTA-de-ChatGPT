@@ -183,6 +183,7 @@ async function startGame() {
     resize()
 
     const introFocus = new Vector3(-12, 7.2, -32)
+    const radarContacts: Array<{ x: number; z: number; kind: 'police' | 'patrol' | 'heli' }> = []
     function frame(now: number) {
       const dt = Math.max(0, (now - lastTime) / 1000)
       lastTime = now
@@ -190,7 +191,7 @@ async function startGame() {
       const simulationStart = debug ? performance.now() : 0
       if (mode === 'playing') {
         alpha = loop.advance(dt, (step) => {
-          session!.step(step, input.read())
+          session!.step(step, input.read(), hour)
           hour = (hour + step * 24 / gameConfig.secondsPerDay) % 24
         })
       } else if (mode === 'cinematic') {
@@ -214,7 +215,21 @@ async function startGame() {
       atmosphere.update(activeHour, focus, elapsed)
       district.update(elapsed, activeHour, focus)
       const { x, y, z } = player.position
-      ui.update({ x, z, heading: player.heading, hour: activeHour })
+      const wantedStars = session!.police.stars
+      radarContacts.length = 0
+      if (wantedStars > 0 && !inCinematic) {
+        for (const car of session!.police.patrolCars) {
+          radarContacts.push({ x: car.position.x, z: car.position.z, kind: 'patrol' })
+        }
+        for (const unit of session!.police.units) {
+          if (!unit.inCar && unit.actor.health > 0) {
+            radarContacts.push({ x: unit.actor.position.x, z: unit.actor.position.z, kind: 'police' })
+          }
+        }
+        const heli = session!.police.helicopterPosition
+        if (heli) radarContacts.push({ x: heli.x, z: heli.z, kind: 'heli' })
+      }
+      ui.update({ x, z, heading: player.heading, hour: activeHour, wantedStars, contacts: radarContacts })
       if (!inCinematic) gameplayUI.update(session!, hour)
 
       const renderStart = debug ? performance.now() : 0

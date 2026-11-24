@@ -14,7 +14,7 @@ export interface AvatarPose {
 }
 
 const sharedBoxGeometry = new THREE.BoxGeometry();
-const sharedAvatarMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 });
+const sharedAvatarMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.74, metalness: 0.04 });
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const tempMatrix = new THREE.Matrix4();
 const tempPos = new THREE.Vector3();

@@ -40,7 +40,7 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
   const network = new RoadNetwork();
   const destinations = [...network.nodes.values()];
   const geometry = new BoxGeometry();
-  const vehicleMaterial = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.62 });
+  const vehicleMaterial = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.34, metalness: 0.28, envMapIntensity: 1.3 });
   const materials: MeshStandardMaterial[] = [vehicleMaterial];
   const dark = 0x27333b; const glass = 0x769fa5; const tire = 0x24252c; const skin = 0xc58e66; const light = 0xfbe2a1; const brake = 0xb52939;
   const busPaint = 0x3a8c84; const metroPaint = 0xd99b43;

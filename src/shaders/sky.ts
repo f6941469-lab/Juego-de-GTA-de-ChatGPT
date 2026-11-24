@@ -48,9 +48,10 @@ export function createSkyMaterial(haze: Color) {
       .add(mx_noise_float(vec3(point.mul(4.36).add(51), 0)).mul(0.13))
       .add(mx_noise_float(vec3(point.mul(9.15).add(31), 0)).mul(0.07)).mul(0.5).add(0.5);
     const coverage = smoothstep(0.018, 0.16, dir.y).mul(float(1).sub(smoothstep(0.86, 1, dir.y)));
-    const warmCloud = mix(vec3(0.50, 0.26, 0.31), vec3(1.37, 0.60, 0.32), pow(sunDot, 3));
-    const cloudLight = mix(vec3(0.022, 0.036, 0.077), mix(vec3(0.75, 0.82, 0.91), warmCloud, twilight.mul(0.82)), daylight);
-    sky.assign(mix(sky, cloudLight.mul(mix(0.65, 1, smoothstep(0.5, 0.76, cloud))), smoothstep(0.52, 0.7, cloud).mul(coverage).mul(0.88)));
+    const warmCloud = mix(vec3(0.56, 0.25, 0.36), vec3(1.52, 0.68, 0.34), pow(sunDot, 2.8));
+    const silverLining = vec3(1.15, 0.78, 0.45).mul(pow(sunDot, 6)).mul(daylight.mul(0.35).add(twilight.mul(0.55)));
+    const cloudLight = mix(vec3(0.026, 0.044, 0.095), mix(vec3(0.82, 0.88, 0.96), warmCloud, twilight.mul(0.86)), daylight).add(silverLining);
+    sky.assign(mix(sky, cloudLight.mul(mix(0.66, 1.04, smoothstep(0.5, 0.76, cloud))), smoothstep(0.51, 0.7, cloud).mul(coverage).mul(0.9)));
     return mix(groundHaze, sky, smoothstep(0, 0.052, dir.y));
   })();
   return { material, sun, moon, daylight, twilight, clock };

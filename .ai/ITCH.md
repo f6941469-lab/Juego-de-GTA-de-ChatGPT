@@ -82,3 +82,13 @@ Tipos, `40` pruebas en `9` archivos, `build`, `check:portable` y `check:itch` ap
 | `jugar/index.html` | 3.374.415 | `555736727757d5a352699b3ac6bd76b6bfa60360e055a250671653f25d983033` |
 | `publicar/viceblock-itch.zip` | 1.210.944 | `6d6d760b84b2c868ddc71efa91c6cbc76571572294e3d805332aafad70cad098` |
 
+## Actualización Gráficos PBR, NPCs y Policía 5 estrellas · 0.5.0
+
+Tipos, `42` pruebas en `10` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.386.892 | `0e5620025791291cc520e921e37bb2df7e0875dddf760923124dff6c7c91878f` |
+| `publicar/viceblock-itch.zip` | 1.215.790 | `f4f8ee7c4f801bc64c76e08eddc063b9928758bde1fb353dc7b6a15192a1de28` |
+
+

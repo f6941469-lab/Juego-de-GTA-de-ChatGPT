@@ -96,3 +96,13 @@ Tipos, `40` pruebas Vitest en `9` archivos, `build`, `check:portable` y `check:i
 
 En Google Chrome `158` (`WebGL 2` SwiftShader, `960×640`): arranque de portada, lanzamiento de la cinemática de apertura (`Prólogo — Un Coche, Dos Ladrones`) al pulsar `#play-button`, salto limpio al mundo abierto con HUD y aviso narrativo de Valeria, `0` errores de consola/JS.
 
+## Actualización Gráficos PBR, NPCs y Policía 5 estrellas · 0.5.0
+
+Tipos, `42` pruebas Vitest en `10` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.386.892 | `0e5620025791291cc520e921e37bb2df7e0875dddf760923124dff6c7c91878f` |
+| `publicar/viceblock-itch.zip` | 1.215.790 | `f4f8ee7c4f801bc64c76e08eddc063b9928758bde1fb353dc7b6a15192a1de28` |
+
+

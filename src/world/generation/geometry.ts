@@ -16,19 +16,19 @@ import {
 import type { BufferGeometry, ColorRepresentation, MeshStandardMaterialParameters } from 'three';
 import { makeRandom } from './layout';
 
-const surfaceMarkings = { roughness: 0.81 };
+const surfaceMarkings = { roughness: 0.78 };
 const presets = {
-  wall: { roughness: 0.89 },
-  trim: { roughness: 0.62, metalness: 0.07 },
-  glass: { roughness: 0.21, metalness: 0.4, emissive: '#224658', emissiveIntensity: 0.18 },
-  glassLit: { roughness: 0.34, emissive: '#ffaf63', emissiveIntensity: 0.56 },
-  coralLight: { emissive: '#ff598b', emissiveIntensity: 1.45, roughness: 0.45 },
-  aquaLight: { emissive: '#52eddc', emissiveIntensity: 1.2, roughness: 0.45 },
-  goldLight: { emissive: '#ffc77e', emissiveIntensity: 1.3, roughness: 0.45 },
-  asphalt: { roughness: 0.96 },
-  pavement: { roughness: 0.92 },
+  wall: { roughness: 0.84, metalness: 0.02 },
+  trim: { roughness: 0.50, metalness: 0.14 },
+  glass: { roughness: 0.12, metalness: 0.62, emissive: '#1e4a5e', emissiveIntensity: 0.24, envMapIntensity: 1.55 },
+  glassLit: { roughness: 0.26, metalness: 0.18, emissive: '#ffb868', emissiveIntensity: 0.72 },
+  coralLight: { emissive: '#ff4e88', emissiveIntensity: 1.75, roughness: 0.35 },
+  aquaLight: { emissive: '#42f2e0', emissiveIntensity: 1.5, roughness: 0.35 },
+  goldLight: { emissive: '#ffcf76', emissiveIntensity: 1.55, roughness: 0.35 },
+  asphalt: { roughness: 0.86, metalness: 0.04 },
+  pavement: { roughness: 0.88, metalness: 0.02 },
   paint: surfaceMarkings,
-  foliage: { roughness: 0.88, side: DoubleSide, vertexColors: true },
+  foliage: { roughness: 0.72, side: DoubleSide, vertexColors: true },
 } satisfies Record<string, MeshStandardMaterialParameters>;
 
 export type Finish = keyof typeof presets;
@@ -164,7 +164,7 @@ export class DistrictGeometry {
     this.lastDarkness = darkness;
     for (const finish of ['glassLit', 'coralLight', 'aquaLight', 'goldLight'] as const) {
       const material = this.materials.get(finish);
-      if (material) material.emissiveIntensity = presets[finish].emissiveIntensity * (0.78 + darkness * 1.20);
+      if (material) material.emissiveIntensity = presets[finish].emissiveIntensity * (0.72 + darkness * 1.45);
     }
   }
 
@@ -174,33 +174,95 @@ export class DistrictGeometry {
 
     const material = new MeshStandardMaterial(presets[finish]);
     material.name = `District · ${finish}`;
-    if (finish === 'asphalt' || finish === 'pavement') {
-      material.map = grainTexture(finish === 'asphalt' ? 17 : 27);
+    if (finish === 'asphalt') {
+      const tex = grainTexture(24, 18, 61231);
+      material.map = tex;
+      material.bumpMap = tex;
+      material.bumpScale = 0.04;
+    } else if (finish === 'pavement') {
+      const tex = sidewalkTileTexture();
+      material.map = tex;
+      material.bumpMap = tex;
+      material.bumpScale = 0.032;
+    } else if (finish === 'wall') {
+      const tex = stuccoTexture();
+      material.map = tex;
+      material.bumpMap = tex;
+      material.bumpScale = 0.028;
     }
     this.materials.set(finish, material);
     return material;
   }
 }
 
-function grainTexture(strength: number): DataTexture {
-  const random = makeRandom(61231);
-  const size = 64;
-  const data = new Uint8Array(size * size * 4);
-  for (let offset = 0; offset < data.length; offset += 4) {
-    const grain = Math.round(255 - strength * random() ** 2.4);
-    data[offset] = grain;
-    data[offset + 1] = grain;
-    data[offset + 2] = grain;
-    data[offset + 3] = 255;
-  }
-
-  const texture = new DataTexture(data, size, size);
+function configureProceduralTexture(texture: DataTexture, repeat: number): DataTexture {
   texture.colorSpace = SRGBColorSpace;
   texture.wrapS = RepeatWrapping;
   texture.wrapT = RepeatWrapping;
-  texture.repeat.set(18, 18);
+  texture.repeat.set(repeat, repeat);
   texture.generateMipmaps = true;
   texture.minFilter = LinearMipmapLinearFilter;
   texture.needsUpdate = true;
   return texture;
+}
+
+function grainTexture(strength: number, repeat: number, seed: number): DataTexture {
+  const random = makeRandom(seed);
+  const size = 128;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = (y * size + x) * 4;
+      const micro = random() ** 2.1;
+      const tarStreak = Math.sin(x * 0.25 + y * 0.07) * 4;
+      const grain = Math.max(185, Math.min(255, Math.round(252 - strength * micro + tarStreak)));
+      data[offset] = grain;
+      data[offset + 1] = grain;
+      data[offset + 2] = Math.min(255, grain + 2);
+      data[offset + 3] = 255;
+    }
+  }
+  return configureProceduralTexture(new DataTexture(data, size, size), repeat);
+}
+
+function sidewalkTileTexture(): DataTexture {
+  const random = makeRandom(77321);
+  const size = 128;
+  const tile = 32;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = (y * size + x) * 4;
+      const gx = x % tile;
+      const gy = y % tile;
+      const isJoint = gx === 0 || gy === 0 || gx === tile - 1 || gy === tile - 1;
+      const tileTint = ((Math.floor(x / tile) + Math.floor(y / tile)) % 2) * 5;
+      const noise = Math.round(random() * 11);
+      const v = isJoint ? 206 : Math.min(255, 244 - tileTint - noise);
+      data[offset] = v;
+      data[offset + 1] = v;
+      data[offset + 2] = Math.max(0, v - 3);
+      data[offset + 3] = 255;
+    }
+  }
+  return configureProceduralTexture(new DataTexture(data, size, size), 14);
+}
+
+function stuccoTexture(): DataTexture {
+  const random = makeRandom(88417);
+  const size = 128;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const offset = (y * size + x) * 4;
+      const wave = Math.sin(x * 0.19) * Math.cos(y * 0.23) * 5;
+      const plaster = Math.round(248 - random() * 14 + wave);
+      const v = Math.max(218, Math.min(255, plaster));
+      data[offset] = v;
+      data[offset + 1] = v;
+      data[offset + 2] = Math.max(214, v - 2);
+      data[offset + 3] = 255;
+    }
+  }
+  return configureProceduralTexture(new DataTexture(data, size, size), 4);
 }
