@@ -154,7 +154,16 @@ async function startGame() {
     physics = worldPhysics
     if (disposed) { physics.dispose(); return }
     player = createPlayer(worldScene, camera, physics, district.spawn)
-    session = createSession(worldScene, camera, physics, district.colliders, player, audio, (context) => input.setContext(context))
+    session = createSession(
+      worldScene,
+      camera,
+      physics,
+      district.colliders,
+      player,
+      audio,
+      (context) => input.setContext(context),
+      (deltaHours) => { hour = (((hour + deltaHours) % 24) + 24) % 24 },
+    )
     cinematics = createCinematicDirector({
       scene: worldScene,
       camera: cinematicCamera,

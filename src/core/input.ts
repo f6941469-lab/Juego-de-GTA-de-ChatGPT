@@ -1,5 +1,5 @@
 export type Command = 'interact' | 'vehicle' | 'equip' | 'reload' | 'phone' | 'confirm' | 'back' | 'up' | 'down' | 'left' | 'right';
-export type InputContext = 'world' | 'phone' | 'shop' | 'talk' | 'replay';
+export type InputContext = 'world' | 'phone' | 'shop' | 'talk' | 'replay' | 'venue';
 type Control = 'forward' | 'back' | 'left' | 'right' | 'run' | 'jump' | 'aim' | 'fire';
 const keys: Readonly<Record<string, Control>> = {
   KeyW: 'forward', KeyS: 'back', KeyA: 'left', KeyD: 'right',

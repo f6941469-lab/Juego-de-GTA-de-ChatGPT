@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 0.5.0 · Expansión multi-distrito, puentes, montañas y 5 edificios funcionales (2026-11-27)
+
+- **Mapa ampliado con múltiples distritos y puntos de interés:** Conserva el centro original (**Costa Palmera Centro**) y expande el mundo a `332×352 m` con **Isla Fortuna**, **Distrito Cívico y Penal**, **Sierra Palmera** (cordillera montañosa hasta `44 m` y miradores panorámicos) y **Colinas del Sur**, optimizado con lotes `InstancedMesh` y culling espacial de `64 m` + minimapa actualizado con islas, puentes, montañas e iconos por categoría.
+- **Puentes y subidas/bajadas reales:** Dos puentes sobre la bahía (**Puente Fortuna** y **Puente Mirador**) y carreteras con pendientes físicas hacia **Mirador Sierra** (`4,2 m`) y **Alto Mirador** (`7,8 m`), transitables tanto a pie como conduciendo vehículos.
+- **Cinco edificios funcionales interactivos (`E`):** **Cárcel de Palma** (arresto real en celda, cumplir condena, fianza o fuga con alerta `3★`), **Comisaría Central** (pagar multas/limpiar estrellas, entrega voluntaria y boletín), **Casino Royale Palma** (ruleta y dados 21 con apuestas reales), **Restaurante El Mirador** (menús con salud y protección) y **Casa del Mirador** (villa comprable por `$350` para descansar `+6 h`, bajar perfil y fijar punto de aparición).
+
 ## 0.5.0 · Comportamiento procedural de NPCs con memoria episódica y rumores (2026-11-27)
 
 - **Mente procedural (*Utility AI* en `npc-mind.ts`):** Cada vecino decide sus metas dinámicamente según sus impulsos (`hunger`, `energy`, `social`, `errands`, `safety`), rasgos personales, hora del día y cautela por zonas.

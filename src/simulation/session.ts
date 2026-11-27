@@ -3,7 +3,14 @@ import type { GameAudio } from '../audio/audio';
 import type { Command, InputContext } from '../core/input';
 import type { Physics, Point3, StaticBox } from '../physics/physics';
 import type { createPlayer, MovementInput } from '../player/player';
-import { allShops, shop, type ShopDefinition } from '../world/generation/shop';
+import { allShops, type ShopDefinition } from '../world/generation/shop';
+import {
+  districtNameAt,
+  functionalVenues,
+  venueById,
+  type FunctionalVenue,
+  type VenueId,
+} from '../world/generation/expansion';
 import { busStops, metroStations } from '../world/generation/transit';
 import type { Actor } from './actor';
 import { dialogueTopics, playerDialogueReply } from './dialogue';
@@ -18,6 +25,19 @@ import { WorldState } from './world-state';
 
 type Player = ReturnType<typeof createPlayer>;
 export type PhonePage = 'home' | 'feed' | 'bag' | 'help';
+export interface VenueOption {
+  label: string;
+  detail: string;
+  badge?: string;
+}
+export interface VenuePanelState {
+  venue: FunctionalVenue;
+  subtitle: string;
+  intro: string;
+  options: VenueOption[];
+  note: string;
+}
+const HOUSE_PRICE = 350;
 const idle = { x: 0, z: 0, run: false, jump: false, aim: false, fire: false };
 
 export function createSession(
@@ -28,6 +48,7 @@ export function createSession(
   player: Player,
   audio: GameAudio,
   onContext: (context: InputContext) => void,
+  onAdvanceHour?: (deltaHours: number) => void,
 ) {
   const journal = new Journal();
   const economy = new Economy();
@@ -44,6 +65,8 @@ export function createSession(
   let phonePage: PhonePage = 'home';
   let selection = 0;
   let activeShop: ShopDefinition = allShops[0];
+  let activeVenue: FunctionalVenue | undefined;
+  let venueMessage = '';
   let activeTalkNpc: Civilian | undefined;
   let talkReply = '';
   let currentVehicle: ManagedVehicle | undefined;
@@ -60,6 +83,15 @@ export function createSession(
   let muted = false;
   let detention = false;
   let previousPoliceState: string = 'patrol';
+
+  // Expanded world gameplay state (Prison, Buyable House, Casino)
+  let inPrison = false;
+  let prisonBail = 30;
+  let prisonSentenceHours = 2;
+  let houseOwned = false;
+  let homeRespawnEnabled = false;
+  let casinoNet = 0;
+  let casinoRngState = 7731;
 
   // Replay viewer state (isolated from live simulation)
   let replayClips: WitnessClip[] = [];
@@ -202,6 +234,13 @@ export function createSession(
   function context(value: InputContext) {
     if (overlay === 'replay' && value !== 'replay') {
       recorder.hideReplay();
+      if (pendingArrestStars > 0) {
+        const stars = pendingArrestStars;
+        pendingArrestStars = 0;
+        resetOnReplayExit = false;
+        transferToPrison(stars);
+        return;
+      }
       if (resetOnReplayExit) {
         resetOnReplayExit = false;
         doResetWithFee();
@@ -251,6 +290,371 @@ export function createSession(
     audio.play('purchase');
   }
 
+  let pendingArrestStars = 0;
+
+  function nextCasinoRandom(): number {
+    casinoRngState = (Math.imul(1664525, casinoRngState) + 1013904223) >>> 0;
+    return casinoRngState / 4294967296;
+  }
+
+  function probeGroundPoint(x: number, z: number, hintY: number): Point3 {
+    const hit = physics.raycast({ x, y: hintY + 2.2, z }, { x: 0, y: -1, z: 0 }, 5.0, [player.collider.handle]);
+    const y = hit && hit.normal.y > 0.7 ? (hintY + 2.2) - hit.timeOfImpact + 0.08 : Math.max(0.08, hintY);
+    return { x, y, z };
+  }
+
+  function transferToPrison(starsAtArrest: number, reduced = false) {
+    if (currentVehicle) {
+      if (currentVehicle.controlledByPlayer) {
+        currentVehicle.controlledByPlayer = false;
+        currentVehicle.driverId = undefined;
+        currentVehicle.occupiedSeats = 0;
+      } else {
+        const idx = currentVehicle.passengerIds.indexOf('player');
+        if (idx >= 0) currentVehicle.passengerIds.splice(idx, 1);
+      }
+      currentVehicle = undefined;
+    }
+    detention = false;
+    pendingArrestStars = 0;
+    weapon.equipped = false;
+    weapon.reloadTime = 0;
+    const tier = Math.max(1, starsAtArrest);
+    inPrison = true;
+    prisonBail = reduced ? Math.max(20, tier * 20) : Math.max(30, tier * 35);
+    prisonSentenceHours = reduced ? Math.max(2, tier) : Math.max(2, tier * 2);
+    police.clearWanted();
+    const cell = venueById.prison.cellPoint!;
+    player.teleport(cell, Math.PI);
+    activeVenue = venueById.prison;
+    venueMessage = reduced
+      ? `Te entregaste voluntariamente. Fianza reducida: $${prisonBail} · Condena: ${prisonSentenceHours} h.`
+      : `Has sido detenido e ingresado en la Cárcel de Palma. Fianza: $${prisonBail} · Condena: ${prisonSentenceHours} h.`;
+    context('venue');
+    tell('Ingresado en Cárcel de Palma · cumple condena, paga fianza o intenta fugarte', true);
+  }
+
+  function nearestVenue(): FunctionalVenue | undefined {
+    if (player.inVehicle) return undefined;
+    if (inPrison) return venueById.prison;
+    for (const venue of functionalVenues) {
+      const d = planarDistance(player.position, venue.interactPoint);
+      const dy = Math.abs(player.position.y - venue.interactPoint.y);
+      if (d <= venue.interactRadius && dy < 2.2) return venue;
+    }
+    return undefined;
+  }
+
+  function buildVenuePanel(venue: FunctionalVenue | undefined): VenuePanelState | undefined {
+    if (!venue) return undefined;
+    if (venue.id === 'prison') {
+      if (inPrison) {
+        return {
+          venue,
+          subtitle: `CELDA DE DETENCIÓN · TU SALDO $${economy.money}`,
+          intro: venueMessage || 'Estás recluido en la Cárcel de Palma. Elige cómo salir de tu celda.',
+          options: [
+            { label: `Cumplir condena (${prisonSentenceHours} h)`, detail: 'Avanza el reloj y sal en libertad legalmente', badge: 'GRATIS' },
+            { label: 'Pagar fianza inmediata', detail: 'Limpia tu historial y sal ahora por la puerta principal', badge: `$${prisonBail}` },
+            { label: 'Intentar fuga de la celda', detail: 'Escapa al patio penal · dispara alerta policial inmediata', badge: '⚠ 3★' },
+          ],
+          note: 'Puedes cerrar con Esc para caminar dentro de tu celda y volver con E.',
+        };
+      }
+      return {
+        venue,
+        subtitle: `ACCESO PENITENCIARIO · ${venue.district.toUpperCase()}`,
+        intro: venueMessage || 'Control de acceso de la Penitenciaría Estatal de Costa Palmera.',
+        options: [
+          { label: 'Consultar registro penitenciario', detail: 'Revisa antecedentes y estado policial actual', badge: `${police.stars}★` },
+          { label: 'Salir del control', detail: 'Volver al Bulevar Cívico' },
+        ],
+        note: 'Cuando la policía te detenga serás trasladado directamente a este complejo.',
+      };
+    }
+
+    if (venue.id === 'police_hq') {
+      const fine = police.stars > 0 ? Math.max(25, police.stars * 30) : 0;
+      return {
+        venue,
+        subtitle: `COMISARÍA CENTRAL · NIVEL ${police.stars}★ · SALDO $${economy.money}`,
+        intro: venueMessage || 'Recepción oficial de la Policía de Costa Palmera. ¿En qué podemos atenderte?',
+        options: [
+          { label: 'Pagar multa y limpiar estrellas', detail: police.stars > 0 ? 'Cancela la búsqueda activa de forma legal' : 'No tienes cargos activos', badge: fine > 0 ? `$${fine}` : 'LIMPIO' },
+          { label: 'Entregarse voluntariamente', detail: 'Traslado a Cárcel de Palma con fianza y condena reducidas', badge: 'CÁRCEL' },
+          { label: 'Consultar boletín del distrito', detail: 'Resumen de incidentes y patrullas activas', badge: `${journal.events.length} REG` },
+        ],
+        note: 'La Comisaría Central coordina las patrullas, barricadas y el helicóptero del distrito.',
+      };
+    }
+
+    if (venue.id === 'casino') {
+      return {
+        venue,
+        subtitle: `ISLA FORTUNA · SALDO $${economy.money} · BALANCE ${casinoNet >= 0 ? `+$${casinoNet}` : `-$${Math.abs(casinoNet)}`}`,
+        intro: venueMessage || 'Mesa principal de Casino Royale Palma. Haz tu jugada y prueba tu suerte.',
+        options: [
+          { label: 'Ruleta Rojo / Negro', detail: 'Apuesta clásica 50/50 · premio x2 ($40)', badge: '$20' },
+          { label: 'Ruleta Docena Dorada', detail: 'Riesgo medio · premio x3 ($150)', badge: '$50' },
+          { label: 'Dados 21 · Mesa VIP', detail: 'Duelo contra la banca · premio x2 ($200)', badge: '$100' },
+        ],
+        note: 'Los premios y pérdidas se acreditan al instante en tu efectivo.',
+      };
+    }
+
+    if (venue.id === 'restaurant') {
+      return {
+        venue,
+        subtitle: `SIERRA PALMERA · SALUD ${health}/100 · PROT. ${economy.armor}/100 · $${economy.money}`,
+        intro: venueMessage || 'Bienvenidos a la terraza panorámica de El Mirador. Cocina recién hecha frente a la bahía.',
+        options: [
+          { label: 'Menú Costero Completo', detail: 'Restaura salud al 100% y +15 de protección', badge: '$18' },
+          { label: 'Mariscada Especial del Mirador', detail: 'Restaura salud al 100% y +45 de protección', badge: '$35' },
+          { label: 'Café y Postre Panorámico', detail: 'Recupera +35 de salud al instante', badge: '$10' },
+        ],
+        note: 'Disfruta de la vista elevada sobre Costa Palmera e Isla Fortuna.',
+      };
+    }
+
+    // Buyable House: Casa del Mirador
+    if (!houseOwned) {
+      return {
+        venue,
+        subtitle: `INMOBILIARIA ISLA FORTUNA · TU SALDO $${economy.money}`,
+        intro: venueMessage || 'Villa moderna con piscina privada, vestidor y vistas a Bahía Palmera. Lista para habitar.',
+        options: [
+          { label: 'Comprar Casa del Mirador', detail: 'Adquiere esta propiedad como refugio y punto de descanso permanente', badge: `$${HOUSE_PRICE}` },
+          { label: 'Seguir explorando', detail: 'Volver al exterior sin comprar todavía' },
+        ],
+        note: 'Al comprarla podrás descansar, avanzar el reloj, bajar búsqueda menor y reaparecer aquí.',
+      };
+    }
+    return {
+      venue,
+      subtitle: `TU REFUGIO EN ISLA FORTUNA · SALUD ${health}/100`,
+      intro: venueMessage || 'Bienvenido a tu hogar en Casa del Mirador. Todo listo para descansar o prepararte.',
+      options: [
+        { label: 'Dormir y descansar (+6 h)', detail: 'Salud al 100%, avanza el día 6 horas y calma búsqueda menor', badge: '+6H' },
+        { label: 'Cambiar de ropa y reabastecer', detail: 'Baja búsqueda <= 2★ y recarga munición básica a 32', badge: 'PERFIL BAJO' },
+        { label: 'Punto de aparición en casa', detail: homeRespawnEnabled ? 'Activo: reaparecerás en esta villa' : 'Inactivo: reaparecerás en Costa Palmera Centro', badge: homeRespawnEnabled ? 'ACTIVO' : 'INACTIVO' },
+      ],
+      note: 'Propiedad registrada a tu nombre en Isla Fortuna.',
+    };
+  }
+
+  function handleVenueSelect(index: number) {
+    if (!activeVenue) return;
+    const id: VenueId = activeVenue.id;
+
+    if (id === 'prison') {
+      if (inPrison) {
+        if (index === 0) {
+          inPrison = false;
+          onAdvanceHour?.(prisonSentenceHours);
+          police.clearWanted();
+          player.teleport(venueById.prison.releasePoint!, 0);
+          activeVenue = undefined;
+          context('world');
+          tell(`Condena de ${prisonSentenceHours} h cumplida · eres libre frente a la Cárcel de Palma`, true);
+          return;
+        }
+        if (index === 1) {
+          if (economy.money < prisonBail) {
+            venueMessage = `Necesitas $${prisonBail} para pagar la fianza (tienes $${economy.money}).`;
+            tell(venueMessage, true);
+            return;
+          }
+          economy.money -= prisonBail;
+          inPrison = false;
+          police.clearWanted();
+          player.teleport(venueById.prison.releasePoint!, 0);
+          activeVenue = undefined;
+          context('world');
+          audio.play('purchase');
+          tell(`Fianza de $${prisonBail} pagada · libertad inmediata`, true);
+          return;
+        }
+        if (index === 2) {
+          inPrison = false;
+          const yardEscape = { x: -38, y: 0.1, z: -129 };
+          player.teleport(yardEscape, 0);
+          activeVenue = undefined;
+          context('world');
+          police.reportEscalation(player.position, 110, true, 3);
+          journal.publish('report', player.position, now, 'prison', false);
+          tell('¡FUGA DE LA CÁRCEL DE PALMA! Alerta policial ★★★', true);
+          return;
+        }
+        return;
+      }
+      if (index === 0) {
+        venueMessage = `Registro activo: ${police.stars}★ · ${journal.events.length} incidentes en el distrito · fianza base $35/estrella.`;
+        tell('Registro penitenciario consultado');
+      } else {
+        activeVenue = undefined;
+        context('world');
+      }
+      return;
+    }
+
+    if (id === 'police_hq') {
+      if (index === 0) {
+        if (police.stars === 0) {
+          venueMessage = 'Tu expediente está limpio. No tienes estrellas de búsqueda activas.';
+          tell(venueMessage);
+          return;
+        }
+        const fine = Math.max(25, police.stars * 30);
+        if (economy.money < fine) {
+          venueMessage = `La multa oficial es de $${fine} y solo dispones de $${economy.money}.`;
+          tell(venueMessage, true);
+          return;
+        }
+        economy.money -= fine;
+        police.clearWanted();
+        audio.play('purchase');
+        venueMessage = `Multa de $${fine} saldada. Se cancelan todas las órdenes de búsqueda.`;
+        tell('Estrellas limpiadas en Comisaría Central', true);
+      } else if (index === 1) {
+        transferToPrison(Math.max(1, police.stars), true);
+      } else if (index === 2) {
+        venueMessage = `Boletín oficial: ${police.stars}★ (${police.starLabel}) · ${journal.events.length} reportes registrados · ${police.patrolCars.length} patrullas en servicio.`;
+        tell('Boletín policial actualizado');
+      }
+      return;
+    }
+
+    if (id === 'casino') {
+      const bets = [20, 50, 100];
+      const wager = bets[index];
+      if (!wager) return;
+      if (economy.money < wager) {
+        venueMessage = `No tienes suficiente efectivo para apostar $${wager} (saldo: $${economy.money}).`;
+        tell(venueMessage, true);
+        return;
+      }
+      economy.money -= wager;
+      const roll = nextCasinoRandom();
+      if (index === 0) {
+        const won = roll < 0.52;
+        if (won) {
+          economy.money += 40;
+          casinoNet += 20;
+          venueMessage = '¡Rojo ganador! Cobras $40 (+$20 netos).';
+          audio.play('purchase');
+          tell('Casino Royale · ¡Ganaste $40 en la ruleta!');
+        } else {
+          casinoNet -= 20;
+          venueMessage = 'Salió negro · pierdes la apuesta de $20.';
+          audio.play('notice');
+          tell('Casino Royale · Perdiste $20');
+        }
+      } else if (index === 1) {
+        const won = roll < 0.36;
+        if (won) {
+          economy.money += 150;
+          casinoNet += 100;
+          venueMessage = '¡Pleno en la Docena Dorada! Cobras $150 (+$100 netos).';
+          audio.play('purchase');
+          tell('Casino Royale · ¡Gran premio de $150!');
+        } else {
+          casinoNet -= 50;
+          venueMessage = 'La bola cayó fuera de tu docena · pierdes $50.';
+          audio.play('notice');
+          tell('Casino Royale · Perdiste $50');
+        }
+      } else {
+        const playerScore = 14 + Math.floor(roll * 8);
+        const dealerScore = 14 + Math.floor(nextCasinoRandom() * 8);
+        if (playerScore > dealerScore) {
+          economy.money += 200;
+          casinoNet += 100;
+          venueMessage = `Mesa VIP: sacaste ${playerScore} contra ${dealerScore} de la banca. ¡Cobras $200!`;
+          audio.play('purchase');
+          tell('Casino Royale · ¡Ganaste $200 en Dados 21!');
+        } else if (playerScore === dealerScore) {
+          economy.money += 100;
+          venueMessage = `Empate a ${playerScore} · la banca te devuelve los $100.`;
+          audio.play('notice');
+          tell('Casino Royale · Empate, recuperas $100');
+        } else {
+          casinoNet -= 100;
+          venueMessage = `Mesa VIP: ${playerScore} contra ${dealerScore} de la banca · pierdes $100.`;
+          audio.play('notice');
+          tell('Casino Royale · La banca gana ($100)');
+        }
+      }
+      return;
+    }
+
+    if (id === 'restaurant') {
+      const meals = [
+        { name: 'Menú Costero Completo', price: 18, fullHeal: true, heal: 100, armor: 15 },
+        { name: 'Mariscada Especial del Mirador', price: 35, fullHeal: true, heal: 100, armor: 45 },
+        { name: 'Café y Postre Panorámico', price: 10, fullHeal: false, heal: 35, armor: 0 },
+      ];
+      const meal = meals[index];
+      if (!meal) return;
+      if (economy.money < meal.price) {
+        venueMessage = `El plato cuesta $${meal.price} y tienes $${economy.money}.`;
+        tell(venueMessage, true);
+        return;
+      }
+      economy.money -= meal.price;
+      health = meal.fullHeal ? 100 : Math.min(100, health + meal.heal);
+      if (meal.armor > 0) economy.armor = Math.min(100, economy.armor + meal.armor);
+      audio.play('purchase');
+      venueMessage = `Servido: ${meal.name}. Salud ${health}/100 · Protección ${economy.armor}/100.`;
+      tell(`${meal.name} disfrutado en El Mirador · −$${meal.price}`);
+      return;
+    }
+
+    if (id === 'house') {
+      if (!houseOwned) {
+        if (index === 0) {
+          if (economy.money < HOUSE_PRICE) {
+            venueMessage = `Casa del Mirador cuesta $${HOUSE_PRICE}. Te faltan $${HOUSE_PRICE - economy.money} (prueba el Casino o comercios).`;
+            tell(venueMessage, true);
+            return;
+          }
+          economy.money -= HOUSE_PRICE;
+          houseOwned = true;
+          homeRespawnEnabled = true;
+          selection = 0;
+          audio.play('purchase');
+          venueMessage = '¡Escrituras firmadas! Casa del Mirador ahora es tu refugio en Isla Fortuna.';
+          tell('¡Compraste Casa del Mirador por $350!', true);
+        } else {
+          activeVenue = undefined;
+          context('world');
+        }
+        return;
+      }
+      if (index === 0) {
+        health = 100;
+        onAdvanceHour?.(6);
+        if (police.stars > 0 && (police.stars <= 2 || police.evading)) {
+          police.clearWanted();
+        }
+        audio.play('notice');
+        venueMessage = 'Dormiste 6 horas frente al mar. Salud restaurada al 100% y reloj avanzado.';
+        tell('Descansaste 6 horas en Casa del Mirador · salud al 100%', true);
+      } else if (index === 1) {
+        if (police.stars > 0 && police.stars <= 2) police.clearWanted();
+        if (weapon.reserve < 32) weapon.reserve = 32;
+        audio.play('purchase');
+        venueMessage = `Perfil bajo aplicado · munición de reserva lista (${weapon.reserve} cartuchos).`;
+        tell('Cambiaste de ropa y revisaste el equipo en casa');
+      } else if (index === 2) {
+        homeRespawnEnabled = !homeRespawnEnabled;
+        venueMessage = homeRespawnEnabled
+          ? 'Punto de aparición fijado en Casa del Mirador (Isla Fortuna).'
+          : 'Punto de aparición restaurado a Costa Palmera Centro.';
+        tell(venueMessage);
+      }
+    }
+  }
+
   function openReplayWith(clips: WitnessClip[], title: string, resetAfter = false) {
     if (!clips.length) return false;
     replayClips = clips;
@@ -266,11 +670,14 @@ export function createSession(
 
   function toggleVehicle() {
     if (currentVehicle) {
-      const side = navigation.closest({
-        x: currentVehicle.position.x + Math.cos(currentVehicle.heading) * 2.1,
-        y: 0.08,
-        z: currentVehicle.position.z + Math.sin(currentVehicle.heading) * 2.1,
-      }, 3.2) ?? navigation.closest(currentVehicle.position, 4.0) ?? { x: currentVehicle.position.x + 2, y: 0.08, z: currentVehicle.position.z };
+      const candidateX = currentVehicle.position.x + Math.cos(currentVehicle.heading) * 2.1;
+      const candidateZ = currentVehicle.position.z + Math.sin(currentVehicle.heading) * 2.1;
+      const inCore = Math.abs(candidateX) < 62 && Math.abs(candidateZ) < 92 && currentVehicle.position.y < 1.2;
+      const side = inCore
+        ? (navigation.closest({ x: candidateX, y: 0.08, z: candidateZ }, 3.2)
+          ?? navigation.closest(currentVehicle.position, 4.0)
+          ?? probeGroundPoint(candidateX, candidateZ, currentVehicle.position.y))
+        : probeGroundPoint(candidateX, candidateZ, currentVehicle.position.y);
 
       if (currentVehicle.controlledByPlayer) {
         currentVehicle.controlledByPlayer = false;
@@ -332,6 +739,7 @@ export function createSession(
   function select(index: number) {
     selection = index;
     if (overlay === 'shop') buy(index);
+    else if (overlay === 'venue') handleVenueSelect(index);
     else if (overlay === 'talk' && activeTalkNpc) {
       const topic = dialogueTopics[index];
       if (!topic) return;
@@ -379,6 +787,7 @@ export function createSession(
           selection = 0;
         } else {
           activeTalkNpc = undefined;
+          activeVenue = undefined;
           context('world');
         }
       } else if (['up', 'down', 'left', 'right'].includes(command)) {
@@ -392,15 +801,18 @@ export function createSession(
           }
           return;
         }
+        const venueOptionsCount = overlay === 'venue' ? Math.max(1, buildVenuePanel(activeVenue)?.options.length ?? 1) : 1;
         const count = overlay === 'shop'
           ? activeShop.catalog.length
-          : overlay === 'talk'
-            ? dialogueTopics.length
-            : phonePage === 'bag'
-              ? Math.max(1, economy.ownedItems().length)
-              : phonePage === 'home'
-                ? 4
-                : Math.max(1, journal.posts.length);
+          : overlay === 'venue'
+            ? venueOptionsCount
+            : overlay === 'talk'
+              ? dialogueTopics.length
+              : phonePage === 'bag'
+                ? Math.max(1, economy.ownedItems().length)
+                : phonePage === 'home'
+                  ? 4
+                  : Math.max(1, journal.posts.length);
         const delta = command === 'up' || command === 'left' ? -1 : 1;
         selection = (selection + delta + count) % count;
       } else if (command === 'confirm' || command === 'interact') {
@@ -419,6 +831,13 @@ export function createSession(
     } else if (command === 'vehicle') {
       toggleVehicle();
     } else if (command === 'interact') {
+      const venue = !weapon.equipped ? nearestVenue() : undefined;
+      if (venue) {
+        activeVenue = venue;
+        venueMessage = '';
+        context('venue');
+        return;
+      }
       const trade = canTrade();
       if (trade) {
         activeShop = trade.store;
@@ -435,12 +854,15 @@ export function createSession(
         return;
       }
       const nearAnyShop = allShops.find((s) => planarDistance(player.position, s.entrance) < 11);
+      const nearAnyVenue = functionalVenues.find((v) => planarDistance(player.position, v.entrance) < 14);
       tell(
         weapon.equipped
-          ? 'Guarda la pistola con 1 para hablar o comprar'
-          : nearAnyShop
-            ? `Acércate al mostrador de ${nearAnyShop.name}. La entrada está abierta.`
-            : 'Acércate a un vecino para hablar o busca una de las 9 tiendas en el mapa.',
+          ? 'Guarda la pistola con 1 para hablar o interactuar'
+          : nearAnyVenue
+            ? `Entra en ${nearAnyVenue.name} y acércate al punto de atención.`
+            : nearAnyShop
+              ? `Acércate al mostrador de ${nearAnyShop.name}. La entrada está abierta.`
+              : 'Explora tiendas, vecinos o los puntos clave de la ciudad (Casino, Restaurante, Comisaría, Cárcel y Casa).',
       );
     } else if (command === 'equip') {
       if (player.inVehicle) { tell('Sal del vehículo con F para usar el arma'); return; }
@@ -502,6 +924,21 @@ export function createSession(
   let lastPromptZ = Number.NaN;
 
   function doResetWithFee() {
+    if (houseOwned && homeRespawnEnabled && venueById.house.spawnPoint) {
+      if (currentVehicle) {
+        currentVehicle.controlledByPlayer = false;
+        currentVehicle = undefined;
+      }
+      health = 100;
+      detention = false;
+      inPrison = false;
+      police.clearWanted();
+      economy.money = Math.max(0, economy.money - 30);
+      player.teleport(venueById.house.spawnPoint, 0);
+      context('world');
+      tell('Recuperado en Casa del Mirador · $30 de gastos médicos', true);
+      return;
+    }
     reset();
     economy.money = Math.max(0, economy.money - 30);
     tell('Traslado al inicio · nueva escena · $30 de gastos', true);
@@ -517,8 +954,18 @@ export function createSession(
     now = 0;
     currentVehicle = undefined;
     activeTalkNpc = undefined;
+    activeVenue = undefined;
+    venueMessage = '';
     talkReply = '';
     activeShop = allShops[0];
+    inPrison = false;
+    prisonBail = 30;
+    prisonSentenceHours = 2;
+    houseOwned = false;
+    homeRespawnEnabled = false;
+    casinoNet = 0;
+    casinoRngState = 7731;
+    pendingArrestStars = 0;
     cachedPopVersion = -1;
     lastPromptTime = -1;
     journal.reset();
@@ -546,6 +993,15 @@ export function createSession(
 
   function buildPrompt(): string {
     if (currentVehicle) return 'F · Bajar del vehículo';
+    if (inPrison) return 'E · Opciones de celda (Condena / Fianza / Fuga)';
+    const venue = !weapon.equipped ? nearestVenue() : undefined;
+    if (venue) {
+      if (venue.id === 'house') return houseOwned ? 'E · Casa del Mirador (Descansar / Refugio)' : `E · Comprar Casa del Mirador ($${HOUSE_PRICE})`;
+      if (venue.id === 'casino') return 'E · Jugar en Casino Royale Palma';
+      if (venue.id === 'restaurant') return 'E · Pedir menú en El Mirador';
+      if (venue.id === 'police_hq') return 'E · Recepción de Comisaría Central';
+      return `E · ${venue.name}`;
+    }
     const trade = canTrade();
     if (trade) return `E · Hablar con ${trade.merchant.name} / comprar`;
     const veh = traffic.nearestBoardable(player.position, 3.2);
@@ -556,6 +1012,8 @@ export function createSession(
     }
     const npc = !weapon.equipped ? population.nearestTalkable(player.position, 2.6) : undefined;
     if (npc) return `E · Hablar con ${npc.name}`;
+    const nearVenueEntrance = functionalVenues.find((v) => planarDistance(player.position, v.entrance) < 6 && Math.abs(player.position.y - v.entrance.y) < 2.2);
+    if (nearVenueEntrance) return `${nearVenueEntrance.name} · entrada abierta`;
     const nearStore = allShops.find((s) => planarDistance(player.position, s.entrance) < 5);
     if (nearStore) return `${nearStore.name} · entrada abierta`;
     const nearStop = busStops.find((b) => planarDistance(player.position, b.waitPoint) < 3.5);
@@ -609,6 +1067,11 @@ export function createSession(
     get phonePage() { return phonePage; },
     get selection() { return selection; },
     get activeShop() { return activeShop; },
+    get venuePanel() { return buildVenuePanel(activeVenue); },
+    get currentDistrict() { return districtNameAt(player.position.x, player.position.z); },
+    get houseOwned() { return houseOwned; },
+    get inPrison() { return inPrison; },
+    get casinoNet() { return casinoNet; },
     get activeTalkNpc() { return activeTalkNpc; },
     get talkReply() { return talkReply; },
     get currentVehicle() { return currentVehicle; },
@@ -639,7 +1102,7 @@ export function createSession(
     command,
     select,
     openReplayWith,
-    closeOverlay() { context('world'); },
+    closeOverlay() { activeVenue = undefined; context('world'); },
     step(dt: number, controls: MovementInput & { aim: boolean; fire: boolean }, currentHour = 17.25) {
       if (overlay === 'replay') {
         const clip = replayClips[replayAngle];
@@ -786,11 +1249,24 @@ export function createSession(
       recorder.step(dt, now, population.allPeople, player.position, buildReplaySnapshots);
       journal.tickSocial(dt);
 
-      if (detention || health === 0) {
+      if (detention) {
+        const arrestStars = Math.max(1, police.stars);
+        detention = false;
+        if (journal.allClips.length > 0 && typeof document !== 'undefined') {
+          pendingArrestStars = arrestStars;
+          openReplayWith(
+            [...journal.allClips.slice(0, 6)],
+            'Detenido · Cobertura del incidente',
+            false,
+          );
+          return;
+        }
+        transferToPrison(arrestStars);
+      } else if (health === 0) {
         if (journal.allClips.length > 0 && typeof document !== 'undefined') {
           openReplayWith(
             [...journal.allClips.slice(0, 6)],
-            detention ? 'Detenido · Cobertura del incidente' : 'Incapacitado · Cobertura del incidente',
+            'Incapacitado · Cobertura del incidente',
             true,
           );
           return;

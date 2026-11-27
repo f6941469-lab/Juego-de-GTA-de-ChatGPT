@@ -100,5 +100,15 @@ Tipos, `43` pruebas en `10` archivos, `build`, `check:portable` y `check:itch` a
 | `jugar/index.html` | 3.395.179 | `a4ce41f54b52d7e6c7c1505bbc7cba96a4c716d5bb6592ab5bf8dd5533412bdf` |
 | `publicar/viceblock-itch.zip` | 1.218.959 | `32e8742a306cc51491d6ec1e5bbd79bbbe9903e2ff01a2a6d4b7f2541f8336cf` |
 
+## Actualización Expansión del mapa multi-distrito y 5 edificios funcionales · 0.5.0
+
+Tipos, `45` pruebas en `11` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.423.798 | `8d22a32451e036c357ed179aa82ddc14f12bc5f5f959cb285101fa62c1fd13ff` |
+| `publicar/viceblock-itch.zip` | 1.229.267 | `250586bf1343ec1d20a7492a364bb473ccb9158ad6688f590ebd2631d9e8dfd0` |
+
+
 
 

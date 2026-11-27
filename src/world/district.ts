@@ -5,6 +5,15 @@ import type { BuildingSpec } from './generation/buildings';
 import { addCoast } from './generation/coast';
 import { DistrictGeometry } from './generation/geometry';
 import {
+  addWorldExpansion,
+  createExpandedTerrainColliders,
+  expansionBridges,
+  expansionIslands,
+  expansionLandmarks,
+  expansionMountains,
+  expansionRoads,
+} from './generation/expansion';
+import {
   avenues,
   blockSpans,
   crossStreets,
@@ -13,8 +22,9 @@ import {
   makeRandom,
   roadRectangles,
   shoreline,
+  worldBounds,
 } from './generation/layout';
-import type { DistrictMap } from './generation/layout';
+import type { DistrictMap, LandmarkPin } from './generation/layout';
 import { addBench, addLamppost, addStreets } from './generation/streets';
 import { addPalm, addPlanter } from './generation/vegetation';
 import { addShop, addStoreStructure, allShops } from './generation/shop';
@@ -40,27 +50,29 @@ const metroByLot = new Map([
   ['0:1:0', metroStations[1]],
 ]);
 
-const landmarkPins = [
-  { x: -12.15, z: 20.8, name: 'Hotel Miramar' },
-  { x: 15.15, z: 21, name: 'Club Neón' },
-  { x: 15, z: -51.2, name: 'Torre Alba' },
-  { x: 37, z: 23, name: 'Jardín Coral' },
-  { x: 54.5, z: 7, name: 'Paseo del Mar' },
-  ...allShops.map((store) => ({ x: store.centerX, z: store.centerZ, name: store.name })),
-  ...metroStations.map((station) => ({ x: station.center.x, z: station.center.z, name: station.name })),
+const landmarkPins: LandmarkPin[] = [
+  { x: -12.15, z: 20.8, name: 'Hotel Miramar', kind: 'landmark' },
+  { x: 15.15, z: 21, name: 'Club Neón', kind: 'landmark' },
+  { x: 15, z: -51.2, name: 'Torre Alba', kind: 'landmark' },
+  { x: 37, z: 23, name: 'Jardín Coral', kind: 'landmark' },
+  { x: 54.5, z: 7, name: 'Paseo del Mar', kind: 'landmark' },
+  ...allShops.map((store): LandmarkPin => ({ x: store.centerX, z: store.centerZ, name: store.name, kind: 'shop' })),
+  ...metroStations.map((station): LandmarkPin => ({ x: station.center.x, z: station.center.z, name: station.name, kind: 'transit' })),
+  ...expansionLandmarks,
 ];
 
 export function buildDistrict(scene: Scene, seed = 61865): District {
-  const { minX, maxX, minZ, maxZ } = districtBounds;
+  const { minX, minZ, maxZ } = districtBounds;
   const terrainEnd = inlandEdge + 5.5;
   const geometry = new DistrictGeometry();
   geometry.box('pavement', '#8c918c', -89.5, -0.29, 0, 303, 0.463, 530);
   geometry.box('pavement', '#838e84', (terrainEnd + minX) / 2, -0.114, 0, terrainEnd - minX, 0.211, maxZ - minZ);
   addStreets(geometry);
 
-  const colliders = createTerrainColliders();
+  const colliders = createExpandedTerrainColliders();
   makeCityBlocks(geometry, colliders, seed);
   addBusStops(geometry, colliders);
+  addWorldExpansion(geometry, colliders, makeRandom(seed ^ 0x51a94d3));
   addDistantSkyline(geometry, makeRandom(seed ^ 0x43f27ab));
   addBoulevardGreenery(geometry, colliders, makeRandom(seed ^ 0x62cda31));
   const updateWater = addCoast(scene, geometry, seed);
@@ -70,9 +82,17 @@ export function buildDistrict(scene: Scene, seed = 61865): District {
     colliders,
     spawn: { x: 15, y: 0, z: 41.5 },
     map: {
-      bounds: { ...districtBounds },
-      roads: roadRectangles(),
-      water: { x: (shoreline + maxX) / 2, z: 0, width: maxX - shoreline, depth: maxZ - minZ },
+      bounds: { ...worldBounds },
+      roads: [...roadRectangles(), ...expansionRoads],
+      water: {
+        x: (shoreline + worldBounds.maxX) / 2,
+        z: 0,
+        width: worldBounds.maxX - shoreline,
+        depth: worldBounds.maxZ - worldBounds.minZ,
+      },
+      islands: expansionIslands.map((island) => ({ ...island })),
+      bridges: expansionBridges.map((bridge) => ({ ...bridge })),
+      mountains: expansionMountains.map((mountain) => ({ ...mountain })),
       landmarks: landmarkPins.map((landmark) => ({ ...landmark })),
     },
     update(elapsed, hour = 17.25, focus) {
@@ -89,11 +109,11 @@ function addDistantSkyline(geometry: DistrictGeometry, random: () => number): vo
   const colors = ['#8e99a3', '#9db2ba', '#b3aaa9', '#7c8b9d'];
   for (let row = 0; row < 2; row += 1) {
     for (let column = 0; column < 10; column += 1) {
-      const x = -112 + column * 14.8 + random() * 5;
-      const z = -110 - row * 26 - random() * 8;
+      const x = -112 + column * 16.5 + random() * 5;
+      const z = -194 - row * 26 - random() * 8;
       const width = 6.9 + random() * 6.3;
       const depth = 6.8 + random() * 5.3;
-      const height = 13 + random() * 30 + row * 7;
+      const height = 16 + random() * 32 + row * 8;
       const color = colors[(row + column) % colors.length];
       geometry.box('wall', color, x, height / 2 - 0.08, z, width, height, depth);
       geometry.box('trim', '#a8afaf', x, height + 0.5, z, width * 0.76, 1.15, depth * 0.73);
@@ -103,22 +123,6 @@ function addDistantSkyline(geometry: DistrictGeometry, random: () => number): vo
       }
     }
   }
-}
-
-function createTerrainColliders(): StaticBox[] {
-  const { minX, minZ, maxZ } = districtBounds;
-  const groundWidth = shoreline + 1.12 - minX;
-  const groundDepth = maxZ - minZ;
-  const centerX = minX + groundWidth / 2;
-  const wallHeight = 7;
-  const wallWidth = 0.6;
-  return [
-    { x: centerX, y: -0.5, z: 0, halfX: groundWidth / 2, halfY: 0.5, halfZ: groundDepth / 2 },
-    { x: minX, y: wallHeight, z: 0, halfX: wallWidth, halfY: wallHeight, halfZ: groundDepth / 2 },
-    { x: shoreline + 0.7, y: wallHeight, z: 0, halfX: wallWidth, halfY: wallHeight, halfZ: groundDepth / 2 },
-    { x: centerX, y: wallHeight, z: minZ, halfX: groundWidth / 2, halfY: wallHeight, halfZ: wallWidth },
-    { x: centerX, y: wallHeight, z: maxZ, halfX: groundWidth / 2, halfY: wallHeight, halfZ: wallWidth },
-  ];
 }
 
 function makeCityBlocks(geometry: DistrictGeometry, colliders: StaticBox[], seed: number): void {

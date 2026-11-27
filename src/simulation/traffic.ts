@@ -407,9 +407,22 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
           const stepDist = car.speed * dt;
           const dx = Math.sin(car.heading) * stepDist;
           const dz = -Math.cos(car.heading) * stepDist;
-          const origin = { x: car.position.x, y: car.position.y + COLLIDER_OFFSET_Y, z: car.position.z };
+          const probeX = car.position.x + dx;
+          const probeZ = car.position.z + dz;
+          const groundHit = physics.raycast(
+            { x: probeX, y: car.position.y + 1.65, z: probeZ },
+            { x: 0, y: -1, z: 0 },
+            3.8,
+            [car.collider.handle],
+          );
+          const groundY = groundHit && groundHit.normal.y > 0.72
+            ? (car.position.y + 1.65) - groundHit.timeOfImpact
+            : Math.max(0, car.position.y - 0.47);
+          const targetY = Math.max(0.47, groundY + 0.47);
+          const dy = MathUtils.clamp(targetY - car.position.y, -0.35, 0.35);
+          const origin = { x: car.position.x, y: car.position.y + COLLIDER_OFFSET_Y + 0.14, z: car.position.z };
           const hit = Math.abs(stepDist) > 0.0005
-            ? physics.world.castShape(origin, car.body.rotation(), { x: dx, y: 0, z: dz }, shape, 0.02, 1, true, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, car.collider)
+            ? physics.world.castShape(origin, car.body.rotation(), { x: dx, y: dy, z: dz }, shape, 0.02, 1, true, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, car.collider)
             : null;
           const frac = hit ? Math.max(0, hit.time_of_impact - 0.02) : 1;
           if (frac < 0.9 && Math.abs(car.speed) > 3.5 && car.cooldown === 0) {
@@ -417,7 +430,11 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
             car.cooldown = 2.5;
             car.speed *= 0.2;
           }
-          const nextPos = { x: car.position.x + dx * frac, y: 0.47, z: car.position.z + dz * frac };
+          const nextPos = {
+            x: car.position.x + dx * frac,
+            y: car.position.y + dy * frac,
+            z: car.position.z + dz * frac,
+          };
           car.body.setNextKinematicTranslation(nextPos);
           car.body.setNextKinematicRotation(tempQuat.setFromAxisAngle(upAxis, -car.heading));
           continue;

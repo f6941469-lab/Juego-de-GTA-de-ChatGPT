@@ -7,12 +7,39 @@ export interface StaticBox {
   halfX: number;
   halfY: number;
   halfZ: number;
+  rotX?: number;
+  rotY?: number;
+  rotZ?: number;
 }
 
 export interface Point3 {
   x: number;
   y: number;
   z: number;
+}
+
+function eulerXYZToQuat(rx = 0, ry = 0, rz = 0) {
+  const c1 = Math.cos(rx / 2);
+  const c2 = Math.cos(ry / 2);
+  const c3 = Math.cos(rz / 2);
+  const s1 = Math.sin(rx / 2);
+  const s2 = Math.sin(ry / 2);
+  const s3 = Math.sin(rz / 2);
+  return {
+    x: s1 * c2 * c3 + c1 * s2 * s3,
+    y: c1 * s2 * c3 - s1 * c2 * s3,
+    z: c1 * c2 * s3 + s1 * s2 * c3,
+    w: c1 * c2 * c3 - s1 * s2 * s3,
+  };
+}
+
+function buildBoxDesc(box: StaticBox) {
+  const desc = RAPIER.ColliderDesc.cuboid(box.halfX, box.halfY, box.halfZ)
+    .setTranslation(box.x, box.y, box.z);
+  if (box.rotX || box.rotY || box.rotZ) {
+    desc.setRotation(eulerXYZToQuat(box.rotX, box.rotY, box.rotZ));
+  }
+  return desc;
 }
 
 let rapierReady: Promise<void> | undefined;
@@ -22,10 +49,8 @@ export async function createPhysics(boxes: readonly StaticBox[]) {
   await rapierReady;
 
   const world = new RAPIER.World({ x: 0, y: -19.5, z: 0 });
-  for (const { x, y, z, halfX, halfY, halfZ } of boxes) {
-    world.createCollider(
-      RAPIER.ColliderDesc.cuboid(halfX, halfY, halfZ).setTranslation(x, y, z),
-    );
+  for (const box of boxes) {
+    world.createCollider(buildBoxDesc(box));
   }
   // Populate the broad phase so character and camera queries work on the first frame.
   world.step();
@@ -37,8 +62,7 @@ export async function createPhysics(boxes: readonly StaticBox[]) {
       world.step();
     },
     addBox(box: StaticBox) {
-      return world.createCollider(RAPIER.ColliderDesc.cuboid(box.halfX, box.halfY, box.halfZ)
-        .setTranslation(box.x, box.y, box.z));
+      return world.createCollider(buildBoxDesc(box));
     },
     raycast(origin: Point3, direction: Point3, distance: number, ignored: readonly number[] = []) {
       return world.castRayAndGetNormal(new RAPIER.Ray(origin, direction), distance, true,
@@ -76,8 +100,9 @@ export function createCharacterCollider({ world }: Physics, spawn: Point3) {
     body,
   );
   const controller = world.createCharacterController(CHARACTER_SKIN);
-  controller.enableAutostep(0.23, 0.24, false);
-  controller.enableSnapToGround(0.19);
+  controller.enableAutostep(0.28, 0.24, false);
+  controller.enableSnapToGround(0.32);
+  controller.setMaxSlopeClimbAngle(Math.PI / 4);
   const cameraProbe = new RAPIER.Ball(0.23);
 
   return {

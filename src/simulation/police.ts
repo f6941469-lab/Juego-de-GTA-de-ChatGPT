@@ -519,6 +519,27 @@ export function createPolice(
     get helicopterPosition(): Point3 | undefined {
       return heliGroup.visible ? { x: heliPos.x, y: heliPos.y, z: heliPos.z } : undefined;
     },
+    clearWanted() {
+      state = 'patrol';
+      heat = 0;
+      setStars(0);
+      identified = false;
+      suspectHostile = false;
+      suspectVehicleId = undefined;
+      lastKnown = undefined;
+      searchTime = lostTime = 0;
+      clearBarricades();
+      heliGroup.visible = false;
+      searchPool.visible = false;
+      searchlight.intensity = 0;
+      for (const unit of units) {
+        unit.arrestTime = 0;
+        if (unit.role === 'swat') {
+          unit.inCar = true;
+          unit.actor.setSuspended(true);
+        }
+      }
+    },
     get lastKnown() { return lastKnown; },
     get identified() { return identified; },
     setOnStarsChanged(handler: (stars: WantedStars, label: string) => void) {

@@ -50,6 +50,7 @@ export class Navigation {
       this.blocked.fill(0, z * this.width + region.left, z * this.width + region.right + 1);
     }
     for (const box of boxes) {
+      if (box.rotX || box.rotZ) continue;
       if (box.y + box.halfY < 0.15 || box.y - box.halfY > 1.75) continue;
       const range = this.range(box);
       const left = Math.max(region.left, range.left), right = Math.min(region.right, range.right);

@@ -1,14 +1,26 @@
 ---
 document_id: CORE-CHANGELOG
 status: active
-last_updated: 2026-11-23
-verified_against: "Mercado Palma 0.5.0 (Mente procedural NPC, Gráficos PBR, Policía 5★ y Prólogo)"
-verification_scope: "typecheck + 43 pruebas + build + check:portable + check:itch"
+last_updated: 2026-11-27
+verified_against: "Mercado Palma 0.5.0 (Mapa multi-distrito, Puentes, Montañas y 5 edificios funcionales)"
+verification_scope: "typecheck + 45 pruebas + build + check:portable + check:itch"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
+
+## 2026-11-27 · Expansión multi-distrito del mapa, puentes, subidas/bajadas, montañas y 5 edificios funcionales (`expansion.ts`, `physics.ts`, `traffic.ts`, `session.ts`, `gameplay.ts`, `minimap.ts`)
+
+- **Mundo ampliado (`worldBounds: 332×352 m`, `src/world/generation/expansion.ts`, `district.ts`, `layout.ts`, `coast.ts`):** Mantiene intacto **Costa Palmera Centro** y expande alrededor con **Isla Fortuna** (este tras Bahía Palmera), **Distrito Cívico y Penal** (norte), **Sierra Palmera** (oeste con cordillera prismática escalonada hasta `44 m`) y **Colinas del Sur** (sur con `Mirador del Sur`), respetando lotes globales `InstancedMesh` y culling por sectores de `64 m`.
+- **Puentes y carreteras con subidas y bajadas físicas (`physics.ts`, `geometry.ts`, `traffic.ts`):** Soporte de colisionadores rotados (`rotX`/`rotY`/`rotZ`) en Rapier y `rotatedBox` en `DistrictGeometry` para **Puente Fortuna** (`z=7`) y **Puente Mirador** (`z=-63`) a `3,8 m`, más carretera de montaña con pendientes suaves hacia **Mirador Sierra** (`4,2 m`) y **Alto Mirador** (`7,8 m`). Los coches conducidos por el jugador siguen la elevación del terreno mediante raycast vertical.
+- **Cinco edificios funcionales (`session.ts`, `input.ts`, `gameplay.ts`, `minimap.ts`, `main.ts`):**
+  - **Cárcel de Palma:** Arresto real con traslado a celda, opciones de *Cumplir condena*, *Pagar fianza* o *Intentar fuga* (`3★` inmediatas).
+  - **Comisaría Central:** *Pagar multa y limpiar estrellas*, *Entregarse voluntariamente* o *Consultar boletín policial*.
+  - **Casino Royale Palma:** Apuestas con premios/pérdidas reales en *Ruleta Rojo/Negro* (`$20`), *Docena Dorada* (`$50`) y *Dados 21* (`$100`).
+  - **Restaurante El Mirador:** Menús completos con vista panorámica (`$10–$35`) que restauran salud al `100%` y añaden protección.
+  - **Casa del Mirador:** Villa comprable por `$350` en Isla Fortuna con descanso (`+6 h` de reloj y salud al `100%`), cambio de ropa/perfil bajo, recarga de munición y punto de aparición.
+- **Verificación:** `npm run typecheck` (`0` errores), `npm test` (`11` archivos, `45/45` verdes), `npm run build`, `npm run check:portable`, `npm run check:itch`.
 
 ## 2026-11-27 · Refactorización procedural de NPCs con memoria episódica y rumores (`npc-mind.ts`, `population.ts`, `dialogue.ts`, `session.ts`)
 

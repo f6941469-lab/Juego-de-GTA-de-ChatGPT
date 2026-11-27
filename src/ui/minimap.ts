@@ -52,16 +52,43 @@ export function createMinimap(canvas: HTMLCanvasElement) {
     backdrop.beginPath();
     backdrop.rect(inset, inset, width - inset * 2, height - inset * 2);
     backdrop.clip();
-    backdrop.fillStyle = "#303039";
+    backdrop.fillStyle = "#30333c";
     backdrop.fillRect(inset, inset, width - inset * 2, height - inset * 2);
-    if (map.water) drawRectangle(map.water, "#285365");
-    for (const road of map.roads) drawRectangle(road, "#666778");
+    if (map.mountains) {
+      for (const mountain of map.mountains) drawRectangle(mountain, "#464b46");
+    }
+    if (map.water) drawRectangle(map.water, "#224e62");
+    if (map.islands) {
+      for (const island of map.islands) drawRectangle(island, "#40454a");
+    }
+    for (const road of map.roads) drawRectangle(road, "#6a6e7f");
+    if (map.bridges) {
+      for (const bridge of map.bridges) drawRectangle(bridge, "#b8a784");
+    }
+
+    const landmarkColor: Record<string, string> = {
+      casino: "#ffcf76",
+      police_hq: "#4da3ff",
+      prison: "#f08a4b",
+      house: "#56e39f",
+      restaurant: "#ff7d6b",
+      transit: "#59d2c4",
+      shop: "#c6b78e",
+      landmark: "#b5b0a2",
+    };
 
     for (const landmark of map.landmarks) {
       const x = projectX(landmark.x);
       const z = projectZ(landmark.z);
-      backdrop.fillStyle = "#c6b78e";
-      backdrop.fillRect(x - 3, z - 3, 6, 6);
+      const isKeyVenue = landmark.kind && ['casino', 'police_hq', 'prison', 'house', 'restaurant'].includes(landmark.kind);
+      const size = isKeyVenue ? 7 : 5;
+      backdrop.fillStyle = landmarkColor[landmark.kind ?? 'landmark'] ?? "#c6b78e";
+      backdrop.fillRect(x - size / 2, z - size / 2, size, size);
+      if (isKeyVenue) {
+        backdrop.strokeStyle = "#10141c";
+        backdrop.lineWidth = 1.2;
+        backdrop.strokeRect(x - size / 2, z - size / 2, size, size);
+      }
     }
     backdrop.restore();
     ctx.drawImage(background, 0, 0);

@@ -60,6 +60,8 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
       police.evading,
       police.evading ? Math.floor(cooldownPct / 5) : 0,
       session.currentVehicle?.id ?? '',
+      session.currentDistrict,
+      session.inPrison,
     ].join('|');
     if (key !== statusKey) {
       statusKey = key;
@@ -68,15 +70,17 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
         .map((n) => `<span class="wanted-star${n <= police.stars ? ' active' : ''}" aria-hidden="true">★</span>`)
         .join('');
       const wantedMode = police.stars === 0 ? 'calm' : police.evading ? 'evade' : 'pursue';
-      const statusText = police.stars === 0
-        ? 'BARRIO TRANQUILO'
-        : police.evading
-          ? `${police.starLabel} · EVADIENDO`
-          : `${police.starLabel} · PERSECUCIÓN`;
+      const statusText = session.inPrison
+        ? 'DETENIDO · CÁRCEL DE PALMA'
+        : police.stars === 0
+          ? session.currentDistrict.toUpperCase()
+          : police.evading
+            ? `${police.starLabel} · EVADIENDO`
+            : `${police.starLabel} · PERSECUCIÓN`;
       const evadeBar = police.evading
         ? `<div class="wanted-evade-bar"><div style="width:${cooldownPct}%"></div></div>`
         : '';
-      status.innerHTML = `<div class="wallet">$${economy.money}<span>Salud ${session.health}${armorText}</span></div><div class="weapon-state">${vehLabel}</div><div class="wanted-stars" data-mode="${wantedMode}" aria-label="Nivel de búsqueda ${police.stars} de 5 estrellas">${starsMarkup}</div><div class="police-state" data-alert="${police.stars > 0}">${statusText}</div>${evadeBar}`;
+      status.innerHTML = `<div class="wallet">$${economy.money}<span>Salud ${session.health}${armorText}</span></div><div class="weapon-state">${vehLabel}</div><div class="wanted-stars" data-mode="${wantedMode}" aria-label="Nivel de búsqueda ${police.stars} de 5 estrellas">${starsMarkup}</div><div class="police-state" data-alert="${police.stars > 0 || session.inPrison}">${escape(statusText)}</div>${evadeBar}`;
     }
 
     prompt.textContent = session.overlay === 'world' ? session.prompt : '';
@@ -94,11 +98,13 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
     const activeStore = session.activeShop;
     const storeLedger = economy.store(activeStore.id);
     const replay = session.replayState;
+    const venuePanel = session.venuePanel;
     const nextKey = [
       session.overlay,
       session.phonePage,
       session.selection,
       activeStore.id,
+      venuePanel ? `${venuePanel.venue.id}:${venuePanel.subtitle}:${venuePanel.intro}:${venuePanel.options.map((o) => `${o.label}:${o.badge ?? ''}`).join(',')}` : '',
       session.activeTalkNpc?.id ?? '',
       session.talkReply,
       replay.angle,
@@ -107,6 +113,10 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
       replay.clips.length,
       economy.money,
       economy.armor,
+      session.health,
+      session.houseOwned,
+      session.inPrison,
+      session.casinoNet,
       JSON.stringify(economy.inventory),
       JSON.stringify(storeLedger?.stock ?? {}),
       journalKey(session),
@@ -115,7 +125,7 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
     ].join('|');
     if (nextKey === panelKey) return;
     panelKey = nextKey;
-    overlay.className = `interaction-panel ${session.overlay}`;
+    overlay.className = `interaction-panel ${session.overlay === 'venue' ? 'shop' : session.overlay}`;
 
     if (session.overlay === 'shop') {
       title.textContent = activeStore.name;
@@ -123,6 +133,11 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
       footer.textContent = '↑ ↓ Elegir · Enter Comprar · Esc Salir';
       const stockMap = storeLedger?.stock ?? {};
       body.innerHTML = `<p class="panel-intro">${escape(activeStore.tagline)}</p><div class="product-list">${activeStore.catalog.map((product, index) => `<button class="product ${session.selection === index ? 'selected' : ''}" data-select="${index}"><span><strong>${escape(product.name)}</strong><small>${escape(product.detail)}</small><small>${stockMap[product.id] ?? 0} disponibles · Tienes ${economy.inventory[product.id] ?? 0}</small></span><b>$${product.price}</b></button>`).join('')}</div><p class="panel-note">Tus compras van a la mochila del teléfono.</p>`;
+    } else if (session.overlay === 'venue' && venuePanel) {
+      title.textContent = venuePanel.venue.name;
+      subtitle.textContent = venuePanel.subtitle;
+      footer.textContent = '↑ ↓ Elegir · Enter Confirmar · Esc Salir';
+      body.innerHTML = `<p class="panel-intro">${escape(venuePanel.intro)}</p><div class="product-list">${venuePanel.options.map((option, index) => `<button class="product ${session.selection === index ? 'selected' : ''}" data-select="${index}"><span><strong>${escape(option.label)}</strong><small>${escape(option.detail)}</small></span>${option.badge ? `<b>${escape(option.badge)}</b>` : ''}</button>`).join('')}</div><p class="panel-note">${escape(venuePanel.note)}</p>`;
     } else if (session.overlay === 'talk' && session.activeTalkNpc) {
       const npc = session.activeTalkNpc;
       title.textContent = npc.name;
@@ -144,10 +159,10 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
       const time = `${Math.floor(hour).toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
       const titles = { home: 'palma', feed: 'Palma Social', bag: 'Tu mochila', help: 'Guía del barrio' };
       title.textContent = titles[session.phonePage];
-      subtitle.textContent = `${time} · COSTA PALMERA`;
+      subtitle.textContent = `${time} · ${session.currentDistrict.toUpperCase()}`;
       footer.textContent = 'Flechas Navegar · Enter Elegir · Esc Volver';
       if (session.phonePage === 'home') {
-        body.innerHTML = `<p class="phone-greeting">El barrio, en tu bolsillo.</p><div class="app-grid">${[['◈', 'Palma Social', `${session.journal.posts.length} publicaciones`], ['▣', 'Mochila', 'Productos y munición'], ['↗', 'Guía', 'Encuentra tu ritmo'], [session.muted ? '♪̸' : '♪', 'Sonido', session.muted ? 'Desactivado' : 'Activado']].map(([icon, name, text], index) => `<button data-select="${index}" class="phone-app ${index === session.selection ? 'selected' : ''}"><span>${icon}</span><strong>${name}</strong><small>${text}</small></button>`).join('')}</div><div class="phone-balance"><small>EFECTIVO DISPONIBLE</small><b>$${economy.money}</b></div>`;
+        body.innerHTML = `<p class="phone-greeting">El barrio, en tu bolsillo.</p><div class="app-grid">${[['◈', 'Palma Social', `${session.journal.posts.length} publicaciones`], ['▣', 'Mochila', 'Productos y munición'], ['↗', 'Guía', 'Distritos y lugares'], [session.muted ? '♪̸' : '♪', 'Sonido', session.muted ? 'Desactivado' : 'Activado']].map(([icon, name, text], index) => `<button data-select="${index}" class="phone-app ${index === session.selection ? 'selected' : ''}"><span>${icon}</span><strong>${name}</strong><small>${text}</small></button>`).join('')}</div><div class="phone-balance"><small>EFECTIVO DISPONIBLE</small><b>$${economy.money}</b></div>`;
       } else if (session.phonePage === 'feed') {
         body.innerHTML = session.journal.posts.length
           ? session.journal.posts.map((post, index) => {
@@ -163,7 +178,7 @@ export function createGameplayUI(command: (command: Command) => void, select: (i
         const owned = economy.ownedItems();
         body.innerHTML = `<p class="panel-intro">Selecciona un producto para utilizarlo.</p>${owned.map(({ item, count }, index) => `<button data-select="${index}" class="product ${session.selection === index ? 'selected' : ''}"><span><strong>${escape(item.name)}</strong><small>${escape(item.detail)}</small></span><b>×${count}</b></button>`).join('')}<p class="panel-note">Salud ${session.health}/100 · Protección ${session.armor}/100 · Reserva ${weapon.reserve} cartuchos</p>`;
       } else {
-        body.innerHTML = '<div class="phone-guide"><h3>Ciudad viva y 9 tiendas</h3><p>Explora 9 comercios reales, 4 paradas de autobús y 2 estaciones de metro. Pulsa E para comprar o conversar con los vecinos; si los sigues mucho rato lo notarán.</p><h3>Controles a mano</h3><p>WASD: caminar o conducir · Mayús: correr · Espacio: saltar o frenar · F: subir, bajar o robar vehículo.</p><p>1: pistola · Clic derecho/izquierdo: apuntar y disparar · R: recargar.</p><p>↑ abre Palma Social (con clips multi-ángulo si hubo testigos grabando). Esc vuelve o pausa.</p></div>';
+        body.innerHTML = '<div class="phone-guide"><h3>Distritos de Costa Palmera</h3><p>Cruza Puente Fortuna o Puente Mirador hacia <b>Isla Fortuna</b> (Casino Royale Palma y Casa del Mirador comprable por $350). Al norte está el <b>Distrito Cívico y Penal</b> (Comisaría Central y Cárcel de Palma) y al oeste <b>Sierra Palmera</b> con carreteras en subida hacia el Restaurante El Mirador y Alto Mirador.</p><h3>Controles a mano</h3><p>WASD: caminar o conducir · Mayús: correr · Espacio: saltar o frenar · F: subir, bajar o robar vehículo · E: interactuar.</p><p>1: pistola · Clic derecho/izquierdo: apuntar y disparar · R: recargar · ↑: Palma Social.</p></div>';
       }
     }
     body.querySelector('.selected')?.scrollIntoView({ block: 'nearest' });

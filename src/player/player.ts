@@ -196,6 +196,17 @@ export function createPlayer(scene: THREE.Scene, camera: THREE.PerspectiveCamera
       position.set(point.x, point.y, point.z);
       heading = yaw;
     },
+    teleport(point: Point3, yaw?: number) {
+      inVehicle = false;
+      character.collider.setEnabled(true);
+      horizontalVelocity.set(0, 0);
+      verticalSpeed = 0;
+      character.warp(point);
+      position.set(point.x, point.y, point.z);
+      previousPosition.copy(position);
+      if (yaw !== undefined) heading = previousHeading = yaw;
+      follow.reset(position);
+    },
     kick() { recoil = 0.13; },
     look: follow.look,
     render,

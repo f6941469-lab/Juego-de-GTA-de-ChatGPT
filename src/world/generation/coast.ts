@@ -19,6 +19,7 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
     geometry.box('paint', '#b39e82', sandStart - 1.6, 0.081, z, 2.93, 0.004, 0.025);
   }
   for (let z = districtBounds.minZ + 4; z < districtBounds.maxZ - 2; z += 8.4) {
+    if (Math.abs(z - 7) < 7.8 || Math.abs(z + 63) < 7.8) continue;
     addPalm(geometry, 56.6 + random() * 1.27, z + random() * 1.7, random, 0.84);
     if (Math.round(z / 8.4) % 2 === 0) {
       addBench(geometry, 53.18, z + 2.7);

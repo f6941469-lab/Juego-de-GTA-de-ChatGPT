@@ -5,11 +5,23 @@ export interface MapRectangle {
   depth: number;
 }
 
+export type LandmarkKind = 'landmark' | 'shop' | 'transit' | 'prison' | 'police_hq' | 'casino' | 'restaurant' | 'house';
+
+export interface LandmarkPin {
+  x: number;
+  z: number;
+  name: string;
+  kind?: LandmarkKind;
+}
+
 export interface DistrictMap {
   bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   roads: MapRectangle[];
   water: MapRectangle;
-  landmarks: { x: number; z: number; name: string }[];
+  islands?: MapRectangle[];
+  bridges?: MapRectangle[];
+  mountains?: MapRectangle[];
+  landmarks: LandmarkPin[];
 }
 
 export interface Street {
@@ -18,6 +30,7 @@ export interface Street {
 }
 
 export const districtBounds = { minX: -68, maxX: 68, minZ: -94, maxZ: 94 };
+export const worldBounds = { minX: -156, maxX: 176, minZ: -176, maxZ: 176 };
 export const shoreline = 62;
 export const inlandEdge = 47;
 

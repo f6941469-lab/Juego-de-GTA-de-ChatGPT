@@ -80,6 +80,21 @@ export class DistrictGeometry {
     this.add(this.boxGeometry, finish, castsShadow, { x, y, z, width, height, depth, color });
   }
 
+  rotatedBox(
+    finish: Finish,
+    color: ColorRepresentation,
+    x: number,
+    y: number,
+    z: number,
+    width: number,
+    height: number,
+    depth: number,
+    rotation: Euler,
+    castsShadow = false,
+  ): void {
+    this.add(this.boxGeometry, finish, castsShadow, { x, y, z, width, height, depth, color, rotation });
+  }
+
   add(
     geometry: BufferGeometry,
     finish: Finish,
@@ -87,7 +102,7 @@ export class DistrictGeometry {
     placement: Placement,
   ): void {
     const maxDim = Math.max(placement.width, placement.height, placement.depth);
-    const isSkyline = placement.z < -95 || placement.x < -70;
+    const isSkyline = placement.z < -176;
     const isDetail = !isSkyline && (
       finish === 'foliage'
       || (finish !== 'asphalt' && finish !== 'pavement' && finish !== 'wall' && maxDim < 1.45)
