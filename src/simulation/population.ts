@@ -2,6 +2,12 @@ import type { Scene } from 'three';
 import type { CarryItem } from '../characters/avatar';
 import type { Physics, Point3 } from '../physics/physics';
 import { makeRandom } from '../world/generation/layout';
+import {
+  npcResidentialHomes,
+  npcSocialHubs,
+  npcWorkplaces,
+  type WorldLocation,
+} from '../world/generation/expansion';
 import { allShops, shop } from '../world/generation/shop';
 import { busStops, metroStations } from '../world/generation/transit';
 import { createActor, type Actor } from './actor';
@@ -61,6 +67,10 @@ export interface Civilian {
   cursor: number;
   memory?: { event: WorldEvent; identified: boolean };
   mind: NpcMind;
+  homeLocation: WorldLocation;
+  workLocation: WorldLocation;
+  socialHub: WorldLocation;
+  districtResident: boolean;
   fearUntil: number;
   budget: number;
   stalkScore: number;
@@ -100,11 +110,18 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     shopId: undefined as string | undefined,
   }));
 
+  let civIndex = 0;
   const makeCiv = (spec: {
     id: string; name: string; spawn: Point3; role: 'cashier' | 'customer' | 'walker';
     job: NpcJob; shopId?: string; color: number; personality: 'flee' | 'call' | 'record';
     carryItem: CarryItem; route: Point3[]; heading?: number;
+    homeLocation?: WorldLocation; workLocation?: WorldLocation; socialHub?: WorldLocation;
+    districtResident?: boolean;
   }): Civilian => {
+    const idx = civIndex++;
+    const homeLocation = spec.homeLocation ?? npcResidentialHomes[idx % npcResidentialHomes.length];
+    const workLocation = spec.workLocation ?? npcWorkplaces[idx % npcWorkplaces.length];
+    const socialHub = spec.socialHub ?? npcSocialHubs[idx % npcSocialHubs.length];
     const actor = createActor(scene, physics, navigation, spec.spawn, spec.color, spec.heading ?? (spec.role === 'cashier' ? Math.PI : 0));
     actor.carry(spec.carryItem);
     return {
@@ -126,6 +143,10 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       cycleCount: 0,
       cursor: 0,
       mind: createNpcMind(spec.id, spec.personality),
+      homeLocation,
+      workLocation,
+      socialHub,
+      districtResident: spec.districtResident ?? false,
       fearUntil: 0,
       route: [...spec.route],
       initialRoute: [...spec.route],
@@ -137,7 +158,11 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       chatCooldown: 0,
       lastSpeech: '',
       lastSpeechUntil: 0,
-      activityLabel: spec.role === 'cashier' ? 'atendiendo el mostrador' : 'recorriendo Costa Palmera',
+      activityLabel: spec.role === 'cashier'
+        ? 'atendiendo el mostrador'
+        : spec.districtResident
+          ? `viviendo en ${homeLocation.district}`
+          : 'recorriendo Costa Palmera',
     };
   };
 
@@ -205,8 +230,88 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     }),
   ];
 
+  // 12 outer-district residents living in distant homes, commuting to work & gathering at social hubs
+  const outerDistrictResidents: Civilian[] = [
+    // Isla Fortuna (Casino, Resort, Plaza Oasis & coastal villas)
+    makeCiv({
+      id: 'person:fortuna:camila', name: 'Camila', color: 0xd86b82, role: 'walker', job: 'oficinista', personality: 'record', carryItem: 'phone',
+      spawn: { x: 294, y: 0.08, z: 68 }, districtResident: true,
+      homeLocation: npcResidentialHomes[5], workLocation: npcWorkplaces[0], socialHub: npcSocialHubs[0],
+      route: [npcWorkplaces[0].point, npcSocialHubs[0].point, npcResidentialHomes[5].point],
+    }),
+    makeCiv({
+      id: 'person:fortuna:rodrigo', name: 'Rodrigo', color: 0x4f8ca8, role: 'walker', job: 'tecnico', personality: 'call', carryItem: 'briefcase',
+      spawn: { x: 306, y: 0.08, z: -18 }, districtResident: true,
+      homeLocation: npcResidentialHomes[6], workLocation: npcWorkplaces[3], socialHub: npcSocialHubs[0],
+      route: [npcSocialHubs[0].point, npcWorkplaces[3].point, npcResidentialHomes[6].point],
+    }),
+    makeCiv({
+      id: 'person:fortuna:sofia', name: 'Sofía', color: 0xe2a85e, role: 'walker', job: 'vecino', personality: 'flee', carryItem: 'coffee',
+      spawn: { x: 374, y: 0.08, z: -48 }, districtResident: true,
+      homeLocation: npcResidentialHomes[7], workLocation: npcWorkplaces[0], socialHub: npcSocialHubs[0],
+      route: [npcResidentialHomes[7].point, npcSocialHubs[0].point, npcWorkplaces[0].point],
+    }),
+    makeCiv({
+      id: 'person:fortuna:andres', name: 'Andrés', color: 0x6f9e73, role: 'walker', job: 'turista', personality: 'record', carryItem: 'bag',
+      spawn: { x: 292, y: 0.08, z: 78 }, districtResident: true,
+      homeLocation: npcResidentialHomes[8], workLocation: npcWorkplaces[3], socialHub: npcSocialHubs[0],
+      route: [npcWorkplaces[0].point, npcResidentialHomes[8].point, npcSocialHubs[0].point],
+    }),
+    // Barrio del Sol & Distrito Cívico Norte (Comisaría Central & residential villas)
+    makeCiv({
+      id: 'person:sol:elena', name: 'Elena', color: 0x7b6ba8, role: 'walker', job: 'oficinista', personality: 'call', carryItem: 'briefcase',
+      spawn: { x: 64, y: 0.08, z: -192 }, districtResident: true,
+      homeLocation: npcResidentialHomes[0], workLocation: npcWorkplaces[1], socialHub: npcSocialHubs[1],
+      route: [npcWorkplaces[1].point, npcSocialHubs[1].point, npcResidentialHomes[0].point],
+    }),
+    makeCiv({
+      id: 'person:sol:braulio', name: 'Braulio', color: 0x5c8596, role: 'walker', job: 'tecnico', personality: 'call', carryItem: 'coffee',
+      spawn: { x: -18, y: 0.08, z: -260 }, districtResident: true,
+      homeLocation: npcResidentialHomes[1], workLocation: npcWorkplaces[1], socialHub: npcSocialHubs[1],
+      route: [npcResidentialHomes[1].point, npcSocialHubs[1].point, npcWorkplaces[1].point],
+    }),
+    makeCiv({
+      id: 'person:sol:isabel', name: 'Isabel', color: 0xc97b5d, role: 'walker', job: 'vecino', personality: 'flee', carryItem: 'bag',
+      spawn: { x: 28, y: 0.08, z: -260 }, districtResident: true,
+      homeLocation: npcResidentialHomes[2], workLocation: npcWorkplaces[1], socialHub: npcSocialHubs[1],
+      route: [npcResidentialHomes[2].point, npcSocialHubs[1].point, npcResidentialHomes[3].point],
+    }),
+    makeCiv({
+      id: 'person:sol:raul', name: 'Raúl', color: 0x8a9c5a, role: 'walker', job: 'repartidor', personality: 'record', carryItem: 'phone',
+      spawn: { x: -4, y: 0.08, z: -185 }, districtResident: true,
+      homeLocation: npcResidentialHomes[3], workLocation: npcWorkplaces[1], socialHub: npcSocialHubs[1],
+      route: [npcSocialHubs[1].point, npcResidentialHomes[3].point, npcResidentialHomes[4].point],
+    }),
+    // Colinas del Sur & Restaurante El Mirador
+    makeCiv({
+      id: 'person:sur:nadia', name: 'Nadia', color: 0xd48466, role: 'walker', job: 'barista', personality: 'call', carryItem: 'coffee',
+      spawn: { x: -158, y: 6.08, z: 211 }, districtResident: true,
+      homeLocation: npcResidentialHomes[9], workLocation: npcWorkplaces[2], socialHub: npcSocialHubs[2],
+      route: [npcWorkplaces[2].point, { x: -156, y: 6.08, z: 222 }, { x: -156, y: 6.08, z: 206 }],
+    }),
+    makeCiv({
+      id: 'person:sur:javier', name: 'Javier', color: 0x527d8c, role: 'walker', job: 'vecino', personality: 'flee', carryItem: 'bag',
+      spawn: { x: 4, y: 0.08, z: 218 }, districtResident: true,
+      homeLocation: npcResidentialHomes[10], workLocation: npcWorkplaces[2], socialHub: npcSocialHubs[2],
+      route: [npcSocialHubs[2].point, npcResidentialHomes[10].point, npcResidentialHomes[9].point],
+    }),
+    makeCiv({
+      id: 'person:sur:carmen', name: 'Carmen', color: 0xb86e8a, role: 'walker', job: 'vecino', personality: 'record', carryItem: 'phone',
+      spawn: { x: 42, y: 0.08, z: 320 }, districtResident: true,
+      homeLocation: npcResidentialHomes[11], workLocation: npcWorkplaces[2], socialHub: npcSocialHubs[2],
+      route: [npcResidentialHomes[11].point, npcSocialHubs[2].point, npcResidentialHomes[10].point],
+    }),
+    // Sierra Palmera (Ladera residencial a y = 8m)
+    makeCiv({
+      id: 'person:sierra:martin', name: 'Martín', color: 0x6b8f64, role: 'walker', job: 'tecnico', personality: 'call', carryItem: 'coffee',
+      spawn: { x: -131, y: 8.08, z: -12 }, districtResident: true,
+      homeLocation: npcResidentialHomes[12], workLocation: npcSocialHubs[3], socialHub: npcSocialHubs[3],
+      route: [npcResidentialHomes[12].point, npcSocialHubs[3].point, { x: -130, y: 8.08, z: -38 }],
+    }),
+  ];
+
   const merchants: Civilian[] = [people[0], ...extraMerchants];
-  const allPeople: Civilian[] = [...people, ...extraMerchants, ...extraCitizens];
+  const allPeople: Civilian[] = [...people, ...extraMerchants, ...extraCitizens, ...outerDistrictResidents];
   const safePlaces = [
     { x: 8, y: 0.08, z: 51 },
     { x: 22, y: 0.08, z: 51 },
@@ -299,6 +404,37 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     const { drives, traits } = mind;
     const isNight = hour >= 20 || hour < 6;
     const isMorning = hour >= 6 && hour < 11.5;
+
+    // Outer-district residents live a full home <-> work <-> social-hub cycle across their district
+    if (person.districtResident) {
+      const buddy = findSocialBuddy(person);
+      const homeUtility = (100 - drives.energy) * 0.95 + (isNight ? 42 : 0) + utilityNoise(mind, person.cycleCount, 1);
+      const workUtility = drives.errands * 0.85 + traits.punctuality * 34 + (isMorning ? 36 : isNight ? -18 : 14) + utilityNoise(mind, person.cycleCount, 2);
+      const hubUtility = (100 - drives.social) * 0.8 + traits.curiosity * 28 + (!isNight ? 18 : 8) + utilityNoise(mind, person.cycleCount, 3);
+      const socialUtility = buddy
+        ? (100 - drives.social) * 0.95 + traits.sociability * 38 + utilityNoise(mind, person.cycleCount, 4)
+        : -Infinity;
+
+      const best = Math.max(homeUtility, workUtility, hubUtility, socialUtility);
+      if (best === socialUtility && buddy) {
+        mind.currentGoalKind = 'socialize';
+        person.route = [{ ...buddy.actor.position }];
+        person.activityLabel = `charlando con ${buddy.name} en ${person.homeLocation.district}`;
+      } else if (best === homeUtility) {
+        mind.currentGoalKind = 'home';
+        person.route = [person.homeLocation.point];
+        person.activityLabel = `volviendo a casa (${person.homeLocation.name})`;
+      } else if (best === workUtility) {
+        mind.currentGoalKind = 'work';
+        person.route = [person.workLocation.point];
+        person.activityLabel = `trabajando en ${person.workLocation.name}`;
+      } else {
+        mind.currentGoalKind = 'leisure';
+        person.route = [person.socialHub.point];
+        person.activityLabel = `conviviendo en ${person.socialHub.name}`;
+      }
+      return;
+    }
 
     // 1. Score food / shopping options (preferring safer zones & time-appropriate venues)
     const morningStores = [allShops[2], allShops[3], allShops[0], allShops[8]];

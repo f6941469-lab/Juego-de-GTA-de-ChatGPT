@@ -65,7 +65,7 @@ export function buildDistrict(scene: Scene, seed = 61865): District {
   const { minX, minZ, maxZ } = districtBounds;
   const terrainEnd = inlandEdge + 5.5;
   const geometry = new DistrictGeometry();
-  geometry.box('pavement', '#8c918c', -89.5, -0.29, 0, 303, 0.463, 530);
+  geometry.box('pavement', '#7b8774', -249, -0.34, 0, 622, 0.46, 1120);
   geometry.box('pavement', '#838e84', (terrainEnd + minX) / 2, -0.114, 0, terrainEnd - minX, 0.211, maxZ - minZ);
   addStreets(geometry);
 
@@ -109,16 +109,16 @@ function addDistantSkyline(geometry: DistrictGeometry, random: () => number): vo
   const colors = ['#8e99a3', '#9db2ba', '#b3aaa9', '#7c8b9d'];
   for (let row = 0; row < 2; row += 1) {
     for (let column = 0; column < 10; column += 1) {
-      const x = -112 + column * 16.5 + random() * 5;
-      const z = -194 - row * 26 - random() * 8;
-      const width = 6.9 + random() * 6.3;
-      const depth = 6.8 + random() * 5.3;
-      const height = 16 + random() * 32 + row * 8;
+      const x = -180 + column * 32 + random() * 6;
+      const z = -475 - row * 34 - random() * 10;
+      const width = 10 + random() * 7;
+      const depth = 9 + random() * 6;
+      const height = 22 + random() * 38 + row * 10;
       const color = colors[(row + column) % colors.length];
       geometry.box('wall', color, x, height / 2 - 0.08, z, width, height, depth);
       geometry.box('trim', '#a8afaf', x, height + 0.5, z, width * 0.76, 1.15, depth * 0.73);
       geometry.box('trim', color, x, height + 1.6, z, width * 0.48, 1.17, depth * 0.49);
-      for (let level = 1; level < height; level += 2.2) {
+      for (let level = 1; level < height; level += 2.6) {
         geometry.box('glass', '#647e95', x, level, z + depth / 2, width * 0.75, 0.72, 0.12);
       }
     }

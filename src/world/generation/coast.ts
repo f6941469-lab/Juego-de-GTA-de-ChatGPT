@@ -31,9 +31,9 @@ export function addCoast(scene: Scene, geometry: DistrictGeometry, seed: number)
 
   const water = createWaterMaterial(shoreline);
 
-  const sea = new Mesh(new PlaneGeometry(362, 760), water.material);
+  const sea = new Mesh(new PlaneGeometry(1600, 2200), water.material);
   sea.name = 'Bahía Palmera';
-  sea.position.set(shoreline + 180, -0.09, 0);
+  sea.position.set(shoreline + 799, -0.09, 0);
   sea.rotation.x = -Math.PI / 2;
   scene.add(sea);
 

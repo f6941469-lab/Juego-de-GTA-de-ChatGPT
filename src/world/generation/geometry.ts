@@ -102,7 +102,7 @@ export class DistrictGeometry {
     placement: Placement,
   ): void {
     const maxDim = Math.max(placement.width, placement.height, placement.depth);
-    const isSkyline = placement.z < -176;
+    const isSkyline = placement.z < -560;
     const isDetail = !isSkyline && (
       finish === 'foliage'
       || (finish !== 'asphalt' && finish !== 'pavement' && finish !== 'wall' && maxDim < 1.45)
@@ -166,7 +166,7 @@ export class DistrictGeometry {
     this.lastFocusZ = focusZ;
     for (const entry of this.detailGroups) {
       const dist = Math.hypot(entry.x - focusX, entry.z - focusZ);
-      const next = entry.visible ? dist < 96 : dist < 84;
+      const next = entry.visible ? dist < 124 : dist < 108;
       if (next !== entry.visible) {
         entry.visible = next;
         entry.mesh.visible = next;

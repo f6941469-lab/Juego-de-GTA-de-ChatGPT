@@ -140,9 +140,9 @@ async function startGame() {
   try {
     const worldScene = new Scene()
     scene = worldScene
-    const camera = new PerspectiveCamera(58, 1, 0.08, 650)
-    const intro = new PerspectiveCamera(54, 1, 0.08, 650)
-    const cinematicCamera = new PerspectiveCamera(50, 1, 0.08, 650)
+    const camera = new PerspectiveCamera(58, 1, 0.08, 1450)
+    const intro = new PerspectiveCamera(54, 1, 0.08, 1450)
+    const cinematicCamera = new PerspectiveCamera(50, 1, 0.08, 1450)
     const display = await createRenderer(canvas)
     video = display
     const district = buildDistrict(worldScene, gameConfig.seed)

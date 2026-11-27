@@ -30,7 +30,7 @@ export interface Street {
 }
 
 export const districtBounds = { minX: -68, maxX: 68, minZ: -94, maxZ: 94 };
-export const worldBounds = { minX: -156, maxX: 176, minZ: -176, maxZ: 176 };
+export const worldBounds = { minX: -560, maxX: 540, minZ: -560, maxZ: 540 };
 export const shoreline = 62;
 export const inlandEdge = 47;
 

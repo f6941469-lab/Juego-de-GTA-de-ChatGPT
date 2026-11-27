@@ -123,6 +123,16 @@ Tipos, `45` pruebas Vitest en `11` archivos, `build`, `check:portable` y `check:
 | `jugar/index.html` | 3.423.798 | `8d22a32451e036c357ed179aa82ddc14f12bc5f5f959cb285101fa62c1fd13ff` |
 | `publicar/viceblock-itch.zip` | 1.229.267 | `250586bf1343ec1d20a7492a364bb473ccb9158ad6688f590ebd2631d9e8dfd0` |
 
+## Actualización Gran Mundo 1,1×1,1 km, Mansión de Montaña amueblada y NPCs distribuidos · 0.5.0
+
+Tipos, `45` pruebas Vitest en `11` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.446.023 | `ca17be24b7d6ff4d07cfc8c4a1e8977f73b0be6b915e2962cb4e2d5d200784cb` |
+| `publicar/viceblock-itch.zip` | 1.235.685 | `a12ba870415addcf3bb98a6878b71b94b8f0bdba25d05d615866f22fa1d8a621` |
+
+
 
 
 

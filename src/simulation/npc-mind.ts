@@ -49,7 +49,7 @@ export interface NpcMind {
   playerChats: number;
   lastPlayerInteraction: number;
   nextMemoryId: number;
-  currentGoalKind: 'shop' | 'bus' | 'metro' | 'leisure' | 'socialize' | 'patrol_walk';
+  currentGoalKind: 'shop' | 'bus' | 'metro' | 'leisure' | 'socialize' | 'patrol_walk' | 'home' | 'work';
 }
 
 function hashId(id: string): number {

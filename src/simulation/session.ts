@@ -416,29 +416,29 @@ export function createSession(
       };
     }
 
-    // Buyable House: Casa del Mirador
+    // Buyable House: Casa del Mirador (Cumbre de Sierra Palmera)
     if (!houseOwned) {
       return {
         venue,
-        subtitle: `INMOBILIARIA ISLA FORTUNA · TU SALDO $${economy.money}`,
-        intro: venueMessage || 'Villa moderna con piscina privada, vestidor y vistas a Bahía Palmera. Lista para habitar.',
+        subtitle: `CUMBRE DE SIERRA PALMERA · TU SALDO $${economy.money}`,
+        intro: venueMessage || 'Mansión moderna en lo alto de la montaña con salón, cocina, suite, baño de lujo, piscina infinita y vistas panorámicas a toda Costa Palmera.',
         options: [
-          { label: 'Comprar Casa del Mirador', detail: 'Adquiere esta propiedad como refugio y punto de descanso permanente', badge: `$${HOUSE_PRICE}` },
-          { label: 'Seguir explorando', detail: 'Volver al exterior sin comprar todavía' },
+          { label: 'Comprar Casa del Mirador', detail: 'Adquiere esta mansión como tu hogar y refugio permanente en la montaña', badge: `$${HOUSE_PRICE}` },
+          { label: 'Seguir explorando', detail: 'Volver al salón sin comprar todavía' },
         ],
-        note: 'Al comprarla podrás descansar, avanzar el reloj, bajar búsqueda menor y reaparecer aquí.',
+        note: 'Al comprarla podrás descansar (+6 h), cambiar de ropa, reabastecer munición y reaparecer aquí.',
       };
     }
     return {
       venue,
-      subtitle: `TU REFUGIO EN ISLA FORTUNA · SALUD ${health}/100`,
-      intro: venueMessage || 'Bienvenido a tu hogar en Casa del Mirador. Todo listo para descansar o prepararte.',
+      subtitle: `TU MANSIÓN EN SIERRA PALMERA · SALUD ${health}/100`,
+      intro: venueMessage || 'Bienvenido a tu hogar en Casa del Mirador, con toda la ciudad a tus pies.',
       options: [
         { label: 'Dormir y descansar (+6 h)', detail: 'Salud al 100%, avanza el día 6 horas y calma búsqueda menor', badge: '+6H' },
         { label: 'Cambiar de ropa y reabastecer', detail: 'Baja búsqueda <= 2★ y recarga munición básica a 32', badge: 'PERFIL BAJO' },
-        { label: 'Punto de aparición en casa', detail: homeRespawnEnabled ? 'Activo: reaparecerás en esta villa' : 'Inactivo: reaparecerás en Costa Palmera Centro', badge: homeRespawnEnabled ? 'ACTIVO' : 'INACTIVO' },
+        { label: 'Punto de aparición en casa', detail: homeRespawnEnabled ? 'Activo: reaparecerás en esta mansión' : 'Inactivo: reaparecerás en Costa Palmera Centro', badge: homeRespawnEnabled ? 'ACTIVO' : 'INACTIVO' },
       ],
-      note: 'Propiedad registrada a tu nombre en Isla Fortuna.',
+      note: 'Propiedad registrada a tu nombre en la Cumbre de Sierra Palmera.',
     };
   }
 
@@ -476,7 +476,7 @@ export function createSession(
         }
         if (index === 2) {
           inPrison = false;
-          const yardEscape = { x: -38, y: 0.1, z: -129 };
+          const yardEscape = venueById.prison.escapeYardPoint ?? { x: -210, y: 0.1, z: -324 };
           player.teleport(yardEscape, 0);
           activeVenue = undefined;
           context('world');

@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 0.5.0 · Gran mundo abierto 1,1×1,1 km, mansión moderna de montaña amueblada y NPCs en todos los distritos (2026-11-27)
+
+- **Escala de gran mundo abierto (`1.100 × 1.100 m`, `1,21 km²`):** Distancias reales de viaje entre distritos, `2` puentes colgantes de `162 m` hacia **Isla Fortuna**, `30` casas residenciales proporcionadas, **Barrio del Sol**, **Distrito Penal Norte** alejado, **Colinas del Sur**, cordillera **Sierra Palmera** hasta `86 m`, visibilidad panorámica de largo alcance y conducción a `86 km/h`.
+- **Mansión moderna de montaña amueblada (**Casa del Mirador**, `$350`):** Ubicada lejos de la ciudad en la **Cumbre de Sierra Palmera** (`y = 24 m`, subida panorámica en `3` tramos) con vista directa sobre toda Costa Palmera y la bahía. Incluye `4` habitaciones interiores amuebladas a escala humana (`1,75 m`) —salón panorámico, cocina con isla y comedor para 6, dormitorio suite con vestidor y baño de lujo— además de cochera y terraza con piscina infinita, tumbonas, sombrillas y hoguera.
+- **Arquitectura mejorada y NPCs distribuidos:** **Casino Royale Palma**, **Comisaría Central**, **Cárcel de Palma** y **Restaurante El Mirador** rediseñados con proporciones realistas, columnas, mesas y sillas. Se incorporan `12` nuevos residentes (`33` civiles en total, `37` NPCs con policía) que viven en casas reales en los barrios exteriores y se mueven proceduralmente entre casa, trabajo y plazas sociales.
+
 ## 0.5.0 · Expansión multi-distrito, puentes, montañas y 5 edificios funcionales (2026-11-27)
 
 - **Mapa ampliado con múltiples distritos y puntos de interés:** Conserva el centro original (**Costa Palmera Centro**) y expande el mundo a `332×352 m` con **Isla Fortuna**, **Distrito Cívico y Penal**, **Sierra Palmera** (cordillera montañosa hasta `44 m` y miradores panorámicos) y **Colinas del Sur**, optimizado con lotes `InstancedMesh` y culling espacial de `64 m` + minimapa actualizado con islas, puentes, montañas e iconos por categoría.

@@ -92,23 +92,43 @@ export function createActor(scene: Scene, physics: Physics, navigation: Navigati
       if (passing && (planarDistance(position, passing) < 0.19 || stuck > 1.5)) {
         passing = undefined; path = []; routeAge = 1;
       }
+      const inCore = (p: Point3) => p.x >= -67.5 && p.x <= 61.0 && p.z >= -93.5 && p.z <= 93.5;
       if (destination && stun === 0 && !api.arrived) {
-        if (!passing && ((!path.length && routeAge >= 1) || (stuck > 1 && routeAge > 2))) {
-          const route = navigation.requestPath(position, destination);
-          if (route !== undefined) { path = route; routeAge = 0; routeVersion = navigation.version; }
-        }
-        while (path.length && planarDistance(position, path[0]) < 0.19) path.shift();
-        let target: Point3 | undefined = passing ?? path[0];
-        if (target && !navigation.reserveMove(character.collider.handle, target)) {
-          passing = navigation.yieldPoint(character.collider.handle, position, target);
-          target = passing;
-        }
-        if (target) {
-          const distance = planarDistance(position, target);
+        if (inCore(position) && inCore(destination)) {
+          if (!passing && ((!path.length && routeAge >= 1) || (stuck > 1 && routeAge > 2))) {
+            const route = navigation.requestPath(position, destination);
+            if (route !== undefined) { path = route; routeAge = 0; routeVersion = navigation.version; }
+          }
+          while (path.length && planarDistance(position, path[0]) < 0.19) path.shift();
+          let target: Point3 | undefined = passing ?? path[0];
+          if (target && !navigation.reserveMove(character.collider.handle, target)) {
+            passing = navigation.yieldPoint(character.collider.handle, position, target);
+            target = passing;
+          }
+          if (target) {
+            const distance = planarDistance(position, target);
+            if (distance > 0.001) {
+              const step = Math.min(speed * dt, distance);
+              dx = (target.x - position.x) / distance * step; dz = (target.z - position.z) / distance * step;
+              api.face(target, dt);
+            }
+          }
+        } else {
+          // Outer districts (Isla Fortuna, Barrio del Sol, Colinas del Sur, Sierra Palmera):
+          // direct Rapier steering with lateral slide if blocked by a prop/corner.
+          const distance = planarDistance(position, destination);
           if (distance > 0.001) {
             const step = Math.min(speed * dt, distance);
-            dx = (target.x - position.x) / distance * step; dz = (target.z - position.z) / distance * step;
-            api.face(target, dt);
+            const dirX = (destination.x - position.x) / distance;
+            const dirZ = (destination.z - position.z) / distance;
+            if (stuck > 1.2) {
+              dx = -dirZ * step;
+              dz = dirX * step;
+            } else {
+              dx = dirX * step;
+              dz = dirZ * step;
+            }
+            api.face(destination, dt);
           }
         }
       }

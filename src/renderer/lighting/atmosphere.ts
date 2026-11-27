@@ -42,7 +42,7 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
   camera.updateProjectionMatrix();
 
   const ambient = new HemisphereLight(palette.noonSky, palette.noonBounce, 1.48);
-  const fog = new FogExp2(palette.dayHaze, 0.0056);
+  const fog = new FogExp2(palette.dayHaze, 0.00145);
   scene.fog = fog;
 
   const skyShader = createSkyMaterial(fog.color);
@@ -82,7 +82,7 @@ export function createAtmosphere(scene: Scene, initialHour = 17.25) {
     ambient.color.copy(palette.noonSky).lerp(palette.duskSky, twilight).lerp(palette.nightSky, 1 - daylight);
     ambient.groundColor.copy(palette.noonBounce).lerp(palette.duskBounce, twilight).lerp(palette.nightBounce, 1 - daylight);
     fog.color.copy(palette.dayHaze).lerp(palette.duskHaze, twilight).lerp(palette.nightHaze, 1 - daylight);
-    fog.density = 0.0054 + twilight * 0.00145 + (1 - daylight) * 0.0015;
+    fog.density = 0.00145 + twilight * 0.00045 + (1 - daylight) * 0.00055;
     scene.environmentIntensity = 0.22 + 0.48 * daylight;
 
     lightDirection.copy(sunDirection.y >= 0 ? sunDirection : moonDirection);

@@ -392,13 +392,13 @@ export function createTraffic(scene: Scene, physics: Physics, journal: Journal) 
             car.reserved = false;
           }
           car.parkedTimer = 0;
-          const accel = playerInput.throttle > 0 ? 11 : playerInput.throttle < 0 ? -7 : 0;
+          const accel = playerInput.throttle > 0 ? 15 : playerInput.throttle < 0 ? -9 : 0;
           if (playerInput.brake) {
-            car.speed = MathUtils.damp(car.speed, 0, 9, dt);
+            car.speed = MathUtils.damp(car.speed, 0, 10, dt);
           } else if (accel !== 0) {
-            car.speed = MathUtils.clamp(car.speed + accel * dt, -6.5, 14.5);
+            car.speed = MathUtils.clamp(car.speed + accel * dt, -8.0, 24.0);
           } else {
-            car.speed = MathUtils.damp(car.speed, 0, 2.2, dt);
+            car.speed = MathUtils.damp(car.speed, 0, 2.0, dt);
           }
           if (Math.abs(car.speed) > 0.25 && playerInput.steer !== 0) {
             const sign = car.speed >= 0 ? 1 : -1;
