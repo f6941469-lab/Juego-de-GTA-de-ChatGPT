@@ -339,7 +339,8 @@ export function createSession(
         activeTalkNpc = undefined;
         context('world');
       } else {
-        talkReply = playerDialogueReply(activeTalkNpc, topic.id, journal.events.at(-1));
+        talkReply = playerDialogueReply(activeTalkNpc, topic.id, journal.events.at(-1), police.stars, now);
+        population.recordPlayerChat(activeTalkNpc, topic.label, now);
       }
     } else if (overlay === 'replay') {
       if (index >= 0 && index < replayClips.length) {
@@ -428,7 +429,8 @@ export function createSession(
       if (npc) {
         activeTalkNpc = npc;
         npc.actor.face(player.position, 0.5);
-        talkReply = playerDialogueReply(npc, 'greet', journal.events.at(-1), police.stars);
+        talkReply = playerDialogueReply(npc, 'greet', journal.events.at(-1), police.stars, now);
+        population.recordPlayerChat(npc, 'Saludar', now);
         context('talk');
         return;
       }

@@ -2,13 +2,19 @@
 document_id: CORE-CHANGELOG
 status: active
 last_updated: 2026-11-23
-verified_against: "Mercado Palma 0.5.0 (Gráficos PBR, NPCs avanzados, Policía 5★ y Prólogo)"
-verification_scope: "typecheck + 42 pruebas + build + check:portable + check:itch + Chrome 158 SwiftShader"
+verified_against: "Mercado Palma 0.5.0 (Mente procedural NPC, Gráficos PBR, Policía 5★ y Prólogo)"
+verification_scope: "typecheck + 43 pruebas + build + check:portable + check:itch"
 ---
 
 # Historial Técnico Resumido (`CHANGELOG.md`)
 
 > Para notas orientadas a jugador/entrega, ver [CHANGELOG.md](../CHANGELOG.md).
+
+## 2026-11-27 · Refactorización procedural de NPCs con memoria episódica y rumores (`npc-mind.ts`, `population.ts`, `dialogue.ts`, `session.ts`)
+
+- **Mente procedural y Utility AI (`src/simulation/npc-mind.ts`, `population.ts`):** Cada civil posee `drives` (`hunger`, `energy`, `social`, `errands`, `safety`), `traits` propios (`boldness`, `curiosity`, `sociability`, `punctuality`), **memoria episódica** (hasta `10` recuerdos persistentes), **cautela por zonas** (`zoneCaution`) para evitar áreas conflictivas y selector de metas por utilidad en lugar de ciclos fijos.
+- **Relaciones sociales, reputación y rumores (`exchangeGossip`, `dialogue.ts`, `session.ts`):** Al conversar entre sí los NPCs aumentan su familiaridad (`relationships`) y propagan recuerdos recientes (`gossip`); las charlas amistosas con el jugador suben `playerTrust` y los delitos/amenazas/acosos quedan registrados afectando futuras conversaciones incluso después de calmarse.
+- **Verificación:** `npm run typecheck` (`0` errores), `npm test` (`10` archivos, `43/43` verdes), `npm run build`, `npm run check:portable`, `npm run check:itch`.
 
 ## 2026-11-23 · Mejora gráfica PBR, comportamiento NPC y sistema policial de 5 estrellas (`main`)
 

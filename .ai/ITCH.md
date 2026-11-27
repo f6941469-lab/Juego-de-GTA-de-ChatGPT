@@ -91,4 +91,14 @@ Tipos, `42` pruebas en `10` archivos, `build`, `check:portable` y `check:itch` a
 | `jugar/index.html` | 3.386.892 | `0e5620025791291cc520e921e37bb2df7e0875dddf760923124dff6c7c91878f` |
 | `publicar/viceblock-itch.zip` | 1.215.790 | `f4f8ee7c4f801bc64c76e08eddc063b9928758bde1fb353dc7b6a15192a1de28` |
 
+## Actualización Comportamiento Procedural NPC (`npc-mind.ts`) · 0.5.0
+
+Tipos, `43` pruebas en `10` archivos, `build`, `check:portable` y `check:itch` aprobados.
+
+| Archivo | Bytes | SHA-256 |
+| --- | --- | --- |
+| `jugar/index.html` | 3.395.179 | `a4ce41f54b52d7e6c7c1505bbc7cba96a4c716d5bb6592ab5bf8dd5533412bdf` |
+| `publicar/viceblock-itch.zip` | 1.218.959 | `32e8742a306cc51491d6ec1e5bbd79bbbe9903e2ff01a2a6d4b7f2541f8336cf` |
+
+
 

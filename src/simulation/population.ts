@@ -9,6 +9,16 @@ import { cityResidents } from './city-residents';
 import { armedWarningLine, chaseReactionLine, dodgeCarLine, npcPairLine, stalkWarningLine, type NpcJob } from './dialogue';
 import { Economy, eyes, Journal, planarDistance, type WorldEvent } from './model';
 import type { Navigation } from './navigation';
+import {
+  createNpcMind,
+  exchangeGossip,
+  rememberCustom,
+  rememberEvent,
+  stepNpcDrives,
+  utilityNoise,
+  zoneCautionAt,
+  type NpcMind,
+} from './npc-mind';
 import type { ManagedVehicle } from './traffic';
 import type { WorldState } from './world-state';
 
@@ -50,6 +60,7 @@ export interface Civilian {
   cycleCount: number;
   cursor: number;
   memory?: { event: WorldEvent; identified: boolean };
+  mind: NpcMind;
   fearUntil: number;
   budget: number;
   stalkScore: number;
@@ -114,6 +125,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       stop: 0,
       cycleCount: 0,
       cursor: 0,
+      mind: createNpcMind(spec.id, spec.personality),
       fearUntil: 0,
       route: [...spec.route],
       initialRoute: [...spec.route],
@@ -235,6 +247,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     if (person.memory && event.time - person.memory.event.time < 3) return;
     if (person.state === 'waiting_bus') person.missedBus = true;
     person.memory = { event, identified };
+    rememberEvent(person.mind, event, identified);
     person.state = 'reacting';
     person.timer = 0.35 + (allPeople.indexOf(person) % 6) * 0.14;
     person.fearUntil = event.time + 14;
@@ -255,44 +268,114 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     return best;
   }
 
-  // Assigns an autonomous life sequence adapted to time of day across stores, bus stops, metro stations and landmarks
+  function findSocialBuddy(person: Civilian): Civilian | undefined {
+    let best: Civilian | undefined;
+    let bestScore = -Infinity;
+    for (const other of allPeople) {
+      if (other === person || other.role === 'cashier' || other.actor.health <= 0 || other.actor.suspended) continue;
+      if (!['routine', 'waiting_bus', 'waiting_metro'].includes(other.state)) continue;
+      const d = planarDistance(person.actor.position, other.actor.position);
+      if (d > 2.5 && d < 18) {
+        const familiarity = person.mind.relationships[other.id] ?? 0;
+        const score = 30 - d + familiarity * 0.4;
+        if (score > bestScore) { bestScore = score; best = other; }
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Procedural Utility-AI goal selector: scores candidate goals dynamically based on
+   * internal drives (hunger, energy, social, errands, safety), traits, time of day,
+   * episodic zone caution, and nearby social companions.
+   */
   function advanceAutonomousLife(person: Civilian, index: number, hour = 17) {
     person.stop++;
     if (person.stop < person.route.length) return;
     person.stop = 0;
     person.cycleCount++;
+
+    const { mind } = person;
+    const { drives, traits } = mind;
     const isNight = hour >= 20 || hour < 6;
     const isMorning = hour >= 6 && hour < 11.5;
-    const pick = (index + person.cycleCount) % 4;
-    if (pick === 0) {
-      const morningStores = [allShops[2], allShops[3], allShops[0]];
-      const nightStores = [allShops[4], allShops[8], allShops[0]];
-      const pool = isMorning ? morningStores : isNight ? nightStores : allShops;
-      const store = pool[(index * 2 + person.cycleCount) % pool.length];
-      person.shopId = store.id;
-      person.route = [store.entrance, store.products, store.counter, store.entrance];
-      person.activityLabel = `yendo a comprar a ${store.name}`;
-    } else if (pick === 1) {
-      const stop = busStops[(index + person.cycleCount) % busStops.length];
-      const nextStore = allShops[(index + person.cycleCount + 3) % allShops.length];
-      person.route = [stop.waitPoint, nextStore.entrance];
-      person.activityLabel = `camino a ${stop.name}`;
-    } else if (pick === 2) {
-      const spotIdx = isNight
-        ? (3 + ((index + person.cycleCount) % 2))
-        : isMorning
-          ? (2 + ((index + person.cycleCount) % 2))
-          : ((index + person.cycleCount) % cityLeisureSpots.length);
-      const spot = cityLeisureSpots[spotIdx % cityLeisureSpots.length];
-      const walkPoint = navigation.closest(spot.point, 3.6) ?? spot.point;
-      person.route = [...person.initialRoute.slice(0, 2), walkPoint];
-      person.activityLabel = isNight ? `saliendo por ${spot.name}` : `pasando por ${spot.name}`;
-    } else {
-      const metro = metroStations[(index + person.cycleCount) % metroStations.length];
+
+    // 1. Score food / shopping options (preferring safer zones & time-appropriate venues)
+    const morningStores = [allShops[2], allShops[3], allShops[0], allShops[8]];
+    const nightStores = [allShops[4], allShops[8], allShops[0], allShops[5]];
+    const storePool = isMorning ? morningStores : isNight ? nightStores : allShops;
+    let bestStore = storePool[0];
+    let bestStoreUtility = -Infinity;
+    for (let i = 0; i < storePool.length; i++) {
+      const st = storePool[i];
+      const caution = zoneCautionAt(mind, st.entrance);
+      const isFood = st.id.includes('cafeteria') || st.id.includes('panaderia') || st.id.includes('restaurante') || st.id.includes('palma');
+      const u = (isFood ? drives.hunger * 0.85 : drives.errands * 0.72)
+        + (person.budget >= 18 ? 16 : -22)
+        - caution * (1.1 - traits.curiosity * 0.4)
+        + utilityNoise(mind, person.cycleCount, i);
+      if (u > bestStoreUtility) { bestStoreUtility = u; bestStore = st; }
+    }
+
+    // 2. Score leisure / rest spots
+    let bestSpot = cityLeisureSpots[0];
+    let bestSpotUtility = -Infinity;
+    for (let i = 0; i < cityLeisureSpots.length; i++) {
+      const sp = cityLeisureSpots[i];
+      const caution = zoneCautionAt(mind, sp.point);
+      const nightBoost = isNight && (sp.name === 'Club Neón' || sp.name === 'Hotel Miramar') ? 26 : 0;
+      const dayBoost = !isNight && (sp.name === 'Jardín Coral' || sp.name === 'Paseo del Mar') ? 16 : 0;
+      const u = (100 - drives.energy) * 0.75 + traits.curiosity * 28 + nightBoost + dayBoost
+        - caution * 0.9 + utilityNoise(mind, person.cycleCount, 20 + i);
+      if (u > bestSpotUtility) { bestSpotUtility = u; bestSpot = sp; }
+    }
+
+    // 3. Score bus / metro commuting
+    const busStop = busStops[(index + person.cycleCount + Math.floor(mind.seed % 4)) % busStops.length];
+    const metro = metroStations[(index + person.cycleCount) % metroStations.length];
+    const busUtility = drives.errands * 0.65 + traits.punctuality * 22
+      - (person.missedBus ? 28 : 0)
+      - zoneCautionAt(mind, busStop.waitPoint) * 0.7
+      + utilityNoise(mind, person.cycleCount, 40);
+    const metroUtility = drives.errands * 0.60 + (person.missedBus ? 35 : 8)
+      - zoneCautionAt(mind, metro.platform) * 0.5
+      + utilityNoise(mind, person.cycleCount, 41);
+
+    // 4. Score socializing with a nearby citizen
+    const buddy = findSocialBuddy(person);
+    const socialUtility = buddy
+      ? (100 - drives.social) * 0.92 + traits.sociability * 34 + utilityNoise(mind, person.cycleCount, 50)
+      : -Infinity;
+
+    // Pick highest-utility procedural goal
+    const maxScore = Math.max(bestStoreUtility, bestSpotUtility, busUtility, metroUtility, socialUtility);
+    if (maxScore === socialUtility && buddy) {
+      mind.currentGoalKind = 'socialize';
+      const meetPoint = navigation.closest(buddy.actor.position, 2.2) ?? buddy.actor.position;
+      person.route = [meetPoint];
+      person.activityLabel = `acercándose a saludar a ${buddy.name}`;
+    } else if (maxScore === bestStoreUtility) {
+      mind.currentGoalKind = 'shop';
+      person.shopId = bestStore.id;
+      person.route = [bestStore.entrance, bestStore.products, bestStore.counter, bestStore.entrance];
+      person.activityLabel = `yendo a comprar a ${bestStore.name}`;
+    } else if (maxScore === busUtility) {
+      mind.currentGoalKind = 'bus';
+      person.route = [busStop.waitPoint, bestStore.entrance];
+      person.activityLabel = `camino a ${busStop.name}`;
+    } else if (maxScore === metroUtility) {
+      mind.currentGoalKind = 'metro';
       person.route = person.initialRoute.length >= 2
-        ? [...person.initialRoute, metro.platform]
-        : [metro.platform, allShops[0].entrance];
-      person.activityLabel = isNight ? 'volviendo a casa en metro' : 'recorriendo su barrio';
+        ? [metro.platform, ...person.initialRoute.slice(0, 2)]
+        : [metro.platform, bestStore.entrance];
+      person.activityLabel = isNight ? 'volviendo en metro' : `yendo hacia ${metro.name}`;
+    } else {
+      mind.currentGoalKind = 'leisure';
+      const walkPoint = navigation.closest(bestSpot.point, 3.6) ?? bestSpot.point;
+      person.route = person.initialRoute.length >= 1
+        ? [person.initialRoute[0], walkPoint]
+        : [walkPoint];
+      person.activityLabel = isNight ? `saliendo por ${bestSpot.name}` : `pasando por ${bestSpot.name}`;
     }
   }
 
@@ -309,9 +392,10 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
     policeStars = 0,
     fastVehicles?: readonly { position: Point3; heading: number; speed: number }[],
   ) {
-    const { actor } = person;
+    const { actor, mind } = person;
     person.timer = Math.max(0, person.timer - decisionDt);
     person.chatCooldown = Math.max(0, person.chatCooldown - decisionDt);
+    stepNpcDrives(mind, decisionDt, person.state);
 
     for (const event of journal.since(person.cursor)) {
       person.cursor = event.id;
@@ -389,10 +473,12 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
           person.stalkStage = 1;
           actor.face(player, decisionDt);
           speak(person, stalkWarningLine(person.name, 1), now, player);
+          rememberCustom(mind, 'stalking', actor.position, now, 'me estuvo siguiendo por la acera', true, -10, 20);
         } else if (person.stalkScore >= 16 && person.stalkStage < 2) {
           person.stalkStage = 2;
           actor.face(player, decisionDt);
           speak(person, stalkWarningLine(person.name, 2), now, player);
+          rememberCustom(mind, 'stalking', actor.position, now, 'me acosó persiguiéndome varias calles', true, -35, 38);
           person.state = 'fleeing';
           person.fearUntil = now + 9;
           person.activityLabel = 'alejándose porque lo seguían';
@@ -497,6 +583,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
       actor.face(player, decisionDt);
       actor.action('handsUp');
       person.timer = 2;
+      rememberCustom(mind, 'threat', actor.position, now, 'sacó un arma delante de mí', true, -18, 30);
       if (person.chatCooldown <= 0) {
         person.chatCooldown = 10;
         speak(person, armedWarningLine(person.name), now, player);
@@ -561,6 +648,9 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
           const bought = economy.npcBuyFrom(nearStore.id, item.id, person.budget);
           if (bought) {
             person.budget -= bought.price;
+            mind.drives.hunger = Math.max(0, mind.drives.hunger - 45);
+            mind.drives.errands = Math.max(0, mind.drives.errands - 38);
+            rememberCustom(mind, 'purchase', actor.position, now, `compré ${bought.name.toLowerCase()} en ${nearStore.name}`, false, 0, 12);
             person.carryItem = bought.id === 'coffee' || nearStore.id.includes('cafeteria') ? 'coffee' : 'bag';
             person.activityLabel = `saliendo de ${nearStore.name} con ${bought.name.toLowerCase()}`;
           } else if (person.budget < 12) {
@@ -707,7 +797,19 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
                 b.actor.face(a.actor.position, 0.4);
                 if (a.state === 'routine') { a.state = 'chatting'; a.timer = 3.4; a.activityLabel = `conversando con ${b.name}`; }
                 if (b.state === 'routine') { b.state = 'chatting'; b.timer = 3.4; b.activityLabel = `conversando con ${a.name}`; }
-                const line = npcPairLine(a.name, a.job, a.state === 'waiting_bus' ? 'wait_bus' : a.state === 'waiting_metro' ? 'wait_metro' : 'walk', journal.events.at(-1), hour);
+                const sharedGossip = exchangeGossip(a.id, a.name, a.mind, b.id, b.name, b.mind, now)
+                  ?? exchangeGossip(b.id, b.name, b.mind, a.id, a.name, a.mind, now);
+                const familiarity = a.mind.relationships[b.id] ?? 0;
+                const line = npcPairLine(
+                  a.name,
+                  a.job,
+                  a.state === 'waiting_bus' ? 'wait_bus' : a.state === 'waiting_metro' ? 'wait_metro' : 'walk',
+                  journal.events.at(-1),
+                  hour,
+                  sharedGossip,
+                  b.name,
+                  familiarity,
+                );
                 speak(a, line, now, player);
                 break;
               }
@@ -746,6 +848,22 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
         stepSinglePerson(person, index, decisionDt, now, player, armed, economy, transit, hour, policeStars, fastVehicles);
       }
     },
+    recordPlayerChat(person: Civilian, topic: string, now: number) {
+      person.mind.drives.social = Math.min(100, person.mind.drives.social + 22);
+      if (person.mind.playerTrust > -20 && person.mind.playerWitnessedCrimes === 0) {
+        person.mind.playerChats++;
+        rememberCustom(
+          person.mind,
+          'chat',
+          person.actor.position,
+          now,
+          `conversé tranquilamente con el recién llegado (${topic})`,
+          true,
+          6,
+          10,
+        );
+      }
+    },
     reset() {
       decisionCursor = 0;
       ambientTimer = 34;
@@ -771,6 +889,7 @@ export function createPopulation(scene: Scene, physics: Physics, navigation: Nav
         person.transitTargetId = undefined;
         person.recordingEvent = undefined;
         person.memory = undefined;
+        person.mind = createNpcMind(person.id, person.personality);
         person.budget = 65;
         person.lastSpeech = '';
         person.activityLabel = person.role === 'cashier' ? 'atendiendo el mostrador' : 'recorriendo Costa Palmera';

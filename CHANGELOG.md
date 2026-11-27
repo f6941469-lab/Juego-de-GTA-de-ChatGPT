@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 0.5.0 · Comportamiento procedural de NPCs con memoria episódica y rumores (2026-11-27)
+
+- **Mente procedural (*Utility AI* en `npc-mind.ts`):** Cada vecino decide sus metas dinámicamente según sus impulsos (`hunger`, `energy`, `social`, `errands`, `safety`), rasgos personales, hora del día y cautela por zonas.
+- **Memoria episódica, reputación y rumores:** Los NPCs recuerdan delitos, amenazas, acosos, compras y charlas pasadas, evitan zonas donde presenciaron incidentes, recuerdan si el jugador fue amable o peligroso al hablar con `E` y propagan rumores entre sí al encontrarse en la calle.
+
 ## 0.5.0 · Mejora gráfica PBR, comportamiento NPC y policía de 5 estrellas (2026-11-23)
 
 - **Gráficos mejorados sin perder fluidez:** Texturas procedurales con relieve (`bumpMap`) en edificios de estuco, aceras con baldosas y asfalto, cristal reflectivo, pintura automotriz brillante, sonda celeste `256×128`, cielo y agua TSL con mejor luz dorada/Fresnel y niebla más nítida.

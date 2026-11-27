@@ -1,4 +1,5 @@
 import type { WorldEvent } from './model';
+import { recentSalientMemory, type NpcMemoryEntry, type NpcMind } from './npc-mind';
 
 export type NpcJob = 'cashier' | 'oficinista' | 'repartidor' | 'estudiante' | 'barista' | 'tecnico' | 'turista' | 'vecino';
 
@@ -31,7 +32,13 @@ export function npcPairLine(
   activity: string,
   recentEvent?: WorldEvent,
   hour = 17,
+  gossip?: NpcMemoryEntry,
+  listenerName?: string,
+  familiarity = 0,
 ): string {
+  if (gossip) {
+    return `${speakerName}: Oye ${listenerName ?? ''}, ¿te enteraste? ${gossip.summary}.`.replace(' ,', ',');
+  }
   if (recentEvent) {
     if (recentEvent.kind === 'shot' || recentEvent.kind === 'robbery') {
       return `${speakerName}: ¿Escuchaste eso? Mejor no acercarse a esa manzana.`;
@@ -39,6 +46,9 @@ export function npcPairLine(
     if (recentEvent.kind === 'collision') {
       return `${speakerName}: Hubo un choque ahí atrás, el tráfico viene retrasado.`;
     }
+  }
+  if (familiarity >= 35 && listenerName) {
+    return `${speakerName}: ¡Hey ${listenerName}! Qué gusto verte otra vez por aquí.`;
   }
   if (activity === 'wait_bus') {
     return `${speakerName}: ¿Sabes si el bus ya pasó? Llevo unos minutos esperando.`;
@@ -97,10 +107,12 @@ export function playerDialogueReply(
     activityLabel: string;
     stalkScore: number;
     memory?: { event: WorldEvent; identified: boolean };
+    mind?: NpcMind;
   },
   topic: DialogueTopic['id'],
   recentEvent?: WorldEvent,
   policeStars = 0,
+  now = 0,
 ): string {
   if (npc.stalkScore >= 18) {
     return 'No quiero hablar contigo, llevas siguiéndome demasiado rato. Aléjate.';
@@ -108,7 +120,19 @@ export function playerDialogueReply(
   if (policeStars >= 2) {
     return '¡No te acerques a mí con la policía detrás! Sigue corriendo.';
   }
+  const mind = npc.mind;
+  const crimeMemory = mind?.memories.find((m) => m.aboutPlayer && m.intensity >= 25);
+  if (mind && (mind.playerTrust <= -25 || mind.playerWitnessedCrimes > 0) && topic !== 'leave') {
+    if (crimeMemory) {
+      return `No me olvido de lo de antes: ${crimeMemory.summary}. Mantente lejos de mí.`;
+    }
+    return 'Te recuerdo de antes y no me inspiras confianza. Sigue tu camino.';
+  }
+
   if (topic === 'greet') {
+    if (mind && mind.playerTrust >= 12 && mind.playerChats >= 2) {
+      return `¡Ey, qué tal otra vez! Soy ${npc.name}. Ahora mismo estoy en ${npc.activityLabel}.`;
+    }
     return `Hola. Soy ${npc.name}. Ahora mismo estoy en ${npc.activityLabel}.`;
   }
   if (topic === 'activity') {
@@ -118,9 +142,23 @@ export function playerDialogueReply(
     if (npc.activityLabel.includes('metro')) {
       return 'Tuve que venir al metro para moverme más rápido entre barrios.';
     }
+    if (mind && mind.drives.hunger > 65) {
+      return 'Tengo bastante hambre, voy a buscar un café o algo de comer antes de seguir.';
+    }
     return `Voy hacia ${jobLabels[npc.job]}. Intento no llegar tarde.`;
   }
   if (topic === 'neighborhood') {
+    const salient = mind ? recentSalientMemory(mind, now) : undefined;
+    if (salient) {
+      if (salient.kind === 'gossip') {
+        return `Me acaban de contar algo fuerte: ${salient.summary}. La gente anda atenta.`;
+      }
+      if (salient.kind === 'shot') return 'Hace poco se oyeron disparos por aquí. Todavía tengo el susto en el cuerpo.';
+      if (salient.kind === 'robbery') return 'Asaltaron un comercio hace un rato, todos andan comentándolo.';
+      if (salient.kind === 'theft') return 'Vi a alguien llevarse un coche por la fuerza hace poco.';
+      if (salient.kind === 'altercation') return 'Hubo una pelea fuerte entre vecinos hace poco.';
+      return `Todavía recuerdo que ${salient.summary}. Ten cuidado por esa zona.`;
+    }
     const known = npc.memory?.event ?? recentEvent;
     if (known) {
       if (known.kind === 'shot') return 'Hace nada se oyeron disparos cerca. La gente anda muy nerviosa.';
@@ -131,5 +169,5 @@ export function playerDialogueReply(
     }
     return 'Por ahora todo tranquilo en Costa Palmera, buen día para caminar o pasar por las tiendas.';
   }
-  return 'Nos vemos por el barrio.';
+  return mind && mind.playerTrust >= 15 ? '¡Cuídate mucho! Nos vemos luego por Costa Palmera.' : 'Nos vemos por el barrio.';
 }

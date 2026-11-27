@@ -110,4 +110,55 @@ describe('Sistema de 5 estrellas policiales y comportamiento avanzado de NPCs', 
     player.dispose();
     physics.dispose();
   });
+
+  it('mantiene memoria episódica del jugador, actualiza confianza y propaga rumores entre NPCs', async () => {
+    const { exchangeGossip, rememberEvent } = await import('../src/simulation/npc-mind');
+    const { playerDialogueReply } = await import('../src/simulation/dialogue');
+
+    const scene = new Scene();
+    const camera = new PerspectiveCamera(58, 16 / 9, 0.08, 650);
+    const district = buildDistrict(scene);
+    const physics = await createPhysics(district.colliders);
+    const player = createPlayer(scene, camera, physics, district.spawn);
+    const session = createSession(scene, camera, physics, district.colliders, player, mockAudio(), () => {});
+
+    const pedro = session.population.allPeople.find((p) => p.id === 'person:pedro')!;
+    const valeria = session.population.allPeople.find((p) => p.id === 'person:valeria')!;
+
+    // 1. Polite chat builds trust & episodic chat memory
+    session.population.recordPlayerChat(valeria, 'Saludar', 10);
+    session.population.recordPlayerChat(valeria, '¿Cómo está el barrio?', 12);
+    expect(valeria.mind.playerTrust).toBeGreaterThan(0);
+    expect(valeria.mind.playerChats).toBe(2);
+    expect(playerDialogueReply(valeria, 'greet', undefined, 0, 14)).toContain('¡Ey, qué tal otra vez!');
+
+    // 2. Witnessing a player crime creates an episodic memory, zone caution, and distrust
+    const crimeEvent = session.journal.publish('theft', pedro.actor.position, 20, 'player', true);
+    rememberEvent(pedro.mind, crimeEvent, true);
+    expect(pedro.mind.playerWitnessedCrimes).toBe(1);
+    expect(pedro.mind.playerTrust).toBeLessThan(0);
+    expect(pedro.mind.memories[0].aboutPlayer).toBe(true);
+    expect(Object.keys(pedro.mind.zoneCaution).length).toBeGreaterThan(0);
+
+    // Even when calm later, Pedro remembers what the player did
+    const reply = playerDialogueReply(pedro, 'greet', undefined, 0, 45);
+    expect(reply).toContain('No me olvido de lo de antes');
+
+    // 3. Pedro meets Valeria and spreads gossip -> Valeria learns about it and updates relationship
+    const gossip = exchangeGossip(pedro.id, pedro.name, pedro.mind, valeria.id, valeria.name, valeria.mind, 30);
+    expect(gossip).toBeDefined();
+    expect(gossip?.kind).toBe('gossip');
+    expect(valeria.mind.relationships[pedro.id]).toBeGreaterThan(0);
+    expect(valeria.mind.memories.some((m) => m.kind === 'gossip' && m.heardFrom === 'Pedro')).toBe(true);
+
+    // 4. Reset restores clean procedural minds
+    session.reset();
+    expect(pedro.mind.memories.length).toBe(0);
+    expect(pedro.mind.playerTrust).toBe(0);
+    expect(pedro.mind.playerWitnessedCrimes).toBe(0);
+
+    session.dispose();
+    player.dispose();
+    physics.dispose();
+  });
 });
